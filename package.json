@@ -8,7 +8,8 @@
     "android": "com.akshadk.CMT",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "postinstall": "cp patches/react-native-image-viewing-ImageItem.web.js node_modules/react-native-image-viewing/dist/components/ImageItem/ImageItem.web.js 2>/dev/null || true"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",

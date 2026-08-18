@@ -1,0 +1,15 @@
+node_modules
+.expo
+dist
+web-build
+.env
+.env*.local
+.git
+android
+ios
+appscreenshots
+.DS_Store
+*.pem
+npm-debug.*
+yarn-debug.*
+yarn-error.*

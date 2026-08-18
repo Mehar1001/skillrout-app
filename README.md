@@ -1,88 +1,68 @@
-# Skillrout 
+# Skillrout
 
-This is a mobile app built using Expo and Firebase to help game room owners manage customer visits, free credits, and ID verification. 
-It allows the owner to register customers with their name, phone number, and photo ID, track visit history, and prevent repeated use of free credits.
+A mobile and web app for tracking store visits, machine readings, and settlements.
+Built with **Expo**, **React Native**, and **Firebase**.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+- Owner onboarding and store management
+- Machine onboarding with last-settled IN/OUT baselines
+- Employee store selection, visit entry, and RUN/SUBMIT/PRINT flow
+- Earthy, minimal design system
 
-## Get started
+## Quick start (local)
 
-1. Install dependencies
+1. Clone the repo
+
+   ```bash
+   git clone https://github.com/Mehar1001/skillrout-app.git
+   cd skillrout-app
+   ```
+
+2. Install dependencies
 
    ```bash
    npm install
    ```
 
-2. Start the app
+3. Add your Firebase web config to `.env`
 
    ```bash
-   npx expo start
+   EXPO_PUBLIC_FIREBASE_API_KEY=...
+   EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+   EXPO_PUBLIC_FIREBASE_PROJECT_ID=...
+   EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+   EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+   EXPO_PUBLIC_FIREBASE_APP_ID=...
+   EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=...
    ```
 
-In the output, you'll find options to open the app in a
+4. Start the web dev server
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   ```bash
+   npx expo start --web
+   ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   Then open `http://localhost:8081`.
 
-## Get a fresh project
+## Docker
 
-When you're ready, run:
+### Development (live reload)
 
 ```bash
-npm run reset-project
+docker-compose up skillrout-dev
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Open `http://localhost:8081`.
 
-## Learn more
+### Production web build
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+docker-compose up skillrout-web
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Open `http://localhost`.
 
-## Join the community
+## Notes
 
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-
-## New Features
-
-- Employee shift tracking with detailed profit/loss calculation
-- Machine in/out amount logging for accurate shift reporting
-- Secure, password-protected editing of machine data
-- Register customers with name, phone number, and photo ID
-- Track visit history with photo ID verification
-- Prevent repeated free-credit or match-amount abuse
-- (Optional) Bulk SMS notification integration via Twilio (code implemented, pending production setup)
-- Improved UI with gold-themed casino styling
-- Photo ID and payout snapshot upload with timestamp overlay to prevent fraud
-
-## 📸 Screenshots
-
-Here are some screenshots of the app in action. Click the link below to view:
-
-[👉 View App Screenshots](appscreenshots)
-### 🧾 Owner login 
-![Owner Login] (appscreenshots/adminportal.png)
-
-### 🧾 Customer Registration
-![Customer Registration](appscreenshots/customerportal.png)
-
-### 🧾 Customer Information
-![Customer Information](appscreenshots/customerinfo.png)
-
-### 📈 Profit & Loss
-![Profit & Loss](appscreenshots/profit&loss.png)
-
-### 🎮 Machine Tracker
-![Machine Tracker](appscreenshots/shifthistory.png)
-
----
+- `.env` and `google-services.json` are not committed to the repo.
+- Keep your local `google-services.json` safe and place it back after cloning.
+- For Android/iOS native builds, run `npx expo prebuild` to generate the `android/` and `ios/` folders.
