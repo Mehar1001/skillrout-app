@@ -17,15 +17,15 @@ import { Visit } from '../../types';
 export default function ResultsScreen() {
   const { visitId } = useLocalSearchParams<{ visitId: string }>();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, ownerId } = useAuth();
   const [visit, setVisit] = useState<Visit | null>(null);
   const [storePercent, setStorePercent] = useState(50);
   const [vendorPercent, setVendorPercent] = useState(50);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user || !visitId) return;
-    getVisit(user.uid, visitId).then(v => {
+    if (!user || !ownerId || !visitId) return;
+    getVisit(ownerId!, visitId).then(v => {
       if (v) {
         setVisit(v);
         setStorePercent(v.storePercent);
@@ -46,7 +46,7 @@ export default function ResultsScreen() {
   const display = current ?? visit;
 
   const handlePrint = async () => {
-    if (!user || !visit || !display) return;
+    if (!user || !ownerId || !visit || !display) return;
     setLoading(true);
     try {
       const updated: Visit = {
@@ -58,7 +58,7 @@ export default function ResultsScreen() {
         cashDueLocation: current?.cashDueLocation ?? visit.cashDueLocation,
         totalNet: current?.totalNet ?? visit.totalNet,
       };
-      await markPrinted(user.uid, visit.id, user.uid);
+      await markPrinted(ownerId!, visit.id, user.uid);
       await Print.printAsync({ html: generateReceiptHtml(updated) });
       Alert.alert('Printed', 'Receipt ready.');
     } catch (e: any) {
@@ -69,7 +69,7 @@ export default function ResultsScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!user || !visit) return;
+    if (!user || !ownerId || !visit) return;
     const error = validatePercentages(storePercent, vendorPercent);
     if (error) {
       Alert.alert('Validation', error);
@@ -77,7 +77,7 @@ export default function ResultsScreen() {
     }
     setLoading(true);
     try {
-      await submitVisit(user.uid, visit.id);
+      await submitVisit(ownerId!, visit.id);
       await Print.printAsync({ html: generateReceiptHtml(visit) });
       Alert.alert('Submitted', 'Settlement finalized and receipt printed.');
       router.push('/select-store' as any);

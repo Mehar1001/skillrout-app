@@ -14,7 +14,7 @@ import { Machine, Store } from '../../types';
 export default function VisitScreen() {
   const { storeId } = useLocalSearchParams<{ storeId: string }>();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, ownerId } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [present, setPresent] = useState<{ [machineId: string]: { in: string; out: string } }>({});
@@ -22,8 +22,8 @@ export default function VisitScreen() {
 
   useEffect(() => {
     if (!user || !storeId) return;
-    getStore(user.uid, storeId).then(setStore);
-    listMachines(user.uid, storeId).then(list => {
+    getStore(ownerId!, storeId).then(setStore);
+    listMachines(ownerId!, storeId).then(list => {
       setMachines(list.filter(m => m.active));
       const initial: typeof present = {};
       list.forEach(m => {
@@ -41,7 +41,7 @@ export default function VisitScreen() {
   };
 
   const handleRun = async () => {
-    if (!user || !store || !storeId) return;
+    if (!user || !ownerId || !store || !storeId) return;
 
     const readings: { [machineId: string]: { in: number; out: number } } = {};
     for (const machine of machines) {
@@ -64,7 +64,7 @@ export default function VisitScreen() {
     setSaving(true);
     try {
       const visitId = await saveRun(
-        user.uid,
+        ownerId!,
         storeId,
         store.name,
         user.uid,

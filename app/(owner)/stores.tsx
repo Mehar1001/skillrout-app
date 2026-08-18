@@ -10,7 +10,7 @@ import { colors, fontSizes, spacing } from '../../constants/designTokens';
 import { validatePercentages } from '../../helpers/validators';
 
 export default function StoresScreen() {
-  const { user } = useAuth();
+  const { user, ownerId } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<Partial<Store>>({
@@ -23,9 +23,9 @@ export default function StoresScreen() {
   });
 
   const fetchStores = async () => {
-    if (!user) return;
+    if (!user || !ownerId) return;
     setLoading(true);
-    const data = await listStores(user.uid);
+    const data = await listStores(ownerId);
     setStores(data);
     setLoading(false);
   };
@@ -48,7 +48,7 @@ export default function StoresScreen() {
   const handleEdit = (store: Store) => setForm({ ...store });
 
   const handleSave = async () => {
-    if (!user || !form.name?.trim()) {
+    if (!user || !ownerId || !form.name?.trim()) {
       Alert.alert('Required', 'Store name is required.');
       return;
     }
@@ -60,20 +60,20 @@ export default function StoresScreen() {
       Alert.alert('Validation', pctError);
       return;
     }
-    await saveStore(user.uid, form);
+    await saveStore(ownerId, form);
     resetForm();
     fetchStores();
   };
 
   const handleDelete = (id: string) => {
-    if (!user) return;
+    if (!user || !ownerId) return;
     Alert.alert('Confirm', 'Delete this store?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteStore(user.uid, id);
+          await deleteStore(ownerId, id);
           fetchStores();
         },
       },

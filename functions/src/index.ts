@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase-admin/app'; // Corrected: Import initializeApp directly
-import { getFirestore } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
 import { defineSecret } from 'firebase-functions/params';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import twilio from 'twilio';
@@ -7,6 +8,7 @@ import twilio from 'twilio';
 // Initialize Firebase Admin SDK using the direct import
 initializeApp(); // Called directly
 const db = getFirestore(); // Corrected: Get Firestore instance directly
+const auth = getAuth();
 
 let cachedTwilioClient: ReturnType<typeof twilio> | null = null;
 
@@ -111,5 +113,51 @@ export const sendBulkSms = onCall({ secrets: [twilioSid, twilioToken, twilioNumb
         error.message
       );
     }
+  }
+});
+
+export const createEmployee = onCall(async (request: CallableRequest) => {
+  const context = request.auth;
+  const { email, name, password } = request.data as { email: string; name: string; password: string };
+
+  if (!context || !context.uid) {
+    throw new HttpsError('unauthenticated', 'You must be logged in to create an employee.');
+  }
+
+  const ownerId = context.uid;
+  const ownerDoc = await db.collection('owners').doc(ownerId).get();
+  if (!ownerDoc.exists) {
+    throw new HttpsError('permission-denied', 'Only owners can create employees.');
+  }
+
+  if (!email || !email.trim() || !password || password.length < 6 || !name || !name.trim()) {
+    throw new HttpsError('invalid-argument', 'Valid email, name, and password (6+ chars) are required.');
+  }
+
+  try {
+    const userRecord = await auth.createUser({
+      email: email.trim(),
+      password,
+      displayName: name.trim(),
+      emailVerified: true,
+    });
+
+    await db.collection('employees').doc(userRecord.uid).set({
+      email: email.trim(),
+      name: name.trim(),
+      role: 'employee',
+      ownerId,
+      businessName: ownerDoc.data()?.businessName || '',
+      active: true,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    return { uid: userRecord.uid, email: email.trim(), name: name.trim() };
+  } catch (error: any) {
+    console.error('Error creating employee:', error);
+    if (error.code === 'auth/email-already-exists') {
+      throw new HttpsError('already-exists', 'That email is already in use.');
+    }
+    throw new HttpsError('internal', 'Failed to create employee. Please try again.');
   }
 });

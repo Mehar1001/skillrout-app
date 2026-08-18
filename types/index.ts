@@ -17,7 +17,8 @@ export interface Employee {
   name: string;
   active: boolean;
   role: 'employee';
-  createdBy: string; // ownerId
+  ownerId: string;
+  businessName?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }

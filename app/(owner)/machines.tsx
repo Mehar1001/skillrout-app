@@ -10,7 +10,7 @@ import { Card } from '../../components/Card';
 import { colors, fontSizes, spacing } from '../../constants/designTokens';
 
 export default function MachinesScreen() {
-  const { user } = useAuth();
+  const { user, ownerId } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -25,14 +25,14 @@ export default function MachinesScreen() {
   });
 
   useEffect(() => {
-    if (!user) return;
-    listStores(user.uid).then(setStores);
-  }, [user]);
+    if (!user || !ownerId) return;
+    listStores(ownerId).then(setStores);
+  }, [user, ownerId]);
 
   useEffect(() => {
-    if (!user || !selectedStoreId) return;
-    listMachines(user.uid, selectedStoreId).then(setMachines);
-  }, [user, selectedStoreId]);
+    if (!user || !ownerId || !selectedStoreId) return;
+    listMachines(ownerId, selectedStoreId).then(setMachines);
+  }, [user, ownerId, selectedStoreId]);
 
   const resetForm = () => {
     setForm({
@@ -48,27 +48,27 @@ export default function MachinesScreen() {
   const handleEdit = (machine: Machine) => setForm({ ...machine });
 
   const handleSave = async () => {
-    if (!user || !selectedStoreId || !form.machineNumber?.trim()) {
+    if (!user || !ownerId || !selectedStoreId || !form.machineNumber?.trim()) {
       Alert.alert('Required', 'Select a store and enter a machine number.');
       return;
     }
     setLoading(true);
-    await saveMachine(user.uid, selectedStoreId, form);
+    await saveMachine(ownerId, selectedStoreId, form);
     setLoading(false);
     resetForm();
-    listMachines(user.uid, selectedStoreId).then(setMachines);
+    listMachines(ownerId, selectedStoreId).then(setMachines);
   };
 
   const handleDelete = (machine: Machine) => {
-    if (!user || !selectedStoreId) return;
+    if (!user || !ownerId || !selectedStoreId) return;
     Alert.alert('Confirm', `Delete machine ${machine.machineNumber}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteMachine(user.uid, selectedStoreId, machine.id);
-          listMachines(user.uid, selectedStoreId).then(setMachines);
+          await deleteMachine(ownerId, selectedStoreId, machine.id);
+          listMachines(ownerId, selectedStoreId).then(setMachines);
         },
       },
     ]);

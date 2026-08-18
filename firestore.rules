@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Owner root document
+    match /owners/{ownerId} {
+      allow read, write: if request.auth != null && request.auth.uid == ownerId;
+    }
+
+    // Subcollections under an owner (stores, machines, visits, etc.)
+    // Owner can read/write everything.
+    // Employee can read only the data that belongs to the ownerId stored in their employee record.
+    match /owners/{ownerId}/{document=**} {
+      allow read: if request.auth != null
+                   && (request.auth.uid == ownerId
+                       || get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.ownerId == ownerId);
+      allow write: if request.auth != null && request.auth.uid == ownerId;
+    }
+
+    // Employee identity records
+    // Employee can read their own record; owner can read records of employees they created
+    match /employees/{employeeId} {
+      allow create: if request.auth != null
+                    && exists(/databases/$(database)/documents/owners/$(request.auth.uid));
+      allow read, update: if request.auth != null
+                          && (request.auth.uid == employeeId
+                              || request.auth.uid == resource.data.ownerId);
+    }
+  }
+}

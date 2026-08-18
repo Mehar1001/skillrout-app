@@ -9,14 +9,14 @@ import { listStores } from '../../services/stores';
 import { Store } from '../../types';
 
 export default function SelectStoreScreen() {
-  const { user } = useAuth();
+  const { user, ownerId } = useAuth();
   const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
 
   useEffect(() => {
-    if (!user) return;
-    listStores(user.uid).then(data => setStores(data.filter(s => s.active)));
-  }, [user]);
+    if (!user || !ownerId) return;
+    listStores(ownerId).then(data => setStores(data.filter(s => s.active)));
+  }, [user, ownerId]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
