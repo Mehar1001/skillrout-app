@@ -77,8 +77,16 @@ export default function ResultsScreen() {
     }
     setLoading(true);
     try {
-      await submitVisit(ownerId!, visit.id);
-      await Print.printAsync({ html: generateReceiptHtml(visit) });
+      await submitVisit(ownerId!, visit.id, storePercent, vendorPercent);
+      const submittedVisit: Visit = {
+        ...visit,
+        storePercent,
+        vendorPercent,
+        storeAmount: current?.storeAmount ?? visit.storeAmount,
+        vendorAmount: current?.vendorAmount ?? visit.vendorAmount,
+        cashDueLocation: current?.cashDueLocation ?? visit.cashDueLocation,
+      };
+      await Print.printAsync({ html: generateReceiptHtml(submittedVisit) });
       Alert.alert('Submitted', 'Settlement finalized and receipt printed.');
       router.push('/select-store' as any);
     } catch (e: any) {

@@ -1,13 +1,14 @@
 import { httpsCallable } from 'firebase/functions';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { colors, spacing } from '../../constants/designTokens';
 import { db, functions } from '../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
-import { Employee } from '../../types';
+import { listStores } from '../../services/stores';
+import { Employee, Store } from '../../types';
 
 const createEmployeeFn = httpsCallable(functions, 'createEmployee');
 
@@ -18,6 +19,8 @@ export default function EmployeesScreen() {
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>([]);
 
   const fetchEmployees = async () => {
     if (!ownerId) return;
@@ -34,6 +37,7 @@ export default function EmployeesScreen() {
   useEffect(() => {
     if (!user || !ownerId) return;
     fetchEmployees();
+    listStores(ownerId).then(data => setStores(data.filter(store => store.active)));
   }, [user, ownerId]);
 
   const handleCreate = async () => {
@@ -45,13 +49,18 @@ export default function EmployeesScreen() {
       Alert.alert('Weak Password', 'Password must be at least 6 characters.');
       return;
     }
+    if (assignedStoreIds.length === 0) {
+      Alert.alert('Required', 'Assign at least one store.');
+      return;
+    }
     setSaving(true);
     try {
-      await createEmployeeFn({ email: email.trim(), name: name.trim(), password });
+      await createEmployeeFn({ email: email.trim(), name: name.trim(), password, assignedStoreIds });
       Alert.alert('Created', `Employee ${name.trim()} added.`);
       setName('');
       setEmail('');
       setPassword('');
+      setAssignedStoreIds([]);
       fetchEmployees();
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to create employee.');
@@ -85,6 +94,29 @@ export default function EmployeesScreen() {
           placeholder="At least 6 characters"
           secureTextEntry
         />
+        <Text style={styles.fieldLabel}>Assigned stores</Text>
+        <View style={styles.storeChoices}>
+          {stores.map(store => {
+            const selected = assignedStoreIds.includes(store.id);
+            return (
+              <Pressable
+                key={store.id}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: selected }}
+                onPress={() =>
+                  setAssignedStoreIds(current =>
+                    selected ? current.filter(id => id !== store.id) : [...current, store.id]
+                  )
+                }
+                style={[styles.storeChoice, selected && styles.storeChoiceSelected]}
+              >
+                <Text style={[styles.storeChoiceText, selected && styles.storeChoiceTextSelected]}>
+                  {selected ? 'Selected: ' : ''}{store.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <Button
           title="Create Employee"
           onPress={handleCreate}
@@ -103,6 +135,7 @@ export default function EmployeesScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.rowName}>{item.name}</Text>
               <Text style={styles.rowEmail}>{item.email}</Text>
+              <Text style={styles.rowEmail}>{item.assignedStoreIds?.length || 0} store(s) assigned</Text>
             </View>
             <Text style={[styles.status, { color: item.active ? colors.success : colors.textMuted }]}>
               {item.active ? 'Active' : 'Inactive'}
@@ -129,6 +162,36 @@ const styles = StyleSheet.create({
   form: {
     gap: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  storeChoices: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  storeChoice: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+  },
+  storeChoiceSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  storeChoiceText: {
+    color: colors.textPrimary,
+  },
+  storeChoiceTextSelected: {
+    color: colors.surface,
+    fontWeight: '600',
   },
   subtitle: {
     fontSize: 18,

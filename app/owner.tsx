@@ -109,9 +109,15 @@ export default function OwnerScreen() {
 
       const ownerSnap = await getDoc(doc(db, 'owners', user.uid));
       if (!ownerSnap.exists()) {
-        Alert.alert('Access Denied', 'Your email is not registered as an admin.');
-        auth.signOut();
-        setIsLoading(false);
+        const employeeSnap = await getDoc(doc(db, 'employees', user.uid));
+        if (!employeeSnap.exists() || employeeSnap.data().active !== true) {
+          Alert.alert('Access Denied', 'Your account is not active in Skillrout.');
+          auth.signOut();
+          setIsLoading(false);
+          return;
+        }
+        Alert.alert('Welcome Back!', `Logged in as ${employeeSnap.data().name || 'Employee'}.`);
+        router.replace('/select-store' as any);
         return;
       }
 

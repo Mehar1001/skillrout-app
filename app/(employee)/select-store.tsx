@@ -5,18 +5,21 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useAuth } from '../../contexts/AuthContext';
-import { listStores } from '../../services/stores';
+import { listAssignedStores, listStores } from '../../services/stores';
 import { Store } from '../../types';
 
 export default function SelectStoreScreen() {
-  const { user, ownerId } = useAuth();
+  const { user, ownerId, role, assignedStoreIds } = useAuth();
   const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
 
   useEffect(() => {
     if (!user || !ownerId) return;
-    listStores(ownerId).then(data => setStores(data.filter(s => s.active)));
-  }, [user, ownerId]);
+    const request = role === 'owner'
+      ? listStores(ownerId)
+      : listAssignedStores(ownerId, assignedStoreIds);
+    request.then(data => setStores(data.filter(store => store.active)));
+  }, [user, ownerId, role, assignedStoreIds]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

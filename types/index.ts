@@ -19,6 +19,7 @@ export interface Employee {
   role: 'employee';
   ownerId: string;
   businessName?: string;
+  assignedStoreIds: string[];
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }

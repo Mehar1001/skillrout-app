@@ -12,13 +12,12 @@
     "prepare": "npm run build"
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "lib/index.js",
   "dependencies": {
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^6.3.2",
-    "twilio": "^5.7.1",
     "typescript": "^5.8.3"
   },
   "devDependencies": {

@@ -21,9 +21,9 @@ export default function VisitScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!user || !storeId) return;
-    getStore(ownerId!, storeId).then(setStore);
-    listMachines(ownerId!, storeId).then(list => {
+    if (!user || !ownerId || !storeId) return;
+    getStore(ownerId, storeId).then(setStore);
+    listMachines(ownerId, storeId).then(list => {
       setMachines(list.filter(m => m.active));
       const initial: typeof present = {};
       list.forEach(m => {
@@ -31,7 +31,7 @@ export default function VisitScreen() {
       });
       setPresent(initial);
     });
-  }, [user, storeId]);
+  }, [user, ownerId, storeId]);
 
   const updatePresent = (machineId: string, field: 'in' | 'out', value: string) => {
     setPresent(prev => ({

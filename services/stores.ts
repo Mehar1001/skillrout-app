@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, deleteDoc, doc, documentId, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Store } from '../types';
 
@@ -12,6 +12,26 @@ export const getStore = async (ownerId: string, storeId: string): Promise<Store 
 export const listStores = async (ownerId: string): Promise<Store[]> => {
   const snapshot = await getDocs(getStoresRef(ownerId));
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Store));
+};
+
+export const listAssignedStores = async (
+  ownerId: string,
+  assignedStoreIds: string[]
+): Promise<Store[]> => {
+  if (assignedStoreIds.length === 0) return [];
+  const snapshots = await Promise.all(
+    Array.from({ length: Math.ceil(assignedStoreIds.length / 10) }, (_, index) =>
+      getDocs(
+        query(
+          getStoresRef(ownerId),
+          where(documentId(), 'in', assignedStoreIds.slice(index * 10, index * 10 + 10))
+        )
+      )
+    )
+  );
+  return snapshots.flatMap(snapshot =>
+    snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Store))
+  );
 };
 
 export const saveStore = async (
