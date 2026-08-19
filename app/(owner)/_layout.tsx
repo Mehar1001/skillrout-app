@@ -1,30 +1,111 @@
-import { useRouter, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs, useRouter } from 'expo-router';
 import { useEffect } from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
+import { colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function OwnerLayout() {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, signOut } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && (!user || role !== 'owner')) {
-      router.replace('/owner');
-    }
+    if (!loading && (!user || role !== 'owner')) router.replace('/owner');
   }, [user, role, loading, router]);
 
-  if (loading || !user || role !== 'owner') {
-    return null;
-  }
+  if (loading || !user || role !== 'owner') return null;
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/owner');
+  };
 
   return (
-    <Stack screenOptions={{ headerShown: true, headerStyle: { backgroundColor: '#F7F4F0' } }}>
-      <Stack.Screen name="dashboard" options={{ title: 'Dashboard' }} />
-      <Stack.Screen name="stores" options={{ title: 'Stores' }} />
-      <Stack.Screen name="machines" options={{ title: 'Machines' }} />
-      <Stack.Screen name="employees" options={{ title: 'Employees' }} />
-      <Stack.Screen name="history" options={{ title: 'History' }} />
-      <Stack.Screen name="reports" options={{ title: 'Reports' }} />
-      <Stack.Screen name="settings" options={{ title: 'Settings' }} />
-    </Stack>
+    <Tabs
+      screenOptions={{
+        headerStyle: styles.header,
+        headerTitleStyle: styles.headerTitle,
+        headerRight: () => (
+          <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.logout}>
+            <Ionicons name="log-out-outline" size={20} color={colors.accentDark} />
+            <Text style={styles.logoutText}>Log out</Text>
+          </Pressable>
+        ),
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabLabel,
+      }}
+    >
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stores"
+        options={{
+          title: 'Stores',
+          tabBarIcon: ({ color, size }) => <Ionicons name="storefront-outline" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="machines"
+        options={{
+          title: 'Machines',
+          tabBarIcon: ({ color, size }) => <Ionicons name="hardware-chip-outline" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="employees"
+        options={{
+          title: 'Employees',
+          tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: 'History',
+          tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" color={color} size={size} />,
+        }}
+      />
+    </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    backgroundColor: colors.background,
+  },
+  headerTitle: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  logout: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  logoutText: {
+    color: colors.accentDark,
+    fontSize: fontSizes.body,
+    fontWeight: '600',
+  },
+  tabBar: {
+    minHeight: 64,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
+  },
+  tabLabel: {
+    fontSize: fontSizes.caption,
+    fontWeight: '600',
+  },
+});

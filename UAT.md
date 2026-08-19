@@ -286,10 +286,17 @@ Expected:
 - SUBMIT is blocked.
 - Machine baselines remain 1200 and 600.
 
-## 7. Error and boundary tests
+## 7. Navigation, cleanup, and boundary tests
 
 The tester should also confirm:
 
+- Opening the base URL shows Skillrout or redirects to Skillrout sign-in; the old GMT Customer Management screen never appears.
+- Dashboard, Stores, Machines, Employees, and History remain available in the owner bottom tabs.
+- After creating a machine, selecting Dashboard immediately returns to the owner dashboard.
+- The History tab loads recorded runs with settlement and print labels.
+- Employee Visit and Results screens provide working Back navigation.
+- Log out returns both owner and employee accounts to Skillrout sign-in.
+- Old GMT/customer routes such as `/customerinfo`, `/employeeshift`, `/machinetracker`, `/profitloss`, and `/bulksms` are unavailable.
 - Blank required fields show understandable messages.
 - Invalid emails are rejected.
 - Duplicate owner emails are rejected.

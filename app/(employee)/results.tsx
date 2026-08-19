@@ -32,7 +32,7 @@ export default function ResultsScreen() {
         setVendorPercent(v.vendorPercent);
       }
     });
-  }, [user, visitId]);
+  }, [user, ownerId, visitId]);
 
   const recalc = (sPct: number, vPct: number) => {
     if (!visit) return null;
@@ -88,7 +88,7 @@ export default function ResultsScreen() {
       };
       await Print.printAsync({ html: generateReceiptHtml(submittedVisit) });
       Alert.alert('Submitted', 'Settlement finalized and receipt printed.');
-      router.push('/select-store' as any);
+      router.replace('/select-store' as any);
     } catch (e: any) {
       Alert.alert('Submit Error', e.message);
     } finally {

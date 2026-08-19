@@ -1,6 +1,6 @@
 import { httpsCallable } from 'firebase/functions';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
@@ -22,7 +22,7 @@ export default function EmployeesScreen() {
   const [stores, setStores] = useState<Store[]>([]);
   const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>([]);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     if (!ownerId) return;
     const q = query(collection(db, 'employees'), where('ownerId', '==', ownerId));
     const snap = await getDocs(q);
@@ -32,13 +32,13 @@ export default function EmployeesScreen() {
         ...d.data(),
       } as Employee))
     );
-  };
+  }, [ownerId]);
 
   useEffect(() => {
     if (!user || !ownerId) return;
     fetchEmployees();
     listStores(ownerId).then(data => setStores(data.filter(store => store.active)));
-  }, [user, ownerId]);
+  }, [user, ownerId, fetchEmployees]);
 
   const handleCreate = async () => {
     if (!ownerId || !name.trim() || !email.trim() || !password.trim()) {

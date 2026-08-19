@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores, saveStore, deleteStore } from '../../services/stores';
@@ -22,17 +22,17 @@ export default function StoresScreen() {
     defaultVendorPercent: 50,
   });
 
-  const fetchStores = async () => {
+  const fetchStores = useCallback(async () => {
     if (!user || !ownerId) return;
     setLoading(true);
     const data = await listStores(ownerId);
     setStores(data);
     setLoading(false);
-  };
+  }, [user, ownerId]);
 
   useEffect(() => {
     fetchStores();
-  }, [user]);
+  }, [fetchStores]);
 
   const resetForm = () => {
     setForm({
