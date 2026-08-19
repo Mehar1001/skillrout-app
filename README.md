@@ -43,6 +43,10 @@ Built with **Expo**, **React Native**, and **Firebase**.
 
    Then open `http://localhost:8081`.
 
+## Manual QA and UAT
+
+Use the [Skillrout Tester Training, Manual QA, and UAT Guide](UAT.md) for tester onboarding, expected calculations, acceptance criteria, Firebase health checks, and browser debugging.
+
 ## Docker
 
 ### Development (live reload)
