@@ -23,7 +23,10 @@ export default function SelectStoreScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.greeting}>Where are you working today?</Text>
+      <View style={styles.header}>
+        <Text style={styles.greeting}>Where are you working today?</Text>
+        <Button title="History" onPress={() => router.push('/employee-history' as any)} variant="secondary" />
+      </View>
       {stores.length === 0 ? (
         <Text style={styles.empty}>No active stores. Ask your owner to add one.</Text>
       ) : (
@@ -58,11 +61,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     minHeight: '100%',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
   greeting: {
+    flex: 1,
+    minWidth: 220,
     fontSize: fontSizes.h1,
     color: colors.textPrimary,
     fontWeight: '700',
-    marginBottom: spacing.lg,
     lineHeight: fontSizes.h1 + 8,
   },
   storeCard: {

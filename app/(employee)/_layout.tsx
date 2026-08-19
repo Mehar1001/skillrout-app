@@ -35,8 +35,13 @@ export default function EmployeeLayout() {
       }}
     >
       <Stack.Screen name="select-store" options={{ title: 'Select Store', headerBackVisible: false }} />
-      <Stack.Screen name="visit" options={{ title: 'Run Visit' }} />
-      <Stack.Screen name="results" options={{ title: 'Results' }} />
+      <Stack.Screen name="visit" options={{ title: 'Enter Readings' }} />
+      <Stack.Screen name="results" options={{ title: 'Comparison' }} />
+      <Stack.Screen name="calculation" options={{ title: 'Calculation' }} />
+      <Stack.Screen name="settlement" options={{ title: 'Settlement Split' }} />
+      <Stack.Screen name="outcome" options={{ title: 'Outcome' }} />
+      <Stack.Screen name="receipt" options={{ title: 'Receipt Preview' }} />
+      <Stack.Screen name="employee-history" options={{ title: 'History' }} />
     </Stack>
   );
 }

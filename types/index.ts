@@ -49,6 +49,12 @@ export interface Machine {
   updatedAt?: Timestamp;
 }
 
+export interface MachineReadingDraft {
+  presentIn: number | null;
+  presentOut: number | null;
+  photoUri?: string;
+}
+
 export interface VisitMachine {
   machineId: string;
   machineNumber: string;
@@ -61,6 +67,7 @@ export interface VisitMachine {
   newOut: number;
   machineNet: number;
   photoUrl?: string;
+  photoPath?: string;
 }
 
 export interface Visit {

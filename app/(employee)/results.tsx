@@ -1,281 +1,193 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
-import * as Print from 'expo-print';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
-import { Input } from '../../components/Input';
 import { Card } from '../../components/Card';
-import { colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
+import { colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
 import { useAuth } from '../../contexts/AuthContext';
-import { generateReceiptHtml } from '../../helpers/receiptTemplate';
-import { formatCurrency, formatNumber } from '../../helpers/formatters';
-import { validatePercentages } from '../../helpers/validators';
-import { calculateVisit } from '../../helpers/calculations';
-import { getVisit, markPrinted, submitVisit } from '../../services/visits';
-import { Visit } from '../../types';
+import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
+import { useVisit } from '../../hooks/useVisit';
 
 export default function ResultsScreen() {
   const { visitId } = useLocalSearchParams<{ visitId: string }>();
+  const { ownerId } = useAuth();
   const router = useRouter();
-  const { user, ownerId } = useAuth();
-  const [visit, setVisit] = useState<Visit | null>(null);
-  const [storePercent, setStorePercent] = useState(50);
-  const [vendorPercent, setVendorPercent] = useState(50);
-  const [loading, setLoading] = useState(false);
+  const { visit, loading, error, refresh } = useVisit(ownerId, visitId);
 
-  useEffect(() => {
-    if (!user || !ownerId || !visitId) return;
-    getVisit(ownerId!, visitId).then(v => {
-      if (v) {
-        setVisit(v);
-        setStorePercent(v.storePercent);
-        setVendorPercent(v.vendorPercent);
-      }
-    });
-  }, [user, ownerId, visitId]);
-
-  const recalc = (sPct: number, vPct: number) => {
-    if (!visit) return null;
-    const error = validatePercentages(sPct, vPct);
-    if (error) return null;
-    const calc = calculateVisit(visit.machines, sPct);
-    return { ...calc, cashDueLocation: calc.totalNewOut + calc.storeAmount };
-  };
-
-  const current = recalc(storePercent, vendorPercent);
-  const display = current ?? visit;
-
-  const handlePrint = async () => {
-    if (!user || !ownerId || !visit || !display) return;
-    setLoading(true);
-    try {
-      const updated: Visit = {
-        ...visit,
-        storePercent,
-        vendorPercent,
-        storeAmount: current?.storeAmount ?? visit.storeAmount,
-        vendorAmount: current?.vendorAmount ?? visit.vendorAmount,
-        cashDueLocation: current?.cashDueLocation ?? visit.cashDueLocation,
-        totalNet: current?.totalNet ?? visit.totalNet,
-      };
-      await markPrinted(ownerId!, visit.id, user.uid);
-      await Print.printAsync({ html: generateReceiptHtml(updated) });
-      Alert.alert('Printed', 'Receipt ready.');
-    } catch (e: any) {
-      Alert.alert('Print Error', e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!user || !ownerId || !visit) return;
-    const error = validatePercentages(storePercent, vendorPercent);
-    if (error) {
-      Alert.alert('Validation', error);
-      return;
-    }
-    setLoading(true);
-    try {
-      await submitVisit(ownerId!, visit.id, storePercent, vendorPercent);
-      const submittedVisit: Visit = {
-        ...visit,
-        storePercent,
-        vendorPercent,
-        storeAmount: current?.storeAmount ?? visit.storeAmount,
-        vendorAmount: current?.vendorAmount ?? visit.vendorAmount,
-        cashDueLocation: current?.cashDueLocation ?? visit.cashDueLocation,
-      };
-      await Print.printAsync({ html: generateReceiptHtml(submittedVisit) });
-      Alert.alert('Submitted', 'Settlement finalized and receipt printed.');
-      router.replace('/select-store' as any);
-    } catch (e: any) {
-      Alert.alert('Submit Error', e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!visit || !display) return null;
-
-  const resultColor =
-    display.result === 'positive'
-      ? colors.success
-      : display.result === 'negative'
-      ? colors.error
-      : colors.textMuted;
-
-  const canSubmit =
-    display.totalNet > 0 &&
-    storePercent + vendorPercent === 100 &&
-    visit.settlementStatus !== 'submitted';
+  if (loading) return <LoadingState />;
+  if (!visit) return <ErrorState message={error} onRetry={refresh} />;
+  const timestamp = visit.timestamp?.toDate?.();
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Results</Text>
-        <Text style={styles.meta}>
-          {visit.storeName} · {visit.businessDate}
-        </Text>
-      </View>
+      <Text style={styles.eyebrow}>RUN RESULTS · COMPARISON</Text>
+      <Text style={styles.title}>{visit.storeName}</Text>
+      <Text style={styles.meta}>
+        Business date: {formatDate(visit.businessDate)}
+        {timestamp ? ` · Recorded ${formatDate(timestamp)} at ${formatTime(timestamp)}` : ''}
+      </Text>
+      <Text style={styles.meta}>Employee: {visit.employeeName}</Text>
 
-      <Card style={styles.summaryCard}>
-        <View style={styles.resultRow}>
-          <Text style={styles.summaryTitle}>Run outcome</Text>
-          <View style={[styles.badge, { backgroundColor: resultColor }]}>
-            <Text style={styles.badgeText}>{display.result.toUpperCase()}</Text>
+      <Card style={styles.section}>
+        <Text style={styles.sectionTitle}>Last settled readings</Text>
+        {visit.machines.map(machine => (
+          <View key={machine.machineId} style={styles.machineRow}>
+            <View style={styles.machineInfo}>
+              <Text style={styles.machineName}>Machine {machine.machineNumber}</Text>
+              {machine.name ? <Text style={styles.machineSubtitle}>{machine.name}</Text> : null}
+            </View>
+            <Reading label="Last IN" value={machine.lastSettledIn} />
+            <Reading label="Last OUT" value={machine.lastSettledOut} />
           </View>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Total New IN</Text>
-          <Text style={styles.value}>{formatNumber(display.totalNewIn)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Total New OUT</Text>
-          <Text style={styles.value}>{formatNumber(display.totalNewOut)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Net</Text>
-          <Text style={[styles.value, { color: resultColor }]}>
-            {formatNumber(display.totalNet)}
-          </Text>
-        </View>
+        ))}
       </Card>
 
-      {visit.settlementStatus !== 'submitted' && (
-        <Card style={styles.percentCard}>
-          <Text style={styles.summaryTitle}>Settlement split</Text>
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <Input
-                label="Store %"
-                value={String(storePercent)}
-                onChangeText={text => setStorePercent(Number(text) || 0)}
-                keyboardType="numeric"
-              />
+      <Card style={styles.section}>
+        <Text style={styles.sectionTitle}>Present readings — this RUN</Text>
+        {visit.machines.map(machine => (
+          <View key={machine.machineId} style={styles.machineRow}>
+            <View style={styles.machineInfo}>
+              <Text style={styles.machineName}>Machine {machine.machineNumber}</Text>
+              {machine.photoUrl ? (
+                <Image source={{ uri: machine.photoUrl }} style={styles.photo} accessibilityLabel={`Machine ${machine.machineNumber} reading photo`} />
+              ) : (
+                <Text style={styles.noPhoto}>No photo</Text>
+              )}
             </View>
-            <View style={styles.half}>
-              <Input
-                label="Vendor %"
-                value={String(vendorPercent)}
-                onChangeText={text => setVendorPercent(Number(text) || 0)}
-                keyboardType="numeric"
-              />
-            </View>
+            <Reading label="Present IN" value={machine.presentIn} />
+            <Reading label="Present OUT" value={machine.presentOut} />
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Store amount</Text>
-            <Text style={styles.value}>{formatCurrency(display.storeAmount)}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Vendor amount</Text>
-            <Text style={styles.value}>{formatCurrency(display.vendorAmount)}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Cash due location</Text>
-            <Text style={styles.value}>{formatCurrency(display.cashDueLocation)}</Text>
-          </View>
-        </Card>
-      )}
+        ))}
+      </Card>
 
-      {visit.settlementStatus === 'submitted' && (
-        <Card style={styles.submittedCard}>
-          <Text style={styles.submittedText}>
-            This settlement has already been submitted. You can still reprint the receipt.
-          </Text>
-        </Card>
-      )}
-
-      <View style={styles.actions}>
-        <Button title="Print" onPress={handlePrint} loading={loading} variant="secondary" />
-        {canSubmit && (
-          <Button title="Submit & Print" onPress={handleSubmit} loading={loading} variant="primary" />
-        )}
-      </View>
+      <Button
+        title="Continue to Calculations"
+        onPress={() => router.push(`/calculation?visitId=${visit.id}` as any)}
+      />
     </ScrollView>
   );
 }
 
+const Reading = ({ label, value }: { label: string; value: number }) => (
+  <View style={styles.reading}>
+    <Text style={styles.readingLabel}>{label}</Text>
+    <Text style={styles.readingValue}>{formatCurrency(value)}</Text>
+  </View>
+);
+
+const LoadingState = () => (
+  <View style={styles.center}>
+    <ActivityIndicator size="large" color={colors.primary} />
+    <Text style={styles.centerText}>Loading comparison…</Text>
+  </View>
+);
+
+const ErrorState = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
+  <View style={styles.center}>
+    <Text style={styles.error}>{message || 'Visit not found.'}</Text>
+    <Button title="Try Again" onPress={onRetry} />
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     padding: spacing.lg,
+    paddingBottom: spacing.xxl,
     backgroundColor: colors.background,
     minHeight: '100%',
   },
-  header: {
-    marginBottom: spacing.lg,
-  },
-  title: {
-    fontSize: fontSizes.h1,
-    color: colors.textPrimary,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  meta: {
-    fontSize: fontSizes.body,
-    color: colors.textSecondary,
-  },
-  summaryCard: {
-    marginBottom: spacing.md,
-  },
-  resultRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  summaryTitle: {
-    fontSize: fontSizes.h2,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  badge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radii.md,
-  },
-  badgeText: {
-    color: colors.textOnPrimary,
+  eyebrow: {
+    color: colors.primary,
     fontSize: fontSizes.caption,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
-  percentCard: {
-    marginBottom: spacing.md,
+  title: {
+    marginTop: spacing.xs,
+    color: colors.textPrimary,
+    fontSize: fontSizes.h1,
+    fontWeight: '700',
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    gap: spacing.md,
-  },
-  half: {
-    flex: 1,
-  },
-  label: {
-    fontSize: fontSizes.body,
+  meta: {
+    marginTop: spacing.xs,
     color: colors.textSecondary,
-    flex: 1,
-  },
-  value: {
     fontSize: fontSizes.body,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  submittedCard: {
-    marginBottom: spacing.md,
-    backgroundColor: colors.surfaceSecondary,
-  },
-  submittedText: {
-    color: colors.textPrimary,
-    fontWeight: '500',
     lineHeight: lineHeights.body,
   },
-  actions: {
+  section: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    marginBottom: spacing.md,
+    color: colors.textPrimary,
+    fontSize: fontSizes.h2,
+    fontWeight: '700',
+  },
+  machineRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  machineInfo: {
+    flex: 1,
+    minWidth: 140,
+  },
+  machineName: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  machineSubtitle: {
+    marginTop: spacing.xs,
+    color: colors.textSecondary,
+    fontSize: fontSizes.caption,
+  },
+  noPhoto: {
+    marginTop: spacing.xs,
+    color: colors.textMuted,
+    fontSize: fontSizes.caption,
+  },
+  photo: {
+    width: 44,
+    height: 44,
+    marginTop: spacing.xs,
+    borderRadius: 8,
+  },
+  reading: {
+    minWidth: 120,
+    padding: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceSecondary,
+  },
+  readingLabel: {
+    color: colors.textMuted,
+    fontSize: fontSizes.caption,
+  },
+  readingValue: {
+    marginTop: spacing.xs,
+    color: colors.textPrimary,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  center: {
+    flex: 1,
+    minHeight: 320,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+    backgroundColor: colors.background,
+  },
+  centerText: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
+  },
+  error: {
+    color: colors.error,
+    fontSize: fontSizes.body,
   },
 });

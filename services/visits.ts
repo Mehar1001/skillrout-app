@@ -1,9 +1,8 @@
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import dayjs from 'dayjs';
 import { db, functions } from '../firebaseConfig';
-import { Visit, VisitMachine, Machine } from '../types';
-import { calculateMachine, calculateVisit, round2 } from '../helpers/calculations';
+import { Machine, MachineReadingDraft, Visit } from '../types';
+import { uploadVisitPhoto } from './visitPhotos';
 
 const getVisitsRef = (ownerId: string) => collection(db, `owners/${ownerId}/visits`);
 
@@ -19,62 +18,64 @@ export const listVisits = async (ownerId: string, pageSize = 100): Promise<Visit
   return snapshot.docs.map(visit => ({ id: visit.id, ...visit.data() } as Visit));
 };
 
+export const listAssignedStoreVisits = async (
+  ownerId: string,
+  assignedStoreIds: string[]
+): Promise<Visit[]> => {
+  if (assignedStoreIds.length === 0) return [];
+  const snapshots = await Promise.all(
+    assignedStoreIds.map(storeId =>
+      getDocs(query(getVisitsRef(ownerId), where('storeId', '==', storeId)))
+    )
+  );
+  return snapshots
+    .flatMap(snapshot => snapshot.docs.map(visit => ({ id: visit.id, ...visit.data() } as Visit)))
+    .sort((a, b) => (b.timestamp?.toMillis?.() || 0) - (a.timestamp?.toMillis?.() || 0));
+};
+
 export const saveRun = async (
   ownerId: string,
   storeId: string,
-  storeName: string,
-  employeeId: string,
-  employeeName: string,
+  businessDate: string,
   machines: Machine[],
-  presentReadings: { [machineId: string]: { in: number; out: number } },
+  readings: Record<string, MachineReadingDraft>
+): Promise<string> => {
+  const visitId = doc(getVisitsRef(ownerId)).id;
+  const uploadedPhotos = new Map<string, { photoUrl: string; photoPath: string }>();
+  await Promise.all(
+    machines.map(async machine => {
+      const photoUri = readings[machine.id]?.photoUri;
+      if (!photoUri) return;
+      uploadedPhotos.set(
+        machine.id,
+        await uploadVisitPhoto(ownerId, storeId, visitId, machine.id, photoUri)
+      );
+    })
+  );
+
+  const runVisit = httpsCallable(functions, 'runVisit');
+  await runVisit({
+    visitId,
+    storeId,
+    businessDate,
+    readings: machines.map(machine => ({
+      machineId: machine.id,
+      presentIn: readings[machine.id]?.presentIn,
+      presentOut: readings[machine.id]?.presentOut,
+      ...uploadedPhotos.get(machine.id),
+    })),
+  });
+  return visitId;
+};
+
+export const saveVisitSplit = async (
+  ownerId: string,
+  visitId: string,
   storePercent: number,
   vendorPercent: number
-): Promise<string> => {
-  const visitMachines: VisitMachine[] = machines.map(machine => {
-    const presentIn = presentReadings[machine.id]?.in || 0;
-    const presentOut = presentReadings[machine.id]?.out || 0;
-    const { newIn, newOut, machineNet } = calculateMachine(
-      machine.lastSettledIn,
-      machine.lastSettledOut,
-      presentIn,
-      presentOut
-    );
-    return {
-      machineId: machine.id,
-      machineNumber: machine.machineNumber,
-      name: machine.name,
-      lastSettledIn: machine.lastSettledIn,
-      lastSettledOut: machine.lastSettledOut,
-      presentIn,
-      presentOut,
-      newIn,
-      newOut,
-      machineNet,
-    };
-  });
-
-  const calc = calculateVisit(visitMachines, storePercent);
-
-  const visit: Omit<Visit, 'id'> = {
-    storeId,
-    storeName,
-    employeeId,
-    employeeName,
-    businessDate: dayjs().format('YYYY-MM-DD'),
-    timestamp: serverTimestamp() as any,
-    machines: visitMachines,
-    ...calc,
-    storePercent,
-    vendorPercent,
-    cashDueLocation: round2(calc.totalNewOut + calc.storeAmount),
-    visitStatus: 'completed',
-    settlementStatus: 'not_submitted',
-    printStatus: 'not_printed',
-  };
-
-  const visitRef = doc(getVisitsRef(ownerId));
-  await setDoc(visitRef, visit);
-  return visitRef.id;
+): Promise<void> => {
+  const setVisitSplit = httpsCallable(functions, 'setVisitSplit');
+  await setVisitSplit({ ownerId, visitId, storePercent, vendorPercent });
 };
 
 export const submitVisit = async (

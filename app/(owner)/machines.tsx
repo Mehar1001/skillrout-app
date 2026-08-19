@@ -6,8 +6,10 @@ import { listMachines, saveMachine, deleteMachine } from '../../services/machine
 import { Store, Machine } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
+import { CurrencyInput } from '../../components/CurrencyInput';
 import { Card } from '../../components/Card';
 import { colors, fontSizes, spacing } from '../../constants/designTokens';
+import { formatCurrency } from '../../helpers/formatters';
 
 export default function MachinesScreen() {
   const { user, ownerId } = useAuth();
@@ -119,23 +121,21 @@ export default function MachinesScreen() {
             />
             <View style={styles.row}>
               <View style={styles.half}>
-                <Input
-                  label="Initial IN"
-                  value={String(form.lastSettledIn ?? 0)}
-                  onChangeText={text =>
-                    setForm(prev => ({ ...prev, lastSettledIn: Number(text) || 0 }))
+                <CurrencyInput
+                  label="Initial / Last Settled IN"
+                  value={form.lastSettledIn ?? 0}
+                  onChangeValue={lastSettledIn =>
+                    setForm(prev => ({ ...prev, lastSettledIn: lastSettledIn ?? 0 }))
                   }
-                  keyboardType="numeric"
                 />
               </View>
               <View style={styles.half}>
-                <Input
-                  label="Initial OUT"
-                  value={String(form.lastSettledOut ?? 0)}
-                  onChangeText={text =>
-                    setForm(prev => ({ ...prev, lastSettledOut: Number(text) || 0 }))
+                <CurrencyInput
+                  label="Initial / Last Settled OUT"
+                  value={form.lastSettledOut ?? 0}
+                  onChangeValue={lastSettledOut =>
+                    setForm(prev => ({ ...prev, lastSettledOut: lastSettledOut ?? 0 }))
                   }
-                  keyboardType="numeric"
                 />
               </View>
             </View>
@@ -161,7 +161,7 @@ export default function MachinesScreen() {
                   {machine.machineNumber} {machine.name ? `— ${machine.name}` : ''}
                 </Text>
                 <Text style={styles.machineReadings}>
-                  Last Settled IN: {machine.lastSettledIn} · OUT: {machine.lastSettledOut}
+                  Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)}
                 </Text>
                 <View style={styles.actions}>
                   <Button title="Edit" onPress={() => handleEdit(machine)} variant="secondary" />

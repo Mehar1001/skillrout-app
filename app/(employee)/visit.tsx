@@ -1,15 +1,20 @@
+import dayjs from 'dayjs';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
-import { Input } from '../../components/Input';
-import { Card } from '../../components/Card';
+import { MachineReadingCard } from '../../components/MachineReadingCard';
+import { VisitDatePicker } from '../../components/VisitDatePicker';
+import { VisitTotals } from '../../components/VisitTotals';
 import { colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useAuth } from '../../contexts/AuthContext';
+import { calculateLiveReadings } from '../../helpers/calculations';
+import { validateBusinessDate, validatePresentReading } from '../../helpers/validators';
 import { listMachines } from '../../services/machines';
 import { getStore } from '../../services/stores';
 import { saveRun } from '../../services/visits';
-import { Machine, Store } from '../../types';
+import { Machine, MachineReadingDraft, Store } from '../../types';
 
 export default function VisitScreen() {
   const { storeId } = useLocalSearchParams<{ storeId: string }>();
@@ -17,66 +22,83 @@ export default function VisitScreen() {
   const { user, ownerId } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [present, setPresent] = useState<{ [machineId: string]: { in: string; out: string } }>({});
+  const [readings, setReadings] = useState<Record<string, MachineReadingDraft>>({});
+  const [businessDate, setBusinessDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [saving, setSaving] = useState(false);
+  const [showRequiredErrors, setShowRequiredErrors] = useState(false);
+  const [completedVisitId, setCompletedVisitId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !ownerId || !storeId) return;
     getStore(ownerId, storeId).then(setStore);
     listMachines(ownerId, storeId).then(list => {
-      setMachines(list.filter(m => m.active));
-      const initial: typeof present = {};
-      list.forEach(m => {
-        initial[m.id] = { in: '', out: '' };
-      });
-      setPresent(initial);
+      const activeMachines = list.filter(machine => machine.active);
+      setMachines(activeMachines);
+      setReadings(
+        Object.fromEntries(
+          activeMachines.map(machine => [machine.id, { presentIn: null, presentOut: null }])
+        )
+      );
     });
   }, [user, ownerId, storeId]);
 
-  const updatePresent = (machineId: string, field: 'in' | 'out', value: string) => {
-    setPresent(prev => ({
-      ...prev,
-      [machineId]: { ...prev[machineId], [field]: value },
-    }));
+  const totals = useMemo(() => calculateLiveReadings(machines, readings), [machines, readings]);
+  const dateError = validateBusinessDate(businessDate);
+
+  const updateReading = (machineId: string, reading: MachineReadingDraft) => {
+    setReadings(current => ({ ...current, [machineId]: reading }));
+  };
+
+  const handleCamera = async (machineId: string) => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Camera Permission', 'Allow camera access to attach an optional machine photo.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.75,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      updateReading(machineId, { ...readings[machineId], photoUri: result.assets[0].uri });
+    }
+  };
+
+  const clearReadings = () => {
+    setReadings(
+      Object.fromEntries(machines.map(machine => [machine.id, { presentIn: null, presentOut: null }]))
+    );
+    setShowRequiredErrors(false);
   };
 
   const handleRun = async () => {
     if (!user || !ownerId || !store || !storeId) return;
+    setShowRequiredErrors(true);
+    if (dateError) {
+      Alert.alert('Invalid Date', dateError);
+      return;
+    }
+    if (machines.length === 0) {
+      Alert.alert('No Machines', 'This store has no active machines to run.');
+      return;
+    }
 
-    const readings: { [machineId: string]: { in: number; out: number } } = {};
     for (const machine of machines) {
-      const inVal = Number(present[machine.id]?.in);
-      const outVal = Number(present[machine.id]?.out);
-      if (isNaN(inVal) || isNaN(outVal)) {
-        Alert.alert('Invalid Reading', `Enter numbers for machine ${machine.machineNumber}`);
+      const reading = readings[machine.id];
+      const inError = validatePresentReading(reading?.presentIn ?? null, machine.lastSettledIn, 'IN');
+      const outError = validatePresentReading(reading?.presentOut ?? null, machine.lastSettledOut, 'OUT');
+      if (inError || outError) {
+        Alert.alert(`Machine ${machine.machineNumber}`, inError || outError || 'Correct the reading.');
         return;
       }
-      if (inVal < machine.lastSettledIn || outVal < machine.lastSettledOut) {
-        Alert.alert(
-          'Reading Too Low',
-          `Machine ${machine.machineNumber}: present reading must not be lower than last settled.`
-        );
-        return;
-      }
-      readings[machine.id] = { in: inVal, out: outVal };
     }
 
     setSaving(true);
     try {
-      const visitId = await saveRun(
-        ownerId!,
-        storeId,
-        store.name,
-        user.uid,
-        user.email || 'Employee',
-        machines,
-        readings,
-        store.defaultStorePercent,
-        store.defaultVendorPercent
-      );
-      router.push(`/results?visitId=${visitId}` as any);
+      setCompletedVisitId(await saveRun(ownerId, storeId, businessDate, machines, readings));
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      Alert.alert('RUN Failed', e.message || 'The visit could not be recorded.');
     } finally {
       setSaving(false);
     }
@@ -85,128 +107,181 @@ export default function VisitScreen() {
   if (!store) return null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{store.name}</Text>
-        <Text style={styles.subtitle}>
-          Enter the present IN and OUT readings, then press RUN. The system will calculate the rest.
-        </Text>
-      </View>
+    <>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>STORE DETAILS</Text>
+          <Text style={styles.title}>{store.name}</Text>
+          <Text style={styles.address}>{store.address}</Text>
+          <Text style={styles.subtitle}>
+            Enter every cumulative present reading. Values below the last settlement are not accepted.
+          </Text>
+        </View>
 
-      {machines.map(machine => (
-        <Card key={machine.id} style={styles.machineCard}>
-          <View style={styles.machineHeader}>
-            <Text style={styles.machineNumber}>Machine {machine.machineNumber}</Text>
-            {machine.name ? <Text style={styles.machineName}>{machine.name}</Text> : null}
+        <VisitDatePicker value={businessDate} onChange={setBusinessDate} error={dateError} />
+
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Machine readings</Text>
+            <Text style={styles.sectionHelp}>Photos are optional. RUN permanently records the visit.</Text>
           </View>
+          <Button title="Clear" onPress={clearReadings} variant="secondary" />
+        </View>
 
-          <View style={styles.baselineRow}>
-            <View style={styles.baselineBox}>
-              <Text style={styles.baselineLabel}>Last Settled IN</Text>
-              <Text style={styles.baselineValue}>{machine.lastSettledIn}</Text>
+        {machines.map(machine => (
+          <MachineReadingCard
+            key={machine.id}
+            machine={machine}
+            reading={readings[machine.id] || { presentIn: null, presentOut: null }}
+            onChange={reading => updateReading(machine.id, reading)}
+            onTakePhoto={() => handleCamera(machine.id)}
+            onRemovePhoto={() => updateReading(machine.id, { ...readings[machine.id], photoUri: undefined })}
+            showRequiredErrors={showRequiredErrors}
+          />
+        ))}
+
+        <VisitTotals {...totals} />
+
+        <View style={styles.runArea}>
+          <Button title="RUN" onPress={handleRun} loading={saving} disabled={saving} variant="primary" />
+          <Text style={styles.runHelp}>RUN saves this visit permanently and does not update settled readings.</Text>
+        </View>
+      </ScrollView>
+
+      <Modal visible={Boolean(completedVisitId)} transparent animationType="fade" onRequestClose={() => {}}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.successMark}>
+              <Text style={styles.successMarkText}>✓</Text>
             </View>
-            <View style={styles.baselineBox}>
-              <Text style={styles.baselineLabel}>Last Settled OUT</Text>
-              <Text style={styles.baselineValue}>{machine.lastSettledOut}</Text>
-            </View>
+            <Text style={styles.modalTitle}>RUN Completed</Text>
+            <Text style={styles.modalText}>Store visit has been recorded successfully.</Text>
+            <Pressable
+              accessibilityRole="button"
+              style={styles.modalButton}
+              onPress={() => router.push(`/results?visitId=${completedVisitId}` as any)}
+            >
+              <Text style={styles.modalButtonText}>View Results</Text>
+            </Pressable>
           </View>
-
-          <View style={styles.inputsRow}>
-            <View style={styles.half}>
-              <Input
-                label="Present IN"
-                value={present[machine.id]?.in || ''}
-                onChangeText={text => updatePresent(machine.id, 'in', text)}
-                keyboardType="numeric"
-                placeholder="0"
-              />
-            </View>
-            <View style={styles.half}>
-              <Input
-                label="Present OUT"
-                value={present[machine.id]?.out || ''}
-                onChangeText={text => updatePresent(machine.id, 'out', text)}
-                keyboardType="numeric"
-                placeholder="0"
-              />
-            </View>
-          </View>
-        </Card>
-      ))}
-
-      <View style={styles.runArea}>
-        <Button title="RUN" onPress={handleRun} loading={saving} variant="primary" />
-      </View>
-    </ScrollView>
+        </View>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: spacing.lg,
+    paddingBottom: spacing.xxl,
     backgroundColor: colors.background,
     minHeight: '100%',
   },
   header: {
     marginBottom: spacing.lg,
   },
-  title: {
-    fontSize: fontSizes.h1,
-    color: colors.textPrimary,
+  eyebrow: {
+    color: colors.primary,
+    fontSize: fontSizes.caption,
     fontWeight: '700',
-    marginBottom: spacing.xs,
+    letterSpacing: 0.8,
+  },
+  title: {
+    marginTop: spacing.xs,
+    color: colors.textPrimary,
+    fontSize: fontSizes.h1,
+    fontWeight: '700',
+  },
+  address: {
+    marginTop: spacing.xs,
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
   },
   subtitle: {
-    fontSize: fontSizes.body,
+    marginTop: spacing.md,
     color: colors.textSecondary,
+    fontSize: fontSizes.body,
     lineHeight: lineHeights.body,
   },
-  machineCard: {
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.md,
     marginBottom: spacing.md,
   },
-  machineHeader: {
-    marginBottom: spacing.sm,
-  },
-  machineNumber: {
+  sectionTitle: {
+    color: colors.textPrimary,
     fontSize: fontSizes.h2,
-    color: colors.textPrimary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  machineName: {
-    fontSize: fontSizes.body,
-    color: colors.textSecondary,
+  sectionHelp: {
     marginTop: spacing.xs,
-  },
-  baselineRow: {
-    flexDirection: 'row',
-    marginBottom: spacing.sm,
-  },
-  baselineBox: {
-    flex: 1,
-    backgroundColor: colors.surfaceSecondary,
-    borderRadius: radii.sm,
-    padding: spacing.sm,
-    marginRight: spacing.sm,
-  },
-  baselineLabel: {
-    fontSize: fontSizes.caption,
     color: colors.textMuted,
-    marginBottom: spacing.xs,
-  },
-  baselineValue: {
-    fontSize: fontSizes.h3,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  inputsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  half: {
-    flex: 1,
+    fontSize: fontSizes.caption,
   },
   runArea: {
+    gap: spacing.sm,
     marginTop: spacing.xl,
+  },
+  runHelp: {
+    color: colors.textMuted,
+    fontSize: fontSizes.caption,
+    textAlign: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    backgroundColor: 'rgba(42, 42, 42, 0.48)',
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    alignItems: 'center',
+    padding: spacing.xl,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+  },
+  successMark: {
+    width: 55,
+    height: 55,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 28,
+    backgroundColor: colors.success,
+  },
+  successMarkText: {
+    color: colors.textOnPrimary,
+    fontSize: fontSizes.h1,
+    fontWeight: '700',
+  },
+  modalTitle: {
+    marginTop: spacing.md,
+    color: colors.textPrimary,
+    fontSize: fontSizes.h2,
+    fontWeight: '700',
+  },
+  modalText: {
+    marginTop: spacing.sm,
     marginBottom: spacing.lg,
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
+    textAlign: 'center',
+  },
+  modalButton: {
+    minHeight: 48,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+    backgroundColor: colors.primary,
+  },
+  modalButtonText: {
+    color: colors.textOnPrimary,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
   },
 });

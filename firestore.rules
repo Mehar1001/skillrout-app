@@ -38,23 +38,13 @@ service cloud.firestore {
       }
 
       match /visits/{visitId} {
-        allow read: if isOwner(ownerId) || isActiveEmployee(ownerId);
-        allow create: if isOwner(ownerId)
-                      || (isAssignedStore(ownerId, request.resource.data.storeId)
-                          && request.resource.data.employeeId == request.auth.uid
-                          && request.resource.data.settlementStatus == 'not_submitted'
-                          && request.resource.data.printStatus == 'not_printed');
-        allow update: if isOwner(ownerId)
-                      || (isActiveEmployee(ownerId)
-                          && resource.data.employeeId == request.auth.uid
-                          && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['printStatus', 'printedAt', 'printedBy'])
-                          && request.resource.data.printStatus == 'printed'
-                          && request.resource.data.printedBy == request.auth.uid);
-      }
-
-      match /{document=**} {
-        allow read, write: if isOwner(ownerId);
+        allow read: if isOwner(ownerId) || isAssignedStore(ownerId, resource.data.storeId);
+        allow create, delete: if false;
+        allow update: if (isOwner(ownerId) || isAssignedStore(ownerId, resource.data.storeId))
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['printStatus', 'printedAt', 'printedBy'])
+                      && request.resource.data.printStatus == 'printed'
+                      && request.resource.data.printedBy == request.auth.uid;
       }
     }
 

@@ -28,6 +28,14 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": false,
+          "cameraPermission": "Allow Skillrout to use the camera for optional machine-reading photos.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/skillrout-icon.png",

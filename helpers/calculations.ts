@@ -1,4 +1,4 @@
-import { VisitMachine } from '../types';
+import { Machine, MachineReadingDraft, VisitMachine } from '../types';
 
 export const round2 = (value: number): number => Math.round(value * 100) / 100;
 
@@ -12,6 +12,29 @@ export const calculateMachine = (
   const newOut = round2(presentOut - lastSettledOut);
   const machineNet = round2(newIn - newOut);
   return { newIn, newOut, machineNet };
+};
+
+export const calculateLiveReadings = (
+  machines: Machine[],
+  readings: Record<string, MachineReadingDraft>
+) => {
+  return machines.reduce(
+    (totals, machine) => {
+      const reading = readings[machine.id];
+      if (reading?.presentIn !== null && reading?.presentIn !== undefined) {
+        totals.presentIn = round2(totals.presentIn + reading.presentIn);
+        totals.newIn = round2(totals.newIn + Math.max(0, reading.presentIn - machine.lastSettledIn));
+      }
+      if (reading?.presentOut !== null && reading?.presentOut !== undefined) {
+        totals.presentOut = round2(totals.presentOut + reading.presentOut);
+        totals.newOut = round2(totals.newOut + Math.max(0, reading.presentOut - machine.lastSettledOut));
+      }
+      totals.presentNet = round2(totals.presentIn - totals.presentOut);
+      totals.activityNet = round2(totals.newIn - totals.newOut);
+      return totals;
+    },
+    { presentIn: 0, presentOut: 0, presentNet: 0, newIn: 0, newOut: 0, activityNet: 0 }
+  );
 };
 
 export const calculateVisit = (

@@ -198,93 +198,164 @@ Expected:
 - Firestore contains `employees/{employeeUid}` with the owner's UID and assigned store ID.
 - Creation without a store assignment is rejected.
 
-## 6. Employee training and visit workflow
+## 6. Employee training and reference visit workflow
 
-### Test 6.1 — Employee login and authorization
+### Test 6.1 — Employee login, stores, and history access
 
 1. Log out from the owner account.
 2. Sign in using the employee email and temporary password.
-3. Confirm the employee lands on store selection.
+3. Confirm the employee lands on **Select Store**.
 4. Confirm only assigned stores are visible.
-5. Manually try these paths in the address bar: `/stores`, `/machines`, and `/employees`.
+5. Open **History** and confirm only assigned-store runs appear.
+6. Manually try `/stores`, `/machines`, and `/employees`.
 
 Expected:
 
 - The employee does not enter the owner dashboard.
-- Only assigned stores are shown.
-- Owner-only routes redirect or remain inaccessible.
+- Unassigned stores and owner-only routes are inaccessible.
+- History labels result, settlement, and print status.
 
-### Test 6.2 — Positive RUN
+### Test 6.2 — Store details, date, and currency fields
 
 1. Select `UAT Store 1`.
-2. Confirm machine `UAT-001` displays Last Settled IN 1000 and OUT 500.
-3. Enter Present IN `1200` and Present OUT `600`.
-4. Select **RUN**.
-5. Compare every result with the expected table in section 3.
-6. In Firestore, open the new visit before printing or submitting.
+2. Confirm store name/address and business-date selector appear.
+3. Confirm the date selector contains today and the previous seven days only.
+4. Confirm Last Settled IN displays `$1,000.00` and OUT displays `$500.00`.
+5. Confirm every Present IN/OUT field displays as a `$0.00` currency field.
+6. Optionally select **Photo**, allow camera permission, take a photo, then test Retake/Remove behavior.
 
 Expected:
 
-- A permanent visit exists at `owners/{ownerUid}/visits/{visitId}`.
-- `settlementStatus` is `not_submitted`.
-- `printStatus` is `not_printed`.
-- Machine baselines are still 1000 and 500.
+- Future dates and dates older than seven days cannot be selected.
+- Camera is optional; RUN works with or without a photo.
+- Amounts use a dollar sign, comma grouping, and exactly two decimal places.
 
-### Test 6.3 — PRINT without settlement
+### Test 6.3 — Baseline validation and live totals
 
-1. Select **PRINT**.
-2. Confirm the print dialog or receipt preview opens.
-3. Canceling the physical print is acceptable for UAT.
-4. Recheck the visit and machine in Firestore.
-
-Expected:
-
-- The visit has `printStatus: printed`.
-- The receipt uses the store, machine, readings, percentages, and totals saved in the visit.
-- Machine baselines remain 1000 and 500.
-
-### Test 6.4 — SUBMIT settlement
-
-1. Confirm Total Net is positive and percentages total 100.
-2. Select **SUBMIT**.
-3. Confirm a receipt opens and the app returns to store selection.
-4. Recheck Firestore.
+1. Enter Present IN `$999.99`.
+2. Confirm an inline error says Present IN must be equal to or greater than Last Settled IN.
+3. Enter Present OUT `$499.99` and confirm the equivalent OUT error.
+4. Attempt RUN and confirm nothing is saved.
+5. Correct Present IN to `$1,200.00` and Present OUT to `$600.00`.
+6. Watch New IN, New OUT, Machine Net, Present totals, and Activity totals update while entering values.
+7. Select **Clear** and confirm readings/photos reset, then re-enter the valid values.
 
 Expected:
 
-- The visit has `settlementStatus: submitted`.
-- Settlement records who submitted and the submitted amounts.
-- Machine Last Settled IN becomes 1200.
-- Machine Last Settled OUT becomes 600.
-- Submitting the same visit again is blocked.
+- Below-baseline values are never accepted by RUN.
+- Errors identify the exact machine and IN/OUT field.
+- Valid dynamic values are New IN `$200.00`, New OUT `$100.00`, and Machine Net `$100.00`.
+- RUN does not proceed when any active machine is blank or invalid.
 
-### Test 6.5 — Zero run
+### Test 6.4 — Permanent RUN and completion confirmation
 
-1. Start a new visit with the 1200/600 settled baseline.
-2. Enter Present IN `1300` and Present OUT `700`.
-3. Select RUN.
-4. Confirm Total Net is `0`.
-5. Attempt SUBMIT.
+1. Select **RUN** with all machine readings valid.
+2. Wait for **RUN Completed — Store visit has been recorded successfully**.
+3. Before continuing, inspect Firestore and machine baselines.
+4. Select **View Results**.
 
 Expected:
 
-- The zero visit remains recorded.
-- SUBMIT is blocked.
-- Machine baselines remain 1200 and 600.
+- Exactly one visit exists at `owners/{ownerUid}/visits/{visitId}`.
+- `settlementStatus` is `not_submitted` and `printStatus` is `not_printed`.
+- Machine Last Settled values remain `$1,000.00` and `$500.00`.
+- Optional photo URL/path belongs to the visit machine snapshot.
 
-### Test 6.6 — Negative run
+### Test 6.5 — Comparison step
 
-1. Start another visit.
-2. Enter Present IN `1300` and Present OUT `800`.
-3. Select RUN.
-4. Confirm Total Net is `-100`.
-5. Attempt SUBMIT.
+1. Confirm the Comparison screen shows RUN date/time and employee.
+2. Compare Last Settled readings with Present readings for every machine.
+3. Confirm optional photo/no-photo status is visible.
+4. Use Back once and return to verify navigation, then continue to Calculations.
 
 Expected:
 
-- The negative visit remains recorded.
-- SUBMIT is blocked.
-- Machine baselines remain 1200 and 600.
+- All readings match the permanent Firestore visit snapshot.
+- Browser refresh/direct reload does not lose the RUN.
+
+### Test 6.6 — Calculation step
+
+1. Review New IN, New OUT, and Net per machine.
+2. Confirm Total New IN `$200.00`, Total New OUT `$100.00`, and Total Net `$100.00`.
+3. Continue to Settlement Split.
+
+Expected:
+
+- Calculations match section 3 exactly and are formatted as currency.
+
+### Test 6.7 — Percentage split
+
+1. Enter Store `40` and Vendor `50`; confirm the split is invalid at 90%.
+2. Confirm Continue is disabled.
+3. Enter Store `40` and Vendor `60`.
+4. Confirm Store Amount `$40.00`, Vendor Amount `$60.00`, and total 100% valid.
+5. Save the split and continue.
+
+Expected:
+
+- Percentages must be non-negative and total exactly 100.
+- The saved split is persisted to the visit and used by Outcome, Receipt, and History.
+
+### Test 6.8 — Positive outcome, PRINT only
+
+1. On a positive outcome, confirm **Submit & Print**, **Print**, and **Cancel** appear.
+2. Select **Print** without submitting.
+3. Review the thermal receipt and open the system print dialog.
+4. Return to Firestore.
+
+Expected:
+
+- `printStatus` becomes `printed`.
+- `settlementStatus` remains `not_submitted`.
+- Machine baselines remain `$1,000.00` and `$500.00`.
+- Receipt uses persisted visit and split values.
+
+### Test 6.9 — Positive SUBMIT & PRINT
+
+1. Repeat a positive RUN if the prior test was canceled/printed only.
+2. Complete Comparison, Calculation, and a valid 100% split.
+3. Select **Submit & Print**.
+4. Review/print the receipt and inspect Firestore.
+
+Expected:
+
+- Settlement becomes `submitted` atomically.
+- Machine Last Settled IN becomes `$1,200.00`; OUT becomes `$600.00`.
+- A second submission is blocked.
+
+### Test 6.10 — Zero outcome
+
+1. From the `$1,200.00` / `$600.00` baseline, RUN Present IN `$1,300.00` and OUT `$700.00`.
+2. Complete the staged results.
+
+Expected:
+
+- Total Net is `$0.00`.
+- Only Print and Cancel appear; Submit & Print is absent.
+- Baselines remain unchanged and RUN remains in History.
+
+### Test 6.11 — Negative outcome
+
+1. RUN Present IN `$1,300.00` and OUT `$800.00` from the `$1,200.00` / `$600.00` baseline.
+2. Complete the staged results.
+
+Expected:
+
+- Total Net is `-$100.00`.
+- Only Print and Cancel appear; Submit & Print is absent.
+- Baselines remain unchanged and RUN remains in History.
+
+### Test 6.12 — Thermal receipt and assigned-store history
+
+1. Open Receipt from the outcome and from History.
+2. Verify store, visit, employee, date/time, per-machine Last/Present/New/Net, totals, split, and Cash Due Location.
+3. Confirm submitted vs printed-not-submitted wording.
+4. Confirm all RUNs—including positive, zero, negative, submitted, and print-only—appear in employee History.
+
+Expected:
+
+- Receipt values are identical to the persisted visit snapshot.
+- Employee cannot access history from an unassigned store.
 
 ## 7. Navigation, cleanup, and boundary tests
 
@@ -351,6 +422,18 @@ Check:
 
 Do not manually edit financial or historical data during UAT. Take a screenshot and report the discrepancy first.
 
+### Storage/photo health
+
+Open **Firebase Console → Storage → Files**.
+
+Check:
+
+- Optional photos are stored under `owners/{ownerUid}/stores/{storeId}/visits/{visitId}/machines/{machineId}`.
+- Photos belong to visits, not machine master documents.
+- Employees can upload/read photos only for assigned stores.
+- A RUN without a photo creates no unnecessary Storage object.
+- No photo exceeds the 10 MB rule limit.
+
 ### Cloud Functions health
 
 Open **Firebase Console → Functions**.
@@ -358,6 +441,8 @@ Open **Firebase Console → Functions**.
 Expected live functions:
 
 - `createEmployee`
+- `runVisit`
+- `setVisitSplit`
 - `submitVisit`
 
 For each function, inspect invocations, errors, execution time, and logs.
