@@ -11,6 +11,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import {
   Alert,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -34,6 +35,7 @@ export default function OwnerScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const router = useRouter();
+  const ScreenContainer = Platform.OS === 'web' ? View : Pressable;
 
   const handleRegistration = async () => {
     if (email.trim() === '' || password.trim() === '') {
@@ -171,7 +173,11 @@ export default function OwnerScreen() {
   };
 
   return (
-    <Pressable onPress={Keyboard.dismiss} style={{ flex: 1 }} accessible={false}>
+    <ScreenContainer
+      {...(Platform.OS === 'web' ? {} : { onPress: Keyboard.dismiss })}
+      style={{ flex: 1 }}
+      accessible={false}
+    >
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -182,9 +188,11 @@ export default function OwnerScreen() {
           keyboardDismissMode="interactive"
         >
           <View style={styles.header}>
-            <View style={styles.logo}>
-              <Text style={styles.logoText}>S</Text>
-            </View>
+            <Image
+              source={require('../assets/images/skillrout-icon.png')}
+              style={styles.logo}
+              accessibilityLabel="Skillrout"
+            />
             <Text style={styles.title}>Skillrout</Text>
             <Text style={styles.subtitle}>
               {isRegistering ? 'Create your admin account' : 'Sign in to manage stores and visits'}
@@ -264,7 +272,7 @@ export default function OwnerScreen() {
         </ScrollView>
         <StatusBar style="dark" />
       </KeyboardAvoidingView>
-    </Pressable>
+    </ScreenContainer>
   );
 }
 
@@ -284,18 +292,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   logo: {
-    width: 64,
-    height: 64,
+    width: 89,
+    height: 89,
     borderRadius: radii.lg,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: spacing.md,
-  },
-  logoText: {
-    fontSize: fontSizes.h1,
-    color: colors.textOnPrimary,
-    fontWeight: '700',
   },
   title: {
     fontSize: fontSizes.h1,

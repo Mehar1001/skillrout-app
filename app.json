@@ -4,7 +4,7 @@
     "slug": "skillrout",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/skillrout-icon.png",
     "scheme": "skillrout",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,8 +14,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/skillrout-icon.png",
+        "backgroundColor": "#F7F4F0"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.skillrout"
@@ -23,17 +23,17 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/skillrout-icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/skillrout-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#F7F4F0"
         }
       ],
       "expo-web-browser"
