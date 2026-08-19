@@ -106,6 +106,13 @@ export default function VisitScreen() {
 
   if (!store) return null;
 
+  const handleViewResults = () => {
+    if (!completedVisitId) return;
+    const visitId = completedVisitId;
+    setCompletedVisitId(null);
+    router.push(`/results?visitId=${visitId}` as any);
+  };
+
   return (
     <>
       <ScrollView contentContainerStyle={styles.container}>
@@ -159,7 +166,7 @@ export default function VisitScreen() {
             <Pressable
               accessibilityRole="button"
               style={styles.modalButton}
-              onPress={() => router.push(`/results?visitId=${completedVisitId}` as any)}
+              onPress={handleViewResults}
             >
               <Text style={styles.modalButtonText}>View Results</Text>
             </Pressable>

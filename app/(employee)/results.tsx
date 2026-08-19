@@ -6,6 +6,7 @@ import { colors, fontSizes, lineHeights, spacing } from '../../constants/designT
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { useVisit } from '../../hooks/useVisit';
+import { VisitMachine } from '../../types';
 
 export default function ResultsScreen() {
   const { visitId } = useLocalSearchParams<{ visitId: string }>();
@@ -21,44 +22,23 @@ export default function ResultsScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>RUN RESULTS · COMPARISON</Text>
       <Text style={styles.title}>{visit.storeName}</Text>
-      <Text style={styles.meta}>
-        Business date: {formatDate(visit.businessDate)}
-        {timestamp ? ` · Recorded ${formatDate(timestamp)} at ${formatTime(timestamp)}` : ''}
-      </Text>
-      <Text style={styles.meta}>Employee: {visit.employeeName}</Text>
+      <View style={styles.runMeta}>
+        <View style={styles.metaItem}>
+          <Text style={styles.metaLabel}>RUN DATE & TIME</Text>
+          <Text style={styles.metaValue}>
+            {timestamp ? `${formatDate(timestamp)} · ${formatTime(timestamp)}` : formatDate(visit.businessDate)}
+          </Text>
+        </View>
+        <View style={styles.metaItem}>
+          <Text style={styles.metaLabel}>EMPLOYEE</Text>
+          <Text style={styles.metaValue}>{visit.employeeName}</Text>
+        </View>
+      </View>
 
-      <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>Last settled readings</Text>
-        {visit.machines.map(machine => (
-          <View key={machine.machineId} style={styles.machineRow}>
-            <View style={styles.machineInfo}>
-              <Text style={styles.machineName}>Machine {machine.machineNumber}</Text>
-              {machine.name ? <Text style={styles.machineSubtitle}>{machine.name}</Text> : null}
-            </View>
-            <Reading label="Last IN" value={machine.lastSettledIn} />
-            <Reading label="Last OUT" value={machine.lastSettledOut} />
-          </View>
-        ))}
-      </Card>
+      <ComparisonTable title="Last settled readings" machines={visit.machines} mode="last" />
+      <ComparisonTable title="Present readings — this RUN" machines={visit.machines} mode="present" />
 
-      <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>Present readings — this RUN</Text>
-        {visit.machines.map(machine => (
-          <View key={machine.machineId} style={styles.machineRow}>
-            <View style={styles.machineInfo}>
-              <Text style={styles.machineName}>Machine {machine.machineNumber}</Text>
-              {machine.photoUrl ? (
-                <Image source={{ uri: machine.photoUrl }} style={styles.photo} accessibilityLabel={`Machine ${machine.machineNumber} reading photo`} />
-              ) : (
-                <Text style={styles.noPhoto}>No photo</Text>
-              )}
-            </View>
-            <Reading label="Present IN" value={machine.presentIn} />
-            <Reading label="Present OUT" value={machine.presentOut} />
-          </View>
-        ))}
-      </Card>
-
+      <Text style={styles.guidance}>Confirm each machine’s IN and OUT values before continuing.</Text>
       <Button
         title="Continue to Calculations"
         onPress={() => router.push(`/calculation?visitId=${visit.id}` as any)}
@@ -67,11 +47,48 @@ export default function ResultsScreen() {
   );
 }
 
-const Reading = ({ label, value }: { label: string; value: number }) => (
-  <View style={styles.reading}>
-    <Text style={styles.readingLabel}>{label}</Text>
-    <Text style={styles.readingValue}>{formatCurrency(value)}</Text>
-  </View>
+const ComparisonTable = ({
+  title,
+  machines,
+  mode,
+}: {
+  title: string;
+  machines: VisitMachine[];
+  mode: 'last' | 'present';
+}) => (
+  <Card style={styles.section}>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.tableHeader}>
+      <Text style={[styles.headerCell, styles.machineColumn, styles.machineHeader]}>MACHINE</Text>
+      <Text style={[styles.headerCell, styles.valueColumn]}>{mode === 'last' ? 'LAST IN' : 'PRESENT IN'}</Text>
+      <Text style={[styles.headerCell, styles.valueColumn]}>{mode === 'last' ? 'LAST OUT' : 'PRESENT OUT'}</Text>
+    </View>
+    {machines.map(machine => (
+      <View key={machine.machineId} style={styles.tableRow}>
+        <View style={styles.machineColumn}>
+          <Text style={styles.machineName}>Machine {machine.machineNumber}</Text>
+          {machine.name ? <Text style={styles.machineSubtitle}>{machine.name}</Text> : null}
+          {mode === 'present' ? (
+            machine.photoUrl ? (
+              <Image
+                source={{ uri: machine.photoUrl }}
+                style={styles.photo}
+                accessibilityLabel={`Machine ${machine.machineNumber} reading photo`}
+              />
+            ) : (
+              <Text style={styles.noPhoto}>No photo</Text>
+            )
+          ) : null}
+        </View>
+        <Text style={[styles.amount, styles.valueColumn]}>
+          {formatCurrency(mode === 'last' ? machine.lastSettledIn : machine.presentIn)}
+        </Text>
+        <Text style={[styles.amount, styles.valueColumn]}>
+          {formatCurrency(mode === 'last' ? machine.lastSettledOut : machine.presentOut)}
+        </Text>
+      </View>
+    ))}
+  </Card>
 );
 
 const LoadingState = () => (
@@ -107,15 +124,31 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.h1,
     fontWeight: '700',
   },
-  meta: {
+  runMeta: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  metaItem: {
+    flex: 1,
+  },
+  metaLabel: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  metaValue: {
     marginTop: spacing.xs,
-    color: colors.textSecondary,
-    fontSize: fontSizes.body,
-    lineHeight: lineHeights.body,
+    color: colors.textPrimary,
+    fontSize: fontSizes.caption,
+    fontWeight: '600',
   },
   section: {
     marginTop: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
   },
   sectionTitle: {
     marginBottom: spacing.md,
@@ -123,55 +156,74 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.h2,
     fontWeight: '700',
   },
-  machineRow: {
+  tableHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceSecondary,
   },
-  machineInfo: {
-    flex: 1,
-    minWidth: 140,
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 64,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  machineColumn: {
+    width: '42%',
+    paddingHorizontal: spacing.sm,
+  },
+  valueColumn: {
+    width: '29%',
+    paddingHorizontal: spacing.xs,
+  },
+  headerCell: {
+    color: colors.textMuted,
+    fontSize: 9,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  machineHeader: {
+    textAlign: 'left',
   },
   machineName: {
     color: colors.textPrimary,
-    fontSize: fontSizes.body,
+    fontSize: fontSizes.caption,
     fontWeight: '700',
   },
   machineSubtitle: {
-    marginTop: spacing.xs,
+    marginTop: 2,
     color: colors.textSecondary,
-    fontSize: fontSizes.caption,
+    fontSize: 10,
   },
   noPhoto: {
-    marginTop: spacing.xs,
+    marginTop: 2,
     color: colors.textMuted,
-    fontSize: fontSizes.caption,
+    fontSize: 10,
   },
   photo: {
-    width: 44,
-    height: 44,
+    width: 34,
+    height: 34,
     marginTop: spacing.xs,
-    borderRadius: 8,
+    borderRadius: 6,
   },
-  reading: {
-    minWidth: 120,
-    padding: spacing.sm,
-    borderRadius: 8,
-    backgroundColor: colors.surfaceSecondary,
-  },
-  readingLabel: {
-    color: colors.textMuted,
-    fontSize: fontSizes.caption,
-  },
-  readingValue: {
-    marginTop: spacing.xs,
+  amount: {
     color: colors.textPrimary,
-    fontSize: fontSizes.body,
+    fontSize: fontSizes.caption,
     fontWeight: '700',
+    textAlign: 'right',
+  },
+  guidance: {
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+    color: colors.textSecondary,
+    fontSize: fontSizes.caption,
+    lineHeight: lineHeights.caption,
+    textAlign: 'center',
   },
   center: {
     flex: 1,
