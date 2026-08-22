@@ -3,7 +3,7 @@
 ## Current snapshot
 
 - Branch: `production-hardening`
-- Commit: `0c0238b3bd1688e6d33597a0702fddb21c443834`
+- Commit: `8807b9f18583c2a5e4176903d8bc9ec29a314193`
 - Version: 1.0.0
 
 ## Environments
