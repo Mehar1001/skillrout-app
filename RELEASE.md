@@ -3,7 +3,7 @@
 ## Current snapshot
 
 - Branch: `production-hardening`
-- Commit: `34342a8b8fe8895e2c6f671f31ddd9d86435bc58`
+- Commit: `c9aff61c06815768e2a50eec937986e5f15a03bc`
 - Version: 1.0.0
 
 ## Environments
@@ -19,8 +19,13 @@
 - `skillrout-staging` Firestore rules deployed and default database created (`nam5`).
 - `skillrout-staging` Hosting live site deployed to https://skillrout-staging.web.app.
 - `skillrout-staging` Auth is enabled (email/password).
-- `skillrout-staging` Storage is not set up yet; must be enabled via console.
-- `skillrout-staging` Functions cannot deploy until the project is upgraded to the Blaze plan.
+- `skillrout-staging` Firestore rules deployed and default database created (`nam5`).
+- `skillrout-staging` Storage default bucket set up and `storage.rules` deployed.
+- `skillrout-staging` Auth enabled (email/password).
+- `skillrout-staging` Hosting live site deployed to https://skillrout-staging.web.app.
+- `skillrout-staging` All Cloud Functions (v2, Node.js 22) deployed to `us-central1`.
+- `skillrout-staging` Artifact Registry cleanup policy configured.
+- `skillrout-staging` Still to enable: **Cloud Vision API** for OCR (`extractReceiptReadings`).
 - Production (`skillrout`) has not been touched.
 
 ## Pre-deploy checklist
