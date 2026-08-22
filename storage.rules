@@ -30,11 +30,17 @@ service firebase.storage {
     match /owners/{ownerId}/stores/{storeId}/visits/{visitId}/machines/{machineId}/{fileName} {
       allow read: if isOwner(ownerId) || isAssignedStore(ownerId, storeId);
       allow write: if (isOwner(ownerId) || isAssignedStore(ownerId, storeId)) && validVisitImage(ownerId, visitId);
+      allow delete: if false;
     }
 
     match /owners/{ownerId}/stores/{storeId}/visits/{visitId}/receipt/{fileName} {
       allow read: if isOwner(ownerId) || isAssignedStore(ownerId, storeId);
       allow write: if (isOwner(ownerId) || isAssignedStore(ownerId, storeId)) && validVisitImage(ownerId, visitId);
+      allow delete: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

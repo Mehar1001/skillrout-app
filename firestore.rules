@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
     function employee() {
@@ -13,34 +13,80 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == ownerId;
     }
 
-    function isActiveEmployee(ownerId) {
+    function isActiveEmployee(ownerId, storeId) {
       return signedIn()
              && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
              && employee().ownerId == ownerId
-             && employee().active == true;
+             && employee().active == true
+             && storeId in employee().assignedStoreIds;
     }
 
-    function isAssignedStore(ownerId, storeId) {
-      return isActiveEmployee(ownerId) && storeId in employee().assignedStoreIds;
+    function validStoreData(data) {
+      return data.keys().hasOnly(['name', 'address', 'active', 'defaultStorePercent', 'defaultVendorPercent', 'schemaVersion', 'updatedAt', 'createdAt', 'deactivatedAt', 'reactivatedAt'])
+             && data.name is string
+             && data.name.size() >= 1
+             && data.name.size() <= 200
+             && data.defaultStorePercent is number
+             && data.defaultVendorPercent is number
+             && data.defaultStorePercent >= 0
+             && data.defaultVendorPercent >= 0
+             && data.defaultStorePercent + data.defaultVendorPercent == 100;
+    }
+
+    function validMachineData(data) {
+      return data.keys().hasOnly(['machineNumber', 'name', 'storeId', 'active', 'lastSettledIn', 'lastSettledOut', 'baselineVersion', 'lastSubmittedVisitId', 'lastSubmittedAt', 'schemaVersion', 'updatedAt', 'createdAt', 'deactivatedAt', 'reactivatedAt'])
+             && data.machineNumber is string
+             && data.machineNumber.size() >= 1
+             && data.machineNumber.size() <= 80
+             && data.storeId is string
+             && data.storeId.size() >= 1
+             && data.lastSettledIn is number
+             && data.lastSettledOut is number
+             && data.lastSettledIn >= 0
+             && data.lastSettledOut >= 0;
+    }
+
+    function validMachineUpdate(data) {
+      return data.diff(resource.data).affectedKeys().hasOnly(['machineNumber', 'name', 'active', 'updatedAt', 'deactivatedAt', 'reactivatedAt'])
+             && data.machineNumber is string
+             && data.machineNumber.size() >= 1
+             && data.machineNumber.size() <= 80;
     }
 
     match /owners/{ownerId} {
-      allow read, write: if isOwner(ownerId);
+      allow read: if isOwner(ownerId);
+      allow create: if isOwner(ownerId)
+                     && request.resource.data.keys().hasOnly(['email', 'businessName', 'subscriptionStatus', 'status', 'schemaVersion', 'createdAt', 'updatedAt'])
+                     && request.resource.data.businessName is string
+                     && request.resource.data.businessName.size() >= 1
+                     && request.resource.data.businessName.size() <= 200;
+      allow update: if isOwner(ownerId)
+                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['businessName', 'schemaVersion', 'updatedAt'])
+                     && request.resource.data.businessName is string
+                     && request.resource.data.businessName.size() >= 1
+                     && request.resource.data.businessName.size() <= 200;
+      allow delete: if false;
 
       match /stores/{storeId} {
-        allow read: if isOwner(ownerId) || isAssignedStore(ownerId, storeId);
-        allow write: if isOwner(ownerId);
+        allow read: if isOwner(ownerId) || isActiveEmployee(ownerId, storeId);
+        allow create: if isOwner(ownerId) && validStoreData(request.resource.data);
+        allow update: if isOwner(ownerId)
+                       && validStoreData(request.resource.data)
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'address', 'active', 'defaultStorePercent', 'defaultVendorPercent', 'updatedAt', 'deactivatedAt', 'reactivatedAt']);
+        allow delete: if false;
 
         match /machines/{machineId} {
-          allow read: if isOwner(ownerId) || isAssignedStore(ownerId, storeId);
-          allow write: if isOwner(ownerId);
+          allow read: if isOwner(ownerId) || isActiveEmployee(ownerId, storeId);
+          allow create: if isOwner(ownerId) && validMachineData(request.resource.data);
+          allow update: if isOwner(ownerId) && validMachineUpdate(request.resource.data);
+          allow delete: if false;
         }
       }
 
       match /visits/{visitId} {
-        allow read: if isOwner(ownerId) || isAssignedStore(ownerId, resource.data.storeId);
+        allow read: if isOwner(ownerId) || isActiveEmployee(ownerId, resource.data.storeId);
         allow create, delete: if false;
-        allow update: if (isOwner(ownerId) || isAssignedStore(ownerId, resource.data.storeId))
+        allow update: if (isOwner(ownerId) || isActiveEmployee(ownerId, resource.data.storeId))
                       && request.resource.data.diff(resource.data).affectedKeys()
                         .hasOnly(['printStatus', 'printedAt', 'printedBy'])
                       && request.resource.data.printStatus == 'printed'
@@ -51,7 +97,7 @@ service cloud.firestore {
     match /employees/{employeeId} {
       allow read: if signedIn()
                   && (request.auth.uid == employeeId || request.auth.uid == resource.data.ownerId);
-      allow update: if signedIn() && request.auth.uid == resource.data.ownerId;
+      allow create, update, delete: if false;
     }
   }
 }
