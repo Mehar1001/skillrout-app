@@ -39,6 +39,7 @@ ui-debug.*.log
 # local env files
 .env*.local
 .env
+.env.staging
 
 # Firebase platform configs (keep local)
 google-services.json

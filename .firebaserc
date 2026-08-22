@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "skillrout"
+    "default": "skillrout",
+    "production": "skillrout",
+    "staging": "skillrout-staging"
   }
 }
