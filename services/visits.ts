@@ -2,7 +2,7 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestam
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebaseConfig';
 import { Machine, MachineReadingDraft, Visit } from '../types';
-import { uploadVisitPhoto } from './visitPhotos';
+import { uploadVisitPhoto, uploadVisitReceipt } from './visitPhotos';
 
 const getVisitsRef = (ownerId: string) => collection(db, `owners/${ownerId}/visits`);
 
@@ -38,7 +38,8 @@ export const saveRun = async (
   storeId: string,
   businessDate: string,
   machines: Machine[],
-  readings: Record<string, MachineReadingDraft>
+  readings: Record<string, MachineReadingDraft>,
+  receiptPhotoUri?: string
 ): Promise<string> => {
   const visitId = doc(getVisitsRef(ownerId)).id;
   const uploadedPhotos = new Map<string, { photoUrl: string; photoPath: string }>();
@@ -52,16 +53,24 @@ export const saveRun = async (
       );
     })
   );
+  const uploadedReceipt = receiptPhotoUri
+    ? await uploadVisitReceipt(ownerId, storeId, visitId, receiptPhotoUri)
+    : undefined;
 
   const runVisit = httpsCallable(functions, 'runVisit');
   await runVisit({
     visitId,
     storeId,
     businessDate,
+    ...(uploadedReceipt
+      ? { receiptPhotoUrl: uploadedReceipt.photoUrl, receiptPhotoPath: uploadedReceipt.photoPath }
+      : {}),
     readings: machines.map(machine => ({
       machineId: machine.id,
       presentIn: readings[machine.id]?.presentIn,
       presentOut: readings[machine.id]?.presentOut,
+      readingSource: readings[machine.id]?.ocr?.status === 'reviewed' ? 'ocr_reviewed' : 'manual',
+      ...(readings[machine.id]?.ocr?.scanId ? { ocrScanId: readings[machine.id].ocr!.scanId } : {}),
       ...uploadedPhotos.get(machine.id),
     })),
   });

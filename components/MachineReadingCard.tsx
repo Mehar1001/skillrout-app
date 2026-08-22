@@ -14,7 +14,10 @@ interface MachineReadingCardProps {
   reading: MachineReadingDraft;
   onChange: (reading: MachineReadingDraft) => void;
   onTakePhoto: () => void;
+  onUploadPhoto: () => void;
+  onReadPhoto: () => void;
   onRemovePhoto: () => void;
+  readingPhoto?: boolean;
   showRequiredErrors?: boolean;
 }
 
@@ -23,7 +26,10 @@ export const MachineReadingCard = ({
   reading,
   onChange,
   onTakePhoto,
+  onUploadPhoto,
+  onReadPhoto,
   onRemovePhoto,
+  readingPhoto = false,
   showRequiredErrors = false,
 }: MachineReadingCardProps) => {
   const colors = useColors();
@@ -48,20 +54,41 @@ export const MachineReadingCard = ({
         </View>
         <View style={styles.photoArea}>
           {reading.photoUri ? (
-            <View style={styles.photoWrap}>
-              <Image source={{ uri: reading.photoUri }} style={styles.photo} accessibilityLabel={`Photo for machine ${machine.machineNumber}`} />
-              <Pressable accessibilityRole="button" onPress={onRemovePhoto} style={styles.removePhoto}>
-                <Ionicons name="close" color={colors.textOnPrimary} size={18} />
+            <View style={styles.photoSelected}>
+              <View style={styles.photoWrap}>
+                <Image source={{ uri: reading.photoUri }} style={styles.photo} accessibilityLabel={`Photo for machine ${machine.machineNumber}`} />
+                <Pressable accessibilityRole="button" onPress={onRemovePhoto} style={styles.removePhoto}>
+                  <Ionicons name="close" color={colors.textOnPrimary} size={18} />
+                </Pressable>
+              </View>
+              <Pressable accessibilityRole="button" onPress={onReadPhoto} disabled={readingPhoto} style={[styles.readPhotoButton, readingPhoto && styles.readPhotoDisabled]}>
+                <Ionicons name="scan-outline" color={colors.textOnAccent} size={18} />
+                <Text style={styles.readPhotoText}>{readingPhoto ? 'Reading…' : 'Read values'}</Text>
               </Pressable>
             </View>
           ) : (
-            <Pressable accessibilityRole="button" onPress={onTakePhoto} style={styles.cameraButton}>
-              <Ionicons name="camera-outline" color={colors.accent} size={22} />
-              <Text style={styles.cameraText}>Photo</Text>
-            </Pressable>
+            <View style={styles.photoActions}>
+              <Pressable accessibilityRole="button" onPress={onTakePhoto} style={styles.cameraButton}>
+                <Ionicons name="camera-outline" color={colors.accent} size={21} />
+                <Text style={styles.cameraText}>Camera</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={onUploadPhoto} style={styles.cameraButton}>
+                <Ionicons name="cloud-upload-outline" color={colors.accent} size={21} />
+                <Text style={styles.cameraText}>Upload</Text>
+              </Pressable>
+            </View>
           )}
         </View>
       </View>
+
+      {reading.ocr ? (
+        <View style={[styles.ocrStatus, reading.ocr.status === 'warning' && styles.ocrWarning]}>
+          <Ionicons name="scan-outline" color={reading.ocr.status === 'warning' ? colors.warning : colors.success} size={18} />
+          <Text style={styles.ocrStatusText}>
+            {reading.ocr.status === 'reviewed' ? 'OCR applied — employee reviewed' : reading.ocr.status === 'warning' ? 'OCR warning — verify values' : 'OCR suggested — review required'}
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.baselines}>
         <View style={styles.baseline}>
@@ -117,6 +144,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: spacing.md,
@@ -136,12 +164,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.body,
   },
   photoArea: {
-    minWidth: 76,
     alignItems: 'flex-end',
+  },
+  photoActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
   },
   cameraButton: {
     minHeight: 48,
-    minWidth: 76,
+    minWidth: 70,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -154,6 +185,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.caption,
     fontWeight: '600',
   },
+  photoSelected: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   photoWrap: {
     position: 'relative',
   },
@@ -161,6 +196,24 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: radii.md,
+  },
+  readPhotoButton: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.md,
+    backgroundColor: colors.accent,
+  },
+  readPhotoDisabled: {
+    opacity: 0.55,
+  },
+  readPhotoText: {
+    color: colors.textOnAccent,
+    fontSize: fontSizes.caption,
+    fontWeight: '700',
   },
   removePhoto: {
     position: 'absolute',
@@ -172,6 +225,27 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 14,
     backgroundColor: colors.error,
+  },
+  ocrStatus: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.accentSubtle,
+    borderWidth: 1,
+    borderColor: colors.success,
+  },
+  ocrWarning: {
+    borderColor: colors.warning,
+  },
+  ocrStatusText: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: fontSizes.caption,
+    fontWeight: '600',
   },
   baselines: {
     flexDirection: 'row',

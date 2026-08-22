@@ -30,8 +30,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": false,
-          "cameraPermission": "Allow Skillrout to use the camera for optional machine-reading photos.",
+          "photosPermission": "Allow Skillrout to choose receipt and machine-reading photos for OCR and visit evidence.",
+          "cameraPermission": "Allow Skillrout to photograph receipts and machine readings for OCR and visit evidence.",
           "microphonePermission": false
         }
       ],

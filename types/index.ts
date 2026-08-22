@@ -49,10 +49,48 @@ export interface Machine {
   updatedAt?: Timestamp;
 }
 
+export type OcrReadingStatus = 'suggested' | 'reviewed' | 'warning';
+
+export interface OcrReadingMetadata {
+  source: 'receipt' | 'machine-photo';
+  status: OcrReadingStatus;
+  presentIn?: number;
+  presentOut?: number;
+  confidence?: number;
+  scanId: string;
+}
+
 export interface MachineReadingDraft {
   presentIn: number | null;
   presentOut: number | null;
   photoUri?: string;
+  ocr?: OcrReadingMetadata;
+}
+
+export interface ReceiptOcrCandidate {
+  receiptMachineNumber: string;
+  presentIn: number | null;
+  presentOut: number | null;
+  confidence: number;
+  warnings: string[];
+}
+
+export interface ReceiptOcrTotals {
+  moneyIn: number | null;
+  moneyOut: number | null;
+  extractedIn: number;
+  extractedOut: number;
+  inMatches: boolean | null;
+  outMatches: boolean | null;
+}
+
+export interface ReceiptOcrResponse {
+  candidates: ReceiptOcrCandidate[];
+  totals: ReceiptOcrTotals;
+  confidence: number;
+  warnings: string[];
+  scanId: string;
+  cached: boolean;
 }
 
 export interface VisitMachine {
@@ -68,6 +106,8 @@ export interface VisitMachine {
   machineNet: number;
   photoUrl?: string;
   photoPath?: string;
+  readingSource?: 'manual' | 'ocr_reviewed';
+  ocrScanId?: string;
 }
 
 export interface Visit {
@@ -91,6 +131,8 @@ export interface Visit {
   visitStatus: 'completed';
   settlementStatus: 'not_submitted' | 'submitted';
   printStatus: 'not_printed' | 'printed';
+  receiptPhotoUrl?: string;
+  receiptPhotoPath?: string;
   printedAt?: Timestamp;
   printedBy?: string;
   settlement?: {

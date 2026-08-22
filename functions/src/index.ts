@@ -1,7 +1,11 @@
+import { createHash } from 'node:crypto';
 import { initializeApp } from 'firebase-admin/app'; // Corrected: Import initializeApp directly
 import { getAuth } from 'firebase-admin/auth';
 import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
+import { logger } from 'firebase-functions';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
+import { extractReceiptText } from './cloudVisionReceiptOcr.js';
+import { parseReceiptText } from './receiptOcr.js';
 
 // Initialize Firebase Admin SDK using the direct import
 initializeApp(); // Called directly
@@ -110,21 +114,138 @@ export const createEmployee = onCall(async (request: CallableRequest) => {
   }
 });
 
+const supportedImage = (image: Buffer, mimeType: string) => {
+  if (mimeType === 'image/jpeg') return image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff;
+  if (mimeType === 'image/png') return image.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (mimeType === 'image/webp') {
+    return image.subarray(0, 4).toString() === 'RIFF' && image.subarray(8, 12).toString() === 'WEBP';
+  }
+  return false;
+};
+
+export const extractReceiptReadings = onCall(
+  { region: 'us-central1', timeoutSeconds: 60, memory: '512MiB', maxInstances: 20 },
+  async (request: CallableRequest) => {
+    if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to read a receipt.');
+    if (request.auth.token.email_verified !== true) {
+      throw new HttpsError('failed-precondition', 'Verify your email before reading receipts.');
+    }
+    const { storeId, imageBase64, mimeType, targetMachineNumber } = request.data as {
+      storeId: string;
+      imageBase64: string;
+      mimeType: string;
+      targetMachineNumber?: string;
+    };
+    if (
+      !storeId ||
+      typeof imageBase64 !== 'string' ||
+      typeof mimeType !== 'string' ||
+      (targetMachineNumber !== undefined && (typeof targetMachineNumber !== 'string' || targetMachineNumber.length > 80))
+    ) {
+      throw new HttpsError('invalid-argument', 'Store and receipt image are required.');
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) {
+      throw new HttpsError('invalid-argument', 'Use a JPEG, PNG, or WebP receipt image.');
+    }
+    if (imageBase64.length > 5_600_000 || !/^[A-Za-z0-9+/=]+$/.test(imageBase64)) {
+      throw new HttpsError('invalid-argument', 'Receipt image is too large or invalid.');
+    }
+    const image = Buffer.from(imageBase64, 'base64');
+    if (image.length === 0 || image.length > 4 * 1024 * 1024 || !supportedImage(image, mimeType)) {
+      throw new HttpsError('invalid-argument', 'Receipt image is too large or its format is invalid.');
+    }
+
+    const caller = await resolveCaller(request.auth.uid);
+    if (caller.role === 'employee' && !caller.assignedStoreIds.includes(storeId)) {
+      throw new HttpsError('permission-denied', 'This store is not assigned to you.');
+    }
+    const store = await db.doc(`owners/${caller.ownerId}/stores/${storeId}`).get();
+    if (!store.exists || store.data()?.active !== true) {
+      throw new HttpsError('failed-precondition', 'Select an active store before reading a receipt.');
+    }
+
+    const imageHash = createHash('sha256').update(image).update(targetMachineNumber || '').digest('hex');
+    const scanId = imageHash.slice(0, 20);
+    const cacheRef = db.doc(`ocrCache/${request.auth.uid}_${imageHash}`);
+    const cached = await cacheRef.get();
+    const cachedData = cached.data();
+    if (cached.exists && cachedData && cachedData.expiresAt?.toMillis?.() > Date.now() && cachedData.result) {
+      return { ...cachedData.result, scanId, cached: true };
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const usageRef = db.doc(`ocrUsage/${request.auth.uid}_${today}`);
+    await db.runTransaction(async transaction => {
+      const usage = await transaction.get(usageRef);
+      const count = Number(usage.data()?.count || 0);
+      if (count >= 50) throw new HttpsError('resource-exhausted', 'Daily receipt scan limit reached.');
+      transaction.set(
+        usageRef,
+        {
+          uid: request.auth!.uid,
+          ownerId: caller.ownerId,
+          date: today,
+          count: count + 1,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+
+    try {
+      const detected = await extractReceiptText(image);
+      if (!detected.text) throw new HttpsError('not-found', 'No readable text was found in this image.');
+      const result = parseReceiptText(detected.text, detected.confidence, targetMachineNumber);
+      await cacheRef.set({
+        uid: request.auth.uid,
+        ownerId: caller.ownerId,
+        imageHash,
+        result,
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+      logger.info('Receipt OCR completed', {
+        uid: request.auth.uid,
+        ownerId: caller.ownerId,
+        storeId,
+        scanId,
+        candidateCount: result.candidates.length,
+        warningCount: result.warnings.length,
+      });
+      return { ...result, scanId, cached: false };
+    } catch (error: unknown) {
+      if (error instanceof HttpsError) throw error;
+      logger.error('Receipt OCR failed', {
+        uid: request.auth.uid,
+        ownerId: caller.ownerId,
+        storeId,
+        scanId,
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
+      throw new HttpsError('unavailable', 'Receipt reading is temporarily unavailable. Enter readings manually or try again.');
+    }
+  }
+);
+
 export const runVisit = onCall(async (request: CallableRequest) => {
   if (!request.auth?.uid) {
     throw new HttpsError('unauthenticated', 'You must be logged in to run a visit.');
   }
 
-  const { visitId, storeId, businessDate, readings } = request.data as {
+  const { visitId, storeId, businessDate, readings, receiptPhotoUrl, receiptPhotoPath } = request.data as {
     visitId: string;
     storeId: string;
     businessDate: string;
+    receiptPhotoUrl?: string;
+    receiptPhotoPath?: string;
     readings: {
       machineId: string;
       presentIn: number;
       presentOut: number;
       photoUrl?: string;
       photoPath?: string;
+      readingSource?: 'manual' | 'ocr_reviewed';
+      ocrScanId?: string;
     }[];
   };
   if (!visitId || visitId.includes('/') || !storeId || !Array.isArray(readings)) {
@@ -135,6 +256,13 @@ export const runVisit = onCall(async (request: CallableRequest) => {
   const caller = await resolveCaller(request.auth.uid);
   if (caller.role === 'employee' && !caller.assignedStoreIds.includes(storeId)) {
     throw new HttpsError('permission-denied', 'This store is not assigned to you.');
+  }
+  const expectedReceiptPath = `owners/${caller.ownerId}/stores/${storeId}/visits/${visitId}/receipt/`;
+  if (
+    (receiptPhotoPath && !receiptPhotoPath.startsWith(expectedReceiptPath)) ||
+    Boolean(receiptPhotoPath) !== Boolean(receiptPhotoUrl)
+  ) {
+    throw new HttpsError('invalid-argument', 'Invalid receipt photo path.');
   }
 
   const storeRef = db.doc(`owners/${caller.ownerId}/stores/${storeId}`);
@@ -175,6 +303,12 @@ export const runVisit = onCall(async (request: CallableRequest) => {
       if (reading.photoPath && !reading.photoPath.startsWith(expectedPhotoPrefix)) {
         throw new HttpsError('invalid-argument', 'Invalid machine photo path.');
       }
+      if (reading.readingSource && !['manual', 'ocr_reviewed'].includes(reading.readingSource)) {
+        throw new HttpsError('invalid-argument', 'Invalid reading source.');
+      }
+      if (reading.ocrScanId && !/^[a-f0-9]{20}$/.test(reading.ocrScanId)) {
+        throw new HttpsError('invalid-argument', 'Invalid OCR scan reference.');
+      }
       const newIn = round2(presentIn - machine.lastSettledIn);
       const newOut = round2(presentOut - machine.lastSettledOut);
       return {
@@ -190,6 +324,8 @@ export const runVisit = onCall(async (request: CallableRequest) => {
         machineNet: round2(newIn - newOut),
         ...(reading.photoUrl ? { photoUrl: reading.photoUrl } : {}),
         ...(reading.photoPath ? { photoPath: reading.photoPath } : {}),
+        readingSource: reading.readingSource === 'ocr_reviewed' ? 'ocr_reviewed' : 'manual',
+        ...(reading.ocrScanId ? { ocrScanId: reading.ocrScanId } : {}),
       };
     });
 
@@ -225,6 +361,8 @@ export const runVisit = onCall(async (request: CallableRequest) => {
       visitStatus: 'completed',
       settlementStatus: 'not_submitted',
       printStatus: 'not_printed',
+      ...(receiptPhotoUrl ? { receiptPhotoUrl } : {}),
+      ...(receiptPhotoPath ? { receiptPhotoPath } : {}),
     });
   });
 

@@ -21,11 +21,20 @@ service firebase.storage {
              && storeId in employee().assignedStoreIds;
     }
 
+    function validVisitImage(ownerId, visitId) {
+      return !firestore.exists(/databases/(default)/documents/owners/$(ownerId)/visits/$(visitId))
+             && request.resource.size < 5 * 1024 * 1024
+             && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
     match /owners/{ownerId}/stores/{storeId}/visits/{visitId}/machines/{machineId}/{fileName} {
       allow read: if isOwner(ownerId) || isAssignedStore(ownerId, storeId);
-      allow write: if (isOwner(ownerId) || isAssignedStore(ownerId, storeId))
-                   && request.resource.size < 10 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
+      allow write: if (isOwner(ownerId) || isAssignedStore(ownerId, storeId)) && validVisitImage(ownerId, visitId);
+    }
+
+    match /owners/{ownerId}/stores/{storeId}/visits/{visitId}/receipt/{fileName} {
+      allow read: if isOwner(ownerId) || isAssignedStore(ownerId, storeId);
+      allow write: if (isOwner(ownerId) || isAssignedStore(ownerId, storeId)) && validVisitImage(ownerId, visitId);
     }
   }
 }
