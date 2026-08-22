@@ -3,6 +3,7 @@
     "module": "es2020",
     "noImplicitReturns": true,
     "noUnusedLocals": true,
+    "rootDir": "src",
     "outDir": "lib",
     "sourceMap": true,
     "strict": true,
