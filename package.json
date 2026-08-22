@@ -10,6 +10,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test:client": "node --require tsx/cjs --test helpers/calculations.test.ts helpers/validators.test.ts",
+    "test:calculations": "node --require tsx/cjs --test helpers/calculations.test.ts",
+    "test:validators": "node --require tsx/cjs --test helpers/validators.test.ts",
     "test:rules": "node --require tsx/cjs --test tests/securityRules.test.ts"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "expo-image-manipulator": "~13.1.7",
     "expo-image-picker": "~16.1.4",
     "expo-linking": "~7.1.7",
+    "expo-network": "~7.1.5",
     "expo-print": "~14.1.4",
     "expo-router": "~5.1.4",
     "expo-sharing": "~13.1.5",
@@ -49,7 +52,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@firebase/rules-unit-testing": "^5.0.2",
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@types/react": "~19.0.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",

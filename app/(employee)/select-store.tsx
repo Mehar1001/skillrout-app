@@ -6,6 +6,7 @@ import { Card } from '../../components/Card';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDraftQueue } from '../../contexts/DraftQueueContext';
 import { listAssignedStores, listStores } from '../../services/stores';
 import { Store } from '../../types';
 
@@ -14,6 +15,7 @@ export default function SelectStoreScreen() {
   const styles = makeStyles(colors);
   const { user, ownerId, role, assignedStoreIds } = useAuth();
   const router = useRouter();
+  const { pendingCount } = useDraftQueue();
   const [stores, setStores] = useState<Store[]>([]);
 
   useEffect(() => {
@@ -28,7 +30,10 @@ export default function SelectStoreScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <Text style={styles.greeting}>Where are you working today?</Text>
-        <Button title="History" onPress={() => router.push('/employee-history' as any)} variant="secondary" />
+        <View style={styles.headerActions}>
+          <Button title="Drafts" onPress={() => router.push('/drafts' as any)} variant={pendingCount > 0 ? 'primary' : 'secondary'} />
+          <Button title="History" onPress={() => router.push('/employee-history' as any)} variant="secondary" />
+        </View>
       </View>
       {stores.length === 0 ? (
         <Text style={styles.empty}>No active stores. Ask your owner to add one.</Text>
@@ -71,6 +76,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.md,
     marginBottom: spacing.lg,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   greeting: {
     flex: 1,

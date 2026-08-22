@@ -48,6 +48,7 @@ export default function EmployeeLayout() {
     >
       <Stack.Screen name="change-password" options={{ title: 'Secure Your Account', headerBackVisible: false }} />
       <Stack.Screen name="select-store" options={{ title: 'Select Store', headerBackVisible: false }} />
+      <Stack.Screen name="drafts" options={{ title: 'Offline Drafts' }} />
       <Stack.Screen name="visit" options={{ title: 'Enter Readings' }} />
       <Stack.Screen name="results" options={{ title: 'Comparison' }} />
       <Stack.Screen name="calculation" options={{ title: 'Calculation' }} />

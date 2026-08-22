@@ -286,18 +286,18 @@ describe('Storage security rules', () => {
     const owner = testEnv.authenticatedContext('ownerA');
     const storage = owner.storage();
     const ref = storage.ref(validPath);
-    await assertSucceeds(ref.put(new Uint8Array(100), { contentType: 'image/jpeg' }));
+    await assertSucceeds(ref.put(new Uint8Array(100), { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
   });
 
   it('allows assigned active employee to upload a photo', async () => {
     const emp = testEnv.authenticatedContext('employeeA');
     const storage = emp.storage();
-    await assertSucceeds(storage.ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }));
+    await assertSucceeds(storage.ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
   });
 
   it('allows reading an uploaded photo by owner and employee', async () => {
     const owner = testEnv.authenticatedContext('ownerA');
-    await assertSucceeds(owner.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }));
+    await assertSucceeds(owner.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
     await assertSucceeds(owner.storage().ref(validPath).getMetadata());
     const emp = testEnv.authenticatedContext('employeeA');
     await assertSucceeds(emp.storage().ref(validPath).getMetadata());
@@ -305,28 +305,28 @@ describe('Storage security rules', () => {
 
   it('denies upload from inactive employee', async () => {
     const emp = testEnv.authenticatedContext('employeeInactive');
-    await assertFails(emp.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }));
+    await assertFails(emp.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
   });
 
   it('denies upload from unassigned employee', async () => {
     const emp = testEnv.authenticatedContext('employeeUnassigned');
-    await assertFails(emp.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }));
+    await assertFails(emp.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
   });
 
   it('denies upload from wrong tenant', async () => {
     const emp = testEnv.authenticatedContext('employeeOtherOwner');
-    await assertFails(emp.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }));
+    await assertFails(emp.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
   });
 
   it('denies non-image content type', async () => {
     const owner = testEnv.authenticatedContext('ownerA');
-    await assertFails(owner.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'application/pdf' }));
+    await assertFails(owner.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'application/pdf' }) as unknown as Promise<unknown>);
   });
 
   it('denies oversized image', async () => {
     const owner = testEnv.authenticatedContext('ownerA');
     const oversized = new Uint8Array(6 * 1024 * 1024);
-    await assertFails(owner.storage().ref(validPath).put(oversized, { contentType: 'image/jpeg' }));
+    await assertFails(owner.storage().ref(validPath).put(oversized, { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
   });
 
   it('denies upload when visit already exists', async () => {
@@ -334,17 +334,17 @@ describe('Storage security rules', () => {
       await context.firestore().doc('owners/ownerA/visits/visitNew').set({ storeId: 'store1' });
     });
     const owner = testEnv.authenticatedContext('ownerA');
-    await assertFails(owner.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }));
+    await assertFails(owner.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
   });
 
   it('denies delete operations', async () => {
     const owner = testEnv.authenticatedContext('ownerA');
-    await assertSucceeds(owner.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }));
+    await assertSucceeds(owner.storage().ref(validPath).put(new Uint8Array(100), { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
     await assertFails(owner.storage().ref(validPath).delete());
   });
 
   it('denies unauthorized path patterns', async () => {
     const owner = testEnv.authenticatedContext('ownerA');
-    await assertFails(owner.storage().ref('random/path.jpg').put(new Uint8Array(100), { contentType: 'image/jpeg' }));
+    await assertFails(owner.storage().ref('random/path.jpg').put(new Uint8Array(100), { contentType: 'image/jpeg' }) as unknown as Promise<unknown>);
   });
 });

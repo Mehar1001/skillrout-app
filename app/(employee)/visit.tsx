@@ -11,9 +11,11 @@ import { VisitTotals } from '../../components/VisitTotals';
 import { type Colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDraftQueue } from '../../contexts/DraftQueueContext';
 import { calculateLiveReadings } from '../../helpers/calculations';
 import { matchReceiptCandidates, ReceiptReviewRow } from '../../helpers/receiptMachineMatching';
 import { validateBusinessDate, validatePresentReading } from '../../helpers/validators';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { listMachines } from '../../services/machines';
 import { prepareReceiptImage, readReceiptImage } from '../../services/receiptOcr';
 import { getStore } from '../../services/stores';
@@ -26,6 +28,8 @@ export default function VisitScreen() {
   const { storeId } = useLocalSearchParams<{ storeId: string }>();
   const router = useRouter();
   const { user, ownerId } = useAuth();
+  const { isOnline } = useNetworkStatus();
+  const { saveDraft } = useDraftQueue();
   const [store, setStore] = useState<Store | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [readings, setReadings] = useState<Record<string, MachineReadingDraft>>({});
@@ -33,6 +37,7 @@ export default function VisitScreen() {
   const [saving, setSaving] = useState(false);
   const [showRequiredErrors, setShowRequiredErrors] = useState(false);
   const [completedVisitId, setCompletedVisitId] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
   const [readingReceipt, setReadingReceipt] = useState(false);
   const [receiptImageUri, setReceiptImageUri] = useState<string | null>(null);
   const [receiptOcr, setReceiptOcr] = useState<ReceiptOcrResponse | null>(null);
@@ -224,11 +229,31 @@ export default function VisitScreen() {
       }
     }
 
+    if (!isOnline) {
+      try {
+        await saveDraft({
+          storeId,
+          storeName: store.name,
+          businessDate,
+          machines,
+          readings,
+          receiptPhotoUri: receiptImageUri ?? undefined,
+        });
+        setDraftSaved(true);
+      } catch (e: any) {
+        Alert.alert('Draft Failed', e.message || 'This visit could not be saved for later.');
+      }
+      return;
+    }
+
     setSaving(true);
     try {
       setCompletedVisitId(await saveRun(ownerId, storeId, businessDate, machines, readings, receiptImageUri ?? undefined));
     } catch (e: any) {
-      Alert.alert('RUN Failed', e.message || 'The visit could not be recorded.');
+      Alert.alert(
+        'RUN Failed',
+        e.message || 'The visit could not be recorded. Your entries are still on screen; try again when online.'
+      );
     } finally {
       setSaving(false);
     }
@@ -302,8 +327,12 @@ export default function VisitScreen() {
         <VisitTotals {...totals} />
 
         <View style={styles.runArea}>
-          <Button title="RUN" onPress={handleRun} loading={saving} disabled={saving} variant="primary" />
-          <Text style={styles.runHelp}>RUN saves this visit permanently and does not update settled readings.</Text>
+          <Button title={isOnline ? 'RUN' : 'Save Offline Draft'} onPress={handleRun} loading={saving} disabled={saving} variant="primary" />
+          <Text style={styles.runHelp}>
+            {isOnline
+              ? 'RUN saves this visit permanently and does not update settled readings.'
+              : 'You appear offline. Save a draft and it will be submitted automatically when you reconnect.'}
+          </Text>
         </View>
       </ScrollView>
 
@@ -321,6 +350,20 @@ export default function VisitScreen() {
               onPress={handleViewResults}
             >
               <Text style={styles.modalButtonText}>View Results</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={draftSaved} transparent animationType="fade" onRequestClose={() => setDraftSaved(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Draft Saved Offline</Text>
+            <Text style={styles.modalText}>
+              This visit is stored on your device and will be submitted automatically when you reconnect.
+            </Text>
+            <Pressable accessibilityRole="button" style={styles.modalButton} onPress={() => setDraftSaved(false)}>
+              <Text style={styles.modalButtonText}>OK</Text>
             </Pressable>
           </View>
         </View>

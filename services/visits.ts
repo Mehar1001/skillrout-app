@@ -2,7 +2,7 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestam
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebaseConfig';
 import { Machine, MachineReadingDraft, Visit } from '../types';
-import { uploadVisitPhoto, uploadVisitReceipt } from './visitPhotos';
+import { uploadVisitPhoto, uploadVisitReceipt, UploadedVisitPhoto } from './visitPhotos';
 
 const getVisitsRef = (ownerId: string) => collection(db, `owners/${ownerId}/visits`);
 
@@ -39,12 +39,23 @@ export const saveRun = async (
   businessDate: string,
   machines: Machine[],
   readings: Record<string, MachineReadingDraft>,
-  receiptPhotoUri?: string
+  receiptPhotoUri?: string,
+  options?: {
+    visitId?: string;
+    preUploadedPhotos?: Record<string, UploadedVisitPhoto>;
+    preUploadedReceipt?: UploadedVisitPhoto;
+  }
 ): Promise<string> => {
-  const visitId = doc(getVisitsRef(ownerId)).id;
-  const uploadedPhotos = new Map<string, { photoUrl: string; photoPath: string }>();
+  const visitId = options?.visitId || doc(getVisitsRef(ownerId)).id;
+  const uploadedPhotos = new Map<string, UploadedVisitPhoto>();
+  if (options?.preUploadedPhotos) {
+    Object.entries(options.preUploadedPhotos).forEach(([machineId, photo]) => {
+      uploadedPhotos.set(machineId, photo);
+    });
+  }
   await Promise.all(
     machines.map(async machine => {
+      if (uploadedPhotos.has(machine.id)) return;
       const photoUri = readings[machine.id]?.photoUri;
       if (!photoUri) return;
       uploadedPhotos.set(
@@ -53,9 +64,11 @@ export const saveRun = async (
       );
     })
   );
-  const uploadedReceipt = receiptPhotoUri
-    ? await uploadVisitReceipt(ownerId, storeId, visitId, receiptPhotoUri)
-    : undefined;
+  const uploadedReceipt = options?.preUploadedReceipt
+    ? options.preUploadedReceipt
+    : receiptPhotoUri
+      ? await uploadVisitReceipt(ownerId, storeId, visitId, receiptPhotoUri)
+      : undefined;
 
   const runVisit = httpsCallable(functions, 'runVisit');
   await runVisit({
