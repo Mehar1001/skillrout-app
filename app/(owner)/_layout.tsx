@@ -76,6 +76,13 @@ export default function OwnerLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" color={color} size={size} />,
         }}
       />
+      <Tabs.Screen
+        name="reports"
+        options={{
+          title: 'Reports',
+          tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" color={color} size={size} />,
+        }}
+      />
     </Tabs>
   );
 }
