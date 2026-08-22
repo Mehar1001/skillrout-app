@@ -29,12 +29,12 @@ export default function OwnerDashboard() {
 
       <Card style={styles.hero}>
         <View style={styles.heroText}>
-          <Text style={styles.heroTitle}>Test a visit</Text>
+          <Text style={styles.heroTitle}>Start a visit</Text>
           <Text style={styles.heroBody}>
-            Try the full employee flow: select a store, enter machine readings, RUN, then print or submit.
+            Select a store, enter machine readings, RUN, then print or submit.
           </Text>
         </View>
-        <Button title="Start Test Visit" onPress={() => router.push('/select-store' as any)} variant="accent" />
+        <Button title="Start Visit" onPress={() => router.push('/select-store' as any)} variant="accent" />
       </Card>
 
       <Text style={styles.sectionTitle}>Manage</Text>

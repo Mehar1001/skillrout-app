@@ -3,7 +3,7 @@
 ## Current snapshot
 
 - Branch: `production-hardening`
-- Commit: `99f755dfe191957f22865435cf098faaf1bfeafa`
+- Commit: `5520137fe42ab7a5b4a360216dcb28a77df18b4b`
 - Version: 1.0.0
 
 ## Environments
@@ -34,6 +34,7 @@
 - Hosting live site: https://skillrout.web.app.
 - Firestore backup created at `gs://skillrout-backups/firestore-20260822-164737` before backend changes.
 - **Storage is not set up yet** — must be enabled via console before photo upload/receipt OCR works.
+- Replaced hidden native `Alert` dialogs with web-visible inline messages and `window.confirm` fallbacks on owner sign-in, dashboard, employees, stores, and machines screens.
 
 ## Pre-deploy checklist
 

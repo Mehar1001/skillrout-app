@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores, saveStore, setStoreActive } from '../../services/stores';
 import { Store } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Card } from '../../components/Card';
-import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
+import { confirm } from '../../helpers/alert';
 import { validatePercentages } from '../../helpers/validators';
 
 export default function StoresScreen() {
@@ -16,6 +17,7 @@ export default function StoresScreen() {
   const { user, ownerId } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [form, setForm] = useState<Partial<Store>>({
     id: '',
     name: '',
@@ -51,8 +53,9 @@ export default function StoresScreen() {
   const handleEdit = (store: Store) => setForm({ ...store });
 
   const handleSave = async () => {
+    setMessage(null);
     if (!user || !ownerId || !form.name?.trim()) {
-      Alert.alert('Required', 'Store name is required.');
+      setMessage({ type: 'error', text: 'Store name is required.' });
       return;
     }
     const pctError = validatePercentages(
@@ -60,33 +63,36 @@ export default function StoresScreen() {
       Number(form.defaultVendorPercent) || 0
     );
     if (pctError) {
-      Alert.alert('Validation', pctError);
+      setMessage({ type: 'error', text: pctError });
       return;
     }
-    await saveStore(ownerId, form);
-    resetForm();
-    fetchStores();
+    try {
+      await saveStore(ownerId, form);
+      setMessage({ type: 'success', text: `Store ${form.name?.trim()} saved.` });
+      resetForm();
+      fetchStores();
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Failed to save store.' });
+    }
   };
 
   const handleActiveChange = (store: Store) => {
     if (!user || !ownerId) return;
+    setMessage(null);
     const nextActive = !store.active;
-    Alert.alert(
+    confirm(
       nextActive ? 'Reactivate Store' : 'Deactivate Store',
       nextActive
         ? `Reactivate ${store.name}?`
         : `Deactivate ${store.name}? Historical visits will remain available, but employees cannot start new visits here.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: nextActive ? 'Reactivate' : 'Deactivate',
-          style: nextActive ? 'default' : 'destructive',
-          onPress: async () => {
-            await setStoreActive(ownerId, store.id, nextActive);
-            fetchStores();
-          },
-        },
-      ]
+      async () => {
+        try {
+          await setStoreActive(ownerId, store.id, nextActive);
+          fetchStores();
+        } catch (e: any) {
+          setMessage({ type: 'error', text: e.message || 'Failed to update store.' });
+        }
+      }
     );
   };
 
@@ -133,6 +139,23 @@ export default function StoresScreen() {
           <Button title={form.id ? 'Update Store' : 'Add Store'} onPress={handleSave} loading={loading} />
           {form.id ? <Button title="Cancel" onPress={resetForm} variant="secondary" /> : null}
         </View>
+        {message ? (
+          <View
+            style={[
+              styles.messageBox,
+              { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
+            ]}
+          >
+            <Text
+              style={[
+                styles.messageText,
+                { color: message.type === 'error' ? colors.error : colors.success },
+              ]}
+            >
+              {message.text}
+            </Text>
+          </View>
+        ) : null}
       </Card>
 
       <Text style={styles.sectionTitle}>Existing Stores</Text>
@@ -217,5 +240,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   empty: {
     color: colors.textMuted,
     fontSize: fontSizes.body,
+  },
+  messageBox: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    marginTop: spacing.md,
+  },
+  messageText: {
+    fontSize: fontSizes.body,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

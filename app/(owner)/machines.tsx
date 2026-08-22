@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores } from '../../services/stores';
 import { listMachines, saveMachine, setMachineActive } from '../../services/machines';
@@ -8,8 +8,9 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { CurrencyInput } from '../../components/CurrencyInput';
 import { Card } from '../../components/Card';
-import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
+import { confirm } from '../../helpers/alert';
 import { formatCurrency } from '../../helpers/formatters';
 
 export default function MachinesScreen() {
@@ -20,6 +21,7 @@ export default function MachinesScreen() {
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [form, setForm] = useState<Partial<Machine>>({
     id: '',
     machineNumber: '',
@@ -53,36 +55,41 @@ export default function MachinesScreen() {
   const handleEdit = (machine: Machine) => setForm({ ...machine });
 
   const handleSave = async () => {
+    setMessage(null);
     if (!user || !ownerId || !selectedStoreId || !form.machineNumber?.trim()) {
-      Alert.alert('Required', 'Select a store and enter a machine number.');
+      setMessage({ type: 'error', text: 'Select a store and enter a machine number.' });
       return;
     }
     setLoading(true);
-    await saveMachine(ownerId, selectedStoreId, form);
-    setLoading(false);
-    resetForm();
-    listMachines(ownerId, selectedStoreId).then(setMachines);
+    try {
+      await saveMachine(ownerId, selectedStoreId, form);
+      setMessage({ type: 'success', text: `Machine ${form.machineNumber?.trim()} saved.` });
+      resetForm();
+      listMachines(ownerId, selectedStoreId).then(setMachines);
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Failed to save machine.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleActiveChange = (machine: Machine) => {
     if (!user || !ownerId || !selectedStoreId) return;
+    setMessage(null);
     const nextActive = !machine.active;
-    Alert.alert(
+    confirm(
       nextActive ? 'Reactivate Machine' : 'Deactivate Machine',
       nextActive
         ? `Reactivate machine ${machine.machineNumber}?`
         : `Deactivate machine ${machine.machineNumber}? Historical visits and settled readings will remain unchanged.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: nextActive ? 'Reactivate' : 'Deactivate',
-          style: nextActive ? 'default' : 'destructive',
-          onPress: async () => {
-            await setMachineActive(ownerId, selectedStoreId, machine.id, nextActive);
-            listMachines(ownerId, selectedStoreId).then(setMachines);
-          },
-        },
-      ]
+      async () => {
+        try {
+          await setMachineActive(ownerId, selectedStoreId, machine.id, nextActive);
+          listMachines(ownerId, selectedStoreId).then(setMachines);
+        } catch (e: any) {
+          setMessage({ type: 'error', text: e.message || 'Failed to update machine.' });
+        }
+      }
     );
   };
 
@@ -163,6 +170,23 @@ export default function MachinesScreen() {
                 <Button title="Cancel" onPress={resetForm} variant="secondary" />
               ) : null}
             </View>
+            {message ? (
+              <View
+                style={[
+                  styles.messageBox,
+                  { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.messageText,
+                    { color: message.type === 'error' ? colors.error : colors.success },
+                  ]}
+                >
+                  {message.text}
+                </Text>
+              </View>
+            ) : null}
           </Card>
 
           <Text style={styles.sectionTitle}>Machines at this Store</Text>
@@ -260,5 +284,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   empty: {
     color: colors.textMuted,
     fontSize: fontSizes.body,
+  },
+  messageBox: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    marginTop: spacing.md,
+  },
+  messageText: {
+    fontSize: fontSizes.body,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

@@ -2,7 +2,8 @@ import { updatePassword } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { alert } from '../../helpers/alert';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
@@ -26,11 +27,11 @@ export default function ChangePasswordScreen() {
   const handleSave = async () => {
     if (!user || auth.currentUser?.uid !== user.uid) return;
     if (!passwordComplexity.test(password)) {
-      Alert.alert('Strong Password Required', 'Use 10–128 characters with at least one letter, number, and special character.');
+      alert('Strong Password Required', 'Use 10–128 characters with at least one letter, number, and special character.');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Passwords Do Not Match', 'Enter the same new password in both fields.');
+      alert('Passwords Do Not Match', 'Enter the same new password in both fields.');
       return;
     }
     setSaving(true);
@@ -41,7 +42,7 @@ export default function ChangePasswordScreen() {
       setConfirmPassword('');
       router.replace('/select-store' as any);
     } catch (error: any) {
-      Alert.alert(
+      alert(
         'Password Change Failed',
         error?.code === 'auth/requires-recent-login'
           ? 'Sign out, sign in again with the temporary password, and retry.'

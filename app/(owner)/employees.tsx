@@ -1,10 +1,10 @@
 import { httpsCallable } from 'firebase/functions';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { type Colors, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { db, functions } from '../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,6 +30,8 @@ export default function EmployeesScreen() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>([]);
+  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [confirming, setConfirming] = useState<{ employee: Employee; nextActive: boolean } | null>(null);
 
   const fetchEmployees = useCallback(async () => {
     if (!ownerId) return;
@@ -66,13 +68,17 @@ export default function EmployeesScreen() {
   };
 
   const handleSave = async () => {
+    setMessage(null);
     if (!ownerId || !name.trim() || assignedStoreIds.length === 0) {
-      Alert.alert('Required', 'Name and at least one assigned store are required.');
+      setMessage({ type: 'error', text: 'Name and at least one assigned store are required.' });
       return;
     }
     if (editingEmployee) {
       if (password && !passwordComplexity.test(password)) {
-        Alert.alert('Weak Password', 'New temporary password must be 10–128 characters with a letter, number, and special character.');
+        setMessage({
+          type: 'error',
+          text: 'New temporary password must be 10–128 characters with a letter, number, and special character.',
+        });
         return;
       }
       setSaving(true);
@@ -81,28 +87,31 @@ export default function EmployeesScreen() {
         if (password) {
           await resetEmployeeTemporaryPasswordFn({ employeeId: editingEmployee.id, password });
         }
-        Alert.alert('Updated', `${name.trim()} has been updated.`);
+        setMessage({ type: 'success', text: `${name.trim()} has been updated.` });
         resetForm();
         fetchEmployees();
       } catch (e: any) {
-        Alert.alert('Error', e.message || 'Failed to update employee.');
+        setMessage({ type: 'error', text: e.message || 'Failed to update employee.' });
       } finally {
         setSaving(false);
       }
       return;
     }
     if (!email.trim() || !passwordComplexity.test(password)) {
-      Alert.alert('Required', 'Email and a strong temporary password (10–128 chars) are required.');
+      setMessage({
+        type: 'error',
+        text: 'Email and a strong temporary password (10–128 chars with a letter, number, and special character) are required.',
+      });
       return;
     }
     setSaving(true);
     try {
       await createEmployeeFn({ email: email.trim(), name: name.trim(), password, assignedStoreIds });
-      Alert.alert('Created', `Employee ${name.trim()} added.`);
+      setMessage({ type: 'success', text: `Employee ${name.trim()} added.` });
       resetForm();
       fetchEmployees();
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to create employee.');
+      setMessage({ type: 'error', text: e.message || 'Failed to create employee.' });
     } finally {
       setSaving(false);
     }
@@ -110,28 +119,21 @@ export default function EmployeesScreen() {
 
   const handleActiveChange = (employee: Employee) => {
     if (!ownerId) return;
-    const nextActive = !employee.active;
-    Alert.alert(
-      nextActive ? 'Reactivate Employee' : 'Deactivate Employee',
-      nextActive
-        ? `Reactivate ${employee.name}?`
-        : `Deactivate ${employee.name}? They will not be able to sign in or run visits until reactivated.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: nextActive ? 'Reactivate' : 'Deactivate',
-          style: nextActive ? 'default' : 'destructive',
-          onPress: async () => {
-            try {
-              await setEmployeeActiveFn({ employeeId: employee.id, active: nextActive });
-              fetchEmployees();
-            } catch (e: any) {
-              Alert.alert('Error', e.message || 'Failed to update employee status.');
-            }
-          },
-        },
-      ]
-    );
+    setMessage(null);
+    setConfirming({ employee, nextActive: !employee.active });
+  };
+
+  const confirmActiveChange = async () => {
+    if (!confirming || !ownerId) return;
+    const { employee, nextActive } = confirming;
+    setConfirming(null);
+    try {
+      await setEmployeeActiveFn({ employeeId: employee.id, active: nextActive });
+      setMessage({ type: 'success', text: `${employee.name} is now ${nextActive ? 'active' : 'inactive'}.` });
+      fetchEmployees();
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Failed to update employee status.' });
+    }
   };
 
   return (
@@ -192,7 +194,42 @@ export default function EmployeesScreen() {
         {editingEmployee ? (
           <Button title="Cancel" onPress={resetForm} variant="secondary" disabled={saving} />
         ) : null}
+        {message ? (
+          <View
+            style={[
+              styles.messageBox,
+              { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
+            ]}
+          >
+            <Text
+              style={[
+                styles.messageText,
+                { color: message.type === 'error' ? colors.error : colors.success },
+              ]}
+            >
+              {message.text}
+            </Text>
+          </View>
+        ) : null}
       </View>
+
+      {confirming ? (
+        <View style={[styles.confirmBox, { backgroundColor: colors.glowAccent }]}>
+          <Text style={styles.confirmText}>
+            {confirming.nextActive
+              ? `Reactivate ${confirming.employee.name}?`
+              : `Deactivate ${confirming.employee.name}? They will not be able to sign in or run visits until reactivated.`}
+          </Text>
+          <View style={styles.confirmActions}>
+            <Button title="Cancel" onPress={() => setConfirming(null)} variant="secondary" />
+            <Button
+              title={confirming.nextActive ? 'Reactivate' : 'Deactivate'}
+              onPress={confirmActiveChange}
+              variant={confirming.nextActive ? 'accent' : 'danger'}
+            />
+          </View>
+        </View>
+      ) : null}
 
       <Text style={styles.subtitle}>Existing employees</Text>
       <FlatList
@@ -296,5 +333,29 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   empty: {
     color: colors.textMuted,
     marginTop: spacing.sm,
+  },
+  messageBox: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    marginTop: spacing.sm,
+  },
+  messageText: {
+    fontSize: fontSizes.body,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  confirmBox: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    marginBottom: spacing.md,
+  },
+  confirmText: {
+    fontSize: fontSizes.body,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
 });
