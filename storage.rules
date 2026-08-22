@@ -22,7 +22,8 @@ service firebase.storage {
     }
 
     function validVisitImage(ownerId, visitId) {
-      return !firestore.exists(/databases/(default)/documents/owners/$(ownerId)/visits/$(visitId))
+      return request.resource != null
+             && !firestore.exists(/databases/(default)/documents/owners/$(ownerId)/visits/$(visitId))
              && request.resource.size < 5 * 1024 * 1024
              && request.resource.contentType.matches('image/(jpeg|png|webp)');
     }

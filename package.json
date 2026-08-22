@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test:client": "node --require tsx/cjs --test helpers/calculations.test.ts helpers/validators.test.ts"
+    "test:client": "node --require tsx/cjs --test helpers/calculations.test.ts helpers/validators.test.ts",
+    "test:rules": "node --require tsx/cjs --test tests/securityRules.test.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@types/react": "~19.0.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",
