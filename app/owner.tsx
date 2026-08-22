@@ -12,7 +12,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import {
-  Alert,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -27,6 +26,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { type Colors, fontSizes, lineHeights, radii, spacing } from '../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
+import { mapFirebaseError } from '../helpers/firebaseErrors';
 import { auth, db, functions } from '../firebaseConfig';
 
 const passwordComplexityRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,128}$/;
@@ -41,24 +41,28 @@ export default function OwnerScreen() {
   const [ownerName, setOwnerName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const router = useRouter();
+
+  const clearMessage = () => setMessage(null);
   const ScreenContainer = Platform.OS === 'web' ? View : Pressable;
 
   const handleRegistration = async () => {
+    clearMessage();
     if (!ownerName.trim() || email.trim() === '' || password.trim() === '') {
-      Alert.alert('Validation Error', 'Business name, email, and password are required.');
+      setMessage({ type: 'error', text: 'Business name, email, and password are required.' });
       return;
     }
     if (ownerName.trim().length > 120) {
-      Alert.alert('Validation Error', 'Business name must be 120 characters or fewer.');
+      setMessage({ type: 'error', text: 'Business name must be 120 characters or fewer.' });
       return;
     }
 
     if (!passwordComplexityRegex.test(password)) {
-      Alert.alert(
-        'Weak Password',
-        'Password must be 10–128 characters and include at least one letter, one number, and one special character (e.g., @$!%*?&).'
-      );
+      setMessage({
+        type: 'error',
+        text: 'Password must be 10–128 characters and include at least one letter, one number, and one special character (e.g., @$!%*?&).',
+      });
       return;
     }
 
@@ -74,30 +78,29 @@ export default function OwnerScreen() {
         await user.delete().catch(() => undefined);
         throw profileError;
       }
-      Alert.alert(
-        'Verification Email Sent!',
-        'Your account has been created. Please check your email and click the verification link.'
-      );
+      setMessage({
+        type: 'success',
+        text: 'Account created. Check your email and click the verification link before signing in.',
+      });
       setEmail('');
       setPassword('');
       setOwnerName('');
       setIsRegistering(false);
     } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        Alert.alert('Registration Failed', 'This email is already registered. Please try logging in.');
-      } else if (error.code === 'auth/weak-password') {
-        Alert.alert('Registration Failed', 'Password is too weak. Please use a stronger password.');
-      } else {
-        Alert.alert('System Error', 'An unexpected error occurred during registration.');
-      }
+      const text =
+        error.code === 'auth/email-already-in-use'
+          ? 'This email is already registered. Try signing in.'
+          : mapFirebaseError(error);
+      setMessage({ type: 'error', text });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleLogin = async () => {
+    clearMessage();
     if (email.trim() === '' || password.trim() === '') {
-      Alert.alert('Validation Error', 'Both Email and Password are required.');
+      setMessage({ type: 'error', text: 'Both email and password are required.' });
       return;
     }
     Keyboard.dismiss();
@@ -108,14 +111,11 @@ export default function OwnerScreen() {
       await user.reload();
 
       if (!user.emailVerified) {
-        Alert.alert(
-          'Email Not Verified',
-          'Please check your inbox and click the verification link. Resend it?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Resend Email', onPress: () => sendEmailVerification(user) },
-          ]
-        );
+        await sendEmailVerification(user);
+        setMessage({
+          type: 'error',
+          text: 'Email not verified. A new verification link has been sent — check your inbox and click it before signing in.',
+        });
         await signOut(auth);
         setIsLoading(false);
         return;
@@ -129,21 +129,19 @@ export default function OwnerScreen() {
       if (!ownerSnap.exists()) {
         const employeeSnap = await getDoc(doc(db, 'employees', user.uid));
         if (!employeeSnap.exists() || employeeSnap.data().active !== true) {
-          Alert.alert('Access Denied', 'Your account is not active in Skillrout.');
+          setMessage({ type: 'error', text: 'Your account is not active in Skillrout.' });
           await signOut(auth);
           setIsLoading(false);
           return;
         }
-        Alert.alert('Welcome Back!', `Logged in as ${employeeSnap.data().name || 'Employee'}.`);
         router.replace((employeeSnap.data().mustChangePassword ? '/change-password' : '/select-store') as any);
         return;
       }
 
       const ownerData = ownerSnap.data();
-      const fetchedOwnerName = ownerData.businessName || 'Admin';
 
       if (ownerData.subscriptionStatus !== 'active') {
-        Alert.alert('Subscription Inactive', 'Your account is not active. Please contact support.');
+        setMessage({ type: 'error', text: 'Your account is not active. Please contact support.' });
         await signOut(auth);
         setIsLoading(false);
         return;
@@ -153,35 +151,33 @@ export default function OwnerScreen() {
         `ownerPassword_${user.uid}`,
         `reportingPassword_${user.uid}`,
       ]);
-      Alert.alert('Welcome Back!', `Logged in as ${fetchedOwnerName}.`);
       router.replace('/dashboard' as any);
     } catch (error: any) {
-      if (
+      const text =
         error.code === 'auth/user-not-found' ||
         error.code === 'auth/wrong-password' ||
         error.code === 'auth/invalid-credential'
-      ) {
-        Alert.alert('Login Failed', 'Invalid email or password. Please try again or register.');
-      } else {
-        Alert.alert('System Error', 'An unexpected error occurred during login.');
-      }
+          ? 'Invalid email or password. Please try again or register.'
+          : mapFirebaseError(error);
+      setMessage({ type: 'error', text });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handlePasswordReset = () => {
+    clearMessage();
     if (!email.includes('@')) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address to reset your password.');
+      setMessage({ type: 'error', text: 'Please enter a valid email address to reset your password.' });
       return;
     }
 
     sendPasswordResetEmail(auth, email.trim())
       .then(() => {
-        Alert.alert('Check Your Email', `A reset link has been sent to ${email}.`);
+        setMessage({ type: 'success', text: `A reset link has been sent to ${email}.` });
       })
-      .catch(() => {
-        Alert.alert('Error', 'Could not send reset email. Make sure the email is correct.');
+      .catch((error: any) => {
+        setMessage({ type: 'error', text: mapFirebaseError(error) });
       });
   };
 
@@ -260,6 +256,24 @@ export default function OwnerScreen() {
                 <Text style={styles.forgotText}>Forgot password?</Text>
               </Pressable>
             )}
+
+            {message ? (
+              <View
+                style={[
+                  styles.messageBox,
+                  { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowPrimary },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.messageText,
+                    { color: message.type === 'error' ? colors.error : colors.primary },
+                  ]}
+                >
+                  {message.text}
+                </Text>
+              </View>
+            ) : null}
 
             <View style={styles.action}>
               <Button
@@ -364,6 +378,16 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   action: {
     marginTop: spacing.sm,
+  },
+  messageBox: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    marginBottom: spacing.md,
+  },
+  messageText: {
+    fontSize: fontSizes.body,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   requirements: {
     marginTop: spacing.lg,
