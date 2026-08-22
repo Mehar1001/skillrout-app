@@ -13,6 +13,17 @@ const db = getFirestore(); // Corrected: Get Firestore instance directly
 const auth = getAuth();
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+const passwordComplexity = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,128}$/;
+
+const requireActiveOwner = async (uid: string, emailVerified: boolean) => {
+  if (!emailVerified) throw new HttpsError('failed-precondition', 'Verify your email before managing employees.');
+  const ownerDoc = await db.doc(`owners/${uid}`).get();
+  const owner = ownerDoc.data();
+  if (!ownerDoc.exists || owner?.subscriptionStatus !== 'active' || owner?.status === 'inactive') {
+    throw new HttpsError('permission-denied', 'Only an active owner can perform this action.');
+  }
+  return owner;
+};
 
 const resolveCaller = async (uid: string) => {
   const ownerDoc = await db.doc(`owners/${uid}`).get();
@@ -50,6 +61,48 @@ const validateBusinessDate = (businessDate: string) => {
   }
 };
 
+export const registerOwnerProfile = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid || !request.auth.token.email) {
+    throw new HttpsError('unauthenticated', 'Sign in to create an owner profile.');
+  }
+  const businessName = typeof request.data?.businessName === 'string' ? request.data.businessName.trim() : '';
+  if (!businessName || businessName.length > 120) {
+    throw new HttpsError('invalid-argument', 'Business name is required and must be 120 characters or fewer.');
+  }
+  const ownerRef = db.doc(`owners/${request.auth.uid}`);
+  await db.runTransaction(async transaction => {
+    const existing = await transaction.get(ownerRef);
+    if (existing.exists) return;
+    transaction.create(ownerRef, {
+      email: String(request.auth!.token.email).trim().toLowerCase(),
+      businessName,
+      subscriptionStatus: 'active',
+      status: 'pending_verification',
+      schemaVersion: 1,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return { success: true };
+});
+
+export const provisionOwner = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to provision your account.');
+  if (request.auth.token.email_verified !== true) {
+    throw new HttpsError('failed-precondition', 'Verify your email before activating your account.');
+  }
+  const ownerRef = db.doc(`owners/${request.auth.uid}`);
+  const owner = await ownerRef.get();
+  if (!owner.exists) throw new HttpsError('failed-precondition', 'Owner profile setup is incomplete. Register again.');
+  const subscriptionStatus = owner.data()?.subscriptionStatus;
+  await ownerRef.update({
+    status: subscriptionStatus === 'active' ? 'active' : 'inactive',
+    schemaVersion: 1,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  return { success: true };
+});
+
 export const createEmployee = onCall(async (request: CallableRequest) => {
   const context = request.auth;
   const { email, name, password, assignedStoreIds } = request.data as {
@@ -64,54 +117,136 @@ export const createEmployee = onCall(async (request: CallableRequest) => {
   }
 
   const ownerId = context.uid;
-  const ownerDoc = await db.collection('owners').doc(ownerId).get();
-  if (!ownerDoc.exists) {
-    throw new HttpsError('permission-denied', 'Only owners can create employees.');
+  const owner = await requireActiveOwner(ownerId, context.token.email_verified === true);
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  const normalizedName = typeof name === 'string' ? name.trim() : '';
+  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || !normalizedName || normalizedName.length > 120 || !passwordComplexity.test(password || '')) {
+    throw new HttpsError('invalid-argument', 'Valid email, name, and a 10–128 character strong password are required.');
   }
-
-  if (!email || !email.trim() || !password || password.length < 6 || !name || !name.trim()) {
-    throw new HttpsError('invalid-argument', 'Valid email, name, and password (6+ chars) are required.');
+  if (!Array.isArray(assignedStoreIds) || assignedStoreIds.length === 0 || assignedStoreIds.length > 100) {
+    throw new HttpsError('invalid-argument', 'Assign between 1 and 100 stores.');
   }
-  if (!Array.isArray(assignedStoreIds) || assignedStoreIds.length === 0) {
-    throw new HttpsError('invalid-argument', 'Assign at least one store.');
+  const uniqueStoreIds = [...new Set(assignedStoreIds.filter(storeId => typeof storeId === 'string' && storeId.length <= 128))];
+  if (uniqueStoreIds.length !== assignedStoreIds.length) {
+    throw new HttpsError('invalid-argument', 'Assigned stores must be unique valid IDs.');
   }
 
   const storeDocs = await Promise.all(
-    assignedStoreIds.map(storeId => db.doc(`owners/${ownerId}/stores/${storeId}`).get())
+    uniqueStoreIds.map(storeId => db.doc(`owners/${ownerId}/stores/${storeId}`).get())
   );
-  if (storeDocs.some(storeDoc => !storeDoc.exists)) {
-    throw new HttpsError('invalid-argument', 'One or more assigned stores do not exist.');
+  if (storeDocs.some(storeDoc => !storeDoc.exists || storeDoc.data()?.active !== true)) {
+    throw new HttpsError('invalid-argument', 'One or more assigned stores are missing or inactive.');
   }
 
   let userRecord;
   try {
     userRecord = await auth.createUser({
-      email: email.trim(),
+      email: normalizedEmail,
       password,
-      displayName: name.trim(),
+      displayName: normalizedName,
       emailVerified: true,
     });
 
     await db.collection('employees').doc(userRecord.uid).set({
-      email: email.trim(),
-      name: name.trim(),
+      email: normalizedEmail,
+      name: normalizedName,
       role: 'employee',
       ownerId,
-      businessName: ownerDoc.data()?.businessName || '',
-      assignedStoreIds,
+      businessName: owner.businessName || '',
+      assignedStoreIds: uniqueStoreIds,
       active: true,
+      mustChangePassword: true,
+      schemaVersion: 1,
       createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return { uid: userRecord.uid, email: email.trim(), name: name.trim() };
+    return { uid: userRecord.uid, email: normalizedEmail, name: normalizedName };
   } catch (error: any) {
     if (userRecord) await auth.deleteUser(userRecord.uid);
-    console.error('Error creating employee:', error);
+    logger.error('Employee creation failed', { ownerId, errorCode: error?.code || 'unknown' });
     if (error.code === 'auth/email-already-exists') {
       throw new HttpsError('already-exists', 'That email is already in use.');
     }
     throw new HttpsError('internal', 'Failed to create employee. Please try again.');
   }
+});
+
+export const updateEmployeeAssignments = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to update an employee.');
+  await requireActiveOwner(request.auth.uid, request.auth.token.email_verified === true);
+  const employeeId = typeof request.data?.employeeId === 'string' ? request.data.employeeId : '';
+  const name = typeof request.data?.name === 'string' ? request.data.name.trim() : '';
+  const assignedStoreIds = Array.isArray(request.data?.assignedStoreIds) ? request.data.assignedStoreIds : [];
+  const uniqueStoreIds = [...new Set(assignedStoreIds.filter((storeId: unknown): storeId is string => typeof storeId === 'string' && storeId.length <= 128))];
+  if (!employeeId || !name || name.length > 120 || uniqueStoreIds.length < 1 || uniqueStoreIds.length > 100 || uniqueStoreIds.length !== assignedStoreIds.length) {
+    throw new HttpsError('invalid-argument', 'Employee name and 1–100 unique assigned stores are required.');
+  }
+  const employeeRef = db.doc(`employees/${employeeId}`);
+  const [employee, ...stores] = await Promise.all([
+    employeeRef.get(),
+    ...uniqueStoreIds.map(storeId => db.doc(`owners/${request.auth!.uid}/stores/${storeId}`).get()),
+  ]);
+  if (!employee.exists || employee.data()?.ownerId !== request.auth.uid) {
+    throw new HttpsError('not-found', 'Employee not found.');
+  }
+  if (stores.some(store => !store.exists || store.data()?.active !== true)) {
+    throw new HttpsError('invalid-argument', 'One or more assigned stores are missing or inactive.');
+  }
+  await employeeRef.update({ name, assignedStoreIds: uniqueStoreIds, updatedAt: FieldValue.serverTimestamp() });
+  await auth.updateUser(employeeId, { displayName: name });
+  return { success: true };
+});
+
+export const setEmployeeActive = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to update an employee.');
+  await requireActiveOwner(request.auth.uid, request.auth.token.email_verified === true);
+  const employeeId = typeof request.data?.employeeId === 'string' ? request.data.employeeId : '';
+  const active = request.data?.active;
+  if (!employeeId || typeof active !== 'boolean') throw new HttpsError('invalid-argument', 'Employee and active status are required.');
+  const employeeRef = db.doc(`employees/${employeeId}`);
+  const employee = await employeeRef.get();
+  if (!employee.exists || employee.data()?.ownerId !== request.auth.uid) {
+    throw new HttpsError('not-found', 'Employee not found.');
+  }
+  await auth.updateUser(employeeId, { disabled: !active });
+  await auth.revokeRefreshTokens(employeeId);
+  await employeeRef.update({
+    active,
+    updatedAt: FieldValue.serverTimestamp(),
+    ...(active
+      ? { reactivatedAt: FieldValue.serverTimestamp() }
+      : { deactivatedAt: FieldValue.serverTimestamp() }),
+  });
+  return { success: true };
+});
+
+export const resetEmployeeTemporaryPassword = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to reset an employee password.');
+  await requireActiveOwner(request.auth.uid, request.auth.token.email_verified === true);
+  const employeeId = typeof request.data?.employeeId === 'string' ? request.data.employeeId : '';
+  const password = typeof request.data?.password === 'string' ? request.data.password : '';
+  if (!employeeId || !passwordComplexity.test(password)) {
+    throw new HttpsError('invalid-argument', 'A 10–128 character strong temporary password is required.');
+  }
+  const employeeRef = db.doc(`employees/${employeeId}`);
+  const employee = await employeeRef.get();
+  if (!employee.exists || employee.data()?.ownerId !== request.auth.uid) {
+    throw new HttpsError('not-found', 'Employee not found.');
+  }
+  await auth.updateUser(employeeId, { password });
+  await auth.revokeRefreshTokens(employeeId);
+  await employeeRef.update({ mustChangePassword: true, updatedAt: FieldValue.serverTimestamp() });
+  return { success: true };
+});
+
+export const completeEmployeePasswordChange = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to complete password setup.');
+  const employeeRef = db.doc(`employees/${request.auth.uid}`);
+  const employee = await employeeRef.get();
+  if (!employee.exists || employee.data()?.active !== true) throw new HttpsError('permission-denied', 'Employee account is inactive.');
+  await employeeRef.update({ mustChangePassword: false, updatedAt: FieldValue.serverTimestamp() });
+  return { success: true };
 });
 
 const supportedImage = (image: Buffer, mimeType: string) => {

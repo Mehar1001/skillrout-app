@@ -5,7 +5,7 @@ created: 2026-08-18T20:02:48Z
 ---
 # Expo Version Rule
 
-Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before writing any code.
+Read the exact versioned docs at https://docs.expo.dev/versions/v53.0.0/ before writing any code.
 
 ---
 
@@ -13,7 +13,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 
 ## 1. Role & Context
 You are building **Skillrout** in the `Skillrout` Expo/Firebase project.
-- Source of truth: `PRD.md`, `architecture.md`, `architecture_essentials.md`, `scaffold.md`.
+- Source of truth: `PRD.md`, `architecture.md`, `architecture_essentials.md`, `scaffold.md`, `agents.md`, `float.md`.
 - The existing Skillrout code is being extended and re-shaped. Do not preserve the old customer match/coupon flow unless explicitly asked.
 - Target: iOS, Android, and web (with web as dev/testing fallback).
 
@@ -36,7 +36,12 @@ You are building **Skillrout** in the `Skillrout` Expo/Firebase project.
 - Prefer `const` + arrow functions.
 - Use `expo-router` `useRouter()` and `useLocalSearchParams()`.
 - Cloud Functions go in `functions/src/index.ts`.
-- Use Firestore transactions for `submitSettlement` and `voidSettlement`.
+- `app/_layout.tsx` registers: `index`, `owner`, `(owner)`, `(employee)`.
+- Owner tabs in `app/(owner)/_layout.tsx`: `dashboard`, `stores`, `machines`, `employees`, `history`.
+- Employee flow screens: `select-store`, `visit`, `results`, `calculation`, `settlement`, `outcome`, `receipt`, `employee-history`.
+- Sign-in is a single screen `app/owner.tsx`; it detects the user's role and redirects employees to `/select-store`.
+- Employee creation calls the `createEmployee` Cloud Function directly from `app/(owner)/employees.tsx`; do **not** create a `services/employees.ts` unless explicitly asked.
+- Use Firestore transactions for `submitVisit` (and `voidVisit` once implemented).
 
 ## 4. UI/UX Design System
 
@@ -45,6 +50,7 @@ Clarity → Usability → Accessibility → Consistency → Visual Beauty.
 Every screen must answer in ~10 seconds: where am I, what matters, what action, what happens next.
 
 ### Color Palette
+The originally specified palette was:
 ```ts
 const colors = {
   primary: '#6B7C59',      // Muted Olive
@@ -63,6 +69,9 @@ const colors = {
   info: '#1E90FF',
 };
 ```
+
+**Current code discrepancy**: the runtime tokens in `constants/designTokens.ts` use `#8C6E5F` (primary), `#5F8C7B` (accent), and `#F4F1EA` (background). Do **not** change the code colors to match this palette unless explicitly asked. Use the tokens in `designTokens.ts` for any new UI.
+
 Apply the 60/30/10 rule: 60% background, 30% surface/neutrals, 10% primary + accent.
 
 ### Spacing
@@ -90,32 +99,42 @@ const fontSizes = { caption: 12, body: 14, h3: 16, h2: 21, h1: 34, display: 55 }
 - Respect `prefers-reduced-motion`.
 
 ## 5. Component Primitives
-Create and reuse these first:
+Create and reuse these first when they exist:
 - `Button` (primary/secondary/destructive/disabled/loading)
 - `Input` (with label, error, keyboard type)
-- `Select`
 - `Card`
-- `Badge` (status)
-- `Modal`
-- `MachineRow`
-- `VisitSummary`
+- `Modal` (use a Dialog-like abstraction)
 - `ReceiptView`
+- `MachineReadingCard` (use in place of the planned `MachineRow`)
+- `VisitTotals`
+- `VisitDatePicker`
+- `CurrencyInput`
+- `ThemedText` / `ThemedView`
 
-Before creating a one-off component, ask: can an existing primitive handle this?
+Planned primitives that are **not yet implemented**: `Select.tsx`, `Badge.tsx`, `MachineRow.tsx` (use `MachineReadingCard.tsx` instead), `VisitSummary.tsx`, `OwnerShell.tsx`. Before creating a one-off component, ask: can an existing primitive handle this?
 
-## 6. Testing & Verification
+## 6. Cloud Functions
+All Cloud Functions live in `functions/src/index.ts` and currently are:
+- `createEmployee`
+- `runVisit`
+- `setVisitSplit`
+- `submitVisit`
+
+Do not refer to the old `submitSettlement` / `voidSettlement` naming unless you are updating to match the current file.
+
+## 7. Testing & Verification
 - Verify every screen renders on web (`npx expo start --web`) before considering a feature done.
 - Confirm the current route is registered in `app/_layout.tsx`.
 - Run `npx tsc --noEmit` to catch type errors.
 - Test Firestore security rules in the emulator when possible.
 - Never commit `google-services.json`, `.env`, or private keys.
 
-## 7. Git
+## 8. Git
 - Use `git diff` and `git status` to review changes before committing.
 - One commit per logical step.
 - Commit messages focus on "why".
 - Do not commit to a remote unless explicitly asked.
 
-## 8. When Requirements Are Unclear
+## 9. When Requirements Are Unclear
 - Ask the user a focused question rather than guessing.
 - Document assumptions in code comments and in the plan.

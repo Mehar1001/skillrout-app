@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function IndexScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { user, role, loading } = useAuth();
+  const { user, role, mustChangePassword, loading } = useAuth();
 
   if (loading) {
     return (
@@ -24,7 +24,7 @@ export default function IndexScreen() {
   }
 
   if (!user || !role) return <Redirect href="/owner" />;
-  return <Redirect href={role === 'owner' ? '/dashboard' : '/select-store'} />;
+  return <Redirect href={role === 'owner' ? '/dashboard' : mustChangePassword ? '/change-password' as any : '/select-store'} />;
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({

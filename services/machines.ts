@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Machine } from '../types';
 
@@ -18,16 +18,21 @@ export const saveMachine = async (
   const id = machine.id || doc(getMachinesRef(ownerId, storeId)).id;
   const ref = doc(db, `owners/${ownerId}/stores/${storeId}/machines`, id);
   const data = {
-    machineNumber: machine.machineNumber || '',
-    name: machine.name || '',
+    machineNumber: machine.machineNumber?.trim() || '',
+    name: machine.name?.trim() || '',
     storeId,
-    lastSettledIn: machine.lastSettledIn ?? 0,
-    lastSettledOut: machine.lastSettledOut ?? 0,
-    lastSubmittedVisitId: null,
-    lastSubmittedAt: null,
     active: machine.active ?? true,
     updatedAt: serverTimestamp(),
-    ...(machine.id ? {} : { createdAt: serverTimestamp() }),
+    ...(machine.id
+      ? {}
+      : {
+          lastSettledIn: machine.lastSettledIn ?? 0,
+          lastSettledOut: machine.lastSettledOut ?? 0,
+          baselineVersion: 0,
+          lastSubmittedVisitId: null,
+          lastSubmittedAt: null,
+          createdAt: serverTimestamp(),
+        }),
   };
   await setDoc(ref, data, { merge: true });
   return id;
@@ -43,10 +48,17 @@ export const updateMachine = async (
   await updateDoc(ref, { ...updates, updatedAt: serverTimestamp() });
 };
 
-export const deleteMachine = async (
+export const setMachineActive = async (
   ownerId: string,
   storeId: string,
-  machineId: string
+  machineId: string,
+  active: boolean
 ): Promise<void> => {
-  await deleteDoc(doc(db, `owners/${ownerId}/stores/${storeId}/machines`, machineId));
+  await updateDoc(doc(db, `owners/${ownerId}/stores/${storeId}/machines`, machineId), {
+    active,
+    updatedAt: serverTimestamp(),
+    ...(active
+      ? { reactivatedAt: serverTimestamp() }
+      : { deactivatedAt: serverTimestamp() }),
+  });
 };

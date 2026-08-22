@@ -1,5 +1,5 @@
 import { onAuthStateChanged, signOut as firebaseSignOut, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebaseConfig';
 import { UserRole } from '../types';
@@ -10,6 +10,7 @@ interface AuthContextValue {
   ownerId: string | null;
   businessName: string | null;
   assignedStoreIds: string[];
+  mustChangePassword: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextValue>({
   ownerId: null,
   businessName: null,
   assignedStoreIds: [],
+  mustChangePassword: false,
   loading: true,
   signOut: async () => {},
 });
@@ -30,40 +32,90 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>([]);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
+    let unsubscribeProfile: (() => void) | undefined;
+    const clearProfile = () => {
+      setRole(null);
+      setOwnerId(null);
+      setBusinessName(null);
+      setAssignedStoreIds([]);
+      setMustChangePassword(false);
+    };
+    const unsubscribeAuth = onAuthStateChanged(auth, async u => {
+      unsubscribeProfile?.();
+      unsubscribeProfile = undefined;
       setUser(u);
-      if (u) {
-        const ownerSnap = await getDoc(doc(db, 'owners', u.uid));
+      setLoading(true);
+      if (!u) {
+        clearProfile();
+        setLoading(false);
+        return;
+      }
+      try {
+        await u.reload();
+        const ownerRef = doc(db, 'owners', u.uid);
+        const ownerSnap = await getDoc(ownerRef);
         if (ownerSnap.exists()) {
+          const owner = ownerSnap.data();
+          if (!u.emailVerified || owner.subscriptionStatus !== 'active' || owner.status === 'inactive') {
+            clearProfile();
+            await firebaseSignOut(auth);
+            return;
+          }
           setRole('owner');
           setOwnerId(u.uid);
-          setBusinessName(ownerSnap.data().businessName || null);
+          setBusinessName(owner.businessName || null);
           setAssignedStoreIds([]);
-        } else {
-          const empSnap = await getDoc(doc(db, 'employees', u.uid));
-          if (empSnap.exists()) {
-            setRole('employee');
-            setOwnerId(empSnap.data().ownerId || null);
-            setBusinessName(empSnap.data().businessName || null);
-            setAssignedStoreIds(empSnap.data().assignedStoreIds || []);
-          } else {
-            setRole(null);
-            setOwnerId(null);
-            setBusinessName(null);
-            setAssignedStoreIds([]);
-          }
+          unsubscribeProfile = onSnapshot(ownerRef, snapshot => {
+            const data = snapshot.data();
+            if (!snapshot.exists() || data?.subscriptionStatus !== 'active' || data?.status === 'inactive') {
+              clearProfile();
+              firebaseSignOut(auth);
+              return;
+            }
+            setBusinessName(data.businessName || null);
+          });
+          return;
         }
-      } else {
-        setRole(null);
-        setOwnerId(null);
-        setBusinessName(null);
-        setAssignedStoreIds([]);
+
+        const employeeRef = doc(db, 'employees', u.uid);
+        const employeeSnap = await getDoc(employeeRef);
+        const employee = employeeSnap.data();
+        if (!employeeSnap.exists() || employee?.active !== true || !employee.ownerId) {
+          clearProfile();
+          await firebaseSignOut(auth);
+          return;
+        }
+        setRole('employee');
+        setOwnerId(employee.ownerId);
+        setBusinessName(employee.businessName || null);
+        setAssignedStoreIds(employee.assignedStoreIds || []);
+        setMustChangePassword(employee.mustChangePassword === true);
+        unsubscribeProfile = onSnapshot(employeeRef, snapshot => {
+          const data = snapshot.data();
+          if (!snapshot.exists() || data?.active !== true || !data.ownerId) {
+            clearProfile();
+            firebaseSignOut(auth);
+            return;
+          }
+          setOwnerId(data.ownerId);
+          setBusinessName(data.businessName || null);
+          setAssignedStoreIds(data.assignedStoreIds || []);
+          setMustChangePassword(data.mustChangePassword === true);
+        });
+      } catch {
+        clearProfile();
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
+    return () => {
+      unsubscribeProfile?.();
+      unsubscribeAuth();
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -73,11 +125,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setOwnerId(null);
     setBusinessName(null);
     setAssignedStoreIds([]);
+    setMustChangePassword(false);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, role, ownerId, businessName, assignedStoreIds, loading, signOut: handleSignOut }}
+      value={{ user, role, ownerId, businessName, assignedStoreIds, mustChangePassword, loading, signOut: handleSignOut }}
     >
       {children}
     </AuthContext.Provider>

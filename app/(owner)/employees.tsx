@@ -12,6 +12,11 @@ import { listStores } from '../../services/stores';
 import { Employee, Store } from '../../types';
 
 const createEmployeeFn = httpsCallable(functions, 'createEmployee');
+const updateEmployeeAssignmentsFn = httpsCallable(functions, 'updateEmployeeAssignments');
+const setEmployeeActiveFn = httpsCallable(functions, 'setEmployeeActive');
+const resetEmployeeTemporaryPasswordFn = httpsCallable(functions, 'resetEmployeeTemporaryPassword');
+
+const passwordComplexity = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,128}$/;
 
 export default function EmployeesScreen() {
   const colors = useColors();
@@ -20,6 +25,7 @@ export default function EmployeesScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [saving, setSaving] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
@@ -43,33 +49,89 @@ export default function EmployeesScreen() {
     listStores(ownerId).then(data => setStores(data.filter(store => store.active)));
   }, [user, ownerId, fetchEmployees]);
 
-  const handleCreate = async () => {
-    if (!ownerId || !name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Required', 'Name, email, and password are required.');
+  const resetForm = () => {
+    setName('');
+    setEmail('');
+    setPassword('');
+    setAssignedStoreIds([]);
+    setEditingEmployee(null);
+  };
+
+  const startEdit = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setName(employee.name || '');
+    setEmail(employee.email || '');
+    setPassword('');
+    setAssignedStoreIds(employee.assignedStoreIds || []);
+  };
+
+  const handleSave = async () => {
+    if (!ownerId || !name.trim() || assignedStoreIds.length === 0) {
+      Alert.alert('Required', 'Name and at least one assigned store are required.');
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+    if (editingEmployee) {
+      if (password && !passwordComplexity.test(password)) {
+        Alert.alert('Weak Password', 'New temporary password must be 10–128 characters with a letter, number, and special character.');
+        return;
+      }
+      setSaving(true);
+      try {
+        await updateEmployeeAssignmentsFn({ employeeId: editingEmployee.id, name: name.trim(), assignedStoreIds });
+        if (password) {
+          await resetEmployeeTemporaryPasswordFn({ employeeId: editingEmployee.id, password });
+        }
+        Alert.alert('Updated', `${name.trim()} has been updated.`);
+        resetForm();
+        fetchEmployees();
+      } catch (e: any) {
+        Alert.alert('Error', e.message || 'Failed to update employee.');
+      } finally {
+        setSaving(false);
+      }
       return;
     }
-    if (assignedStoreIds.length === 0) {
-      Alert.alert('Required', 'Assign at least one store.');
+    if (!email.trim() || !passwordComplexity.test(password)) {
+      Alert.alert('Required', 'Email and a strong temporary password (10–128 chars) are required.');
       return;
     }
     setSaving(true);
     try {
       await createEmployeeFn({ email: email.trim(), name: name.trim(), password, assignedStoreIds });
       Alert.alert('Created', `Employee ${name.trim()} added.`);
-      setName('');
-      setEmail('');
-      setPassword('');
-      setAssignedStoreIds([]);
+      resetForm();
       fetchEmployees();
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to create employee.');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleActiveChange = (employee: Employee) => {
+    if (!ownerId) return;
+    const nextActive = !employee.active;
+    Alert.alert(
+      nextActive ? 'Reactivate Employee' : 'Deactivate Employee',
+      nextActive
+        ? `Reactivate ${employee.name}?`
+        : `Deactivate ${employee.name}? They will not be able to sign in or run visits until reactivated.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: nextActive ? 'Reactivate' : 'Deactivate',
+          style: nextActive ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              await setEmployeeActiveFn({ employeeId: employee.id, active: nextActive });
+              fetchEmployees();
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'Failed to update employee status.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -89,12 +151,13 @@ export default function EmployeesScreen() {
           placeholder="employee@example.com"
           keyboardType="email-address"
           autoCapitalize="none"
+          editable={!editingEmployee}
         />
         <Input
-          label="Password"
+          label={editingEmployee ? 'New temporary password (optional)' : 'Temporary password'}
           value={password}
           onChangeText={setPassword}
-          placeholder="At least 6 characters"
+          placeholder={editingEmployee ? 'Only when resetting' : 'At least 10 characters with letter, number, and special'}
           secureTextEntry
         />
         <Text style={styles.fieldLabel}>Assigned stores</Text>
@@ -121,11 +184,14 @@ export default function EmployeesScreen() {
           })}
         </View>
         <Button
-          title="Create Employee"
-          onPress={handleCreate}
+          title={editingEmployee ? 'Update Employee' : 'Create Employee'}
+          onPress={handleSave}
           disabled={saving}
           loading={saving}
         />
+        {editingEmployee ? (
+          <Button title="Cancel" onPress={resetForm} variant="secondary" disabled={saving} />
+        ) : null}
       </View>
 
       <Text style={styles.subtitle}>Existing employees</Text>
@@ -138,11 +204,16 @@ export default function EmployeesScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.rowName}>{item.name}</Text>
               <Text style={styles.rowEmail}>{item.email}</Text>
-              <Text style={styles.rowEmail}>{item.assignedStoreIds?.length || 0} store(s) assigned</Text>
+              <Text style={styles.rowEmail}>{item.assignedStoreIds?.length || 0} store(s) assigned · {item.active ? 'Active' : 'Inactive'}</Text>
             </View>
-            <Text style={[styles.status, { color: item.active ? colors.success : colors.textMuted }]}>
-              {item.active ? 'Active' : 'Inactive'}
-            </Text>
+            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+              <Button title="Edit" onPress={() => startEdit(item)} variant="secondary" />
+              <Button
+                title={item.active ? 'Deactivate' : 'Reactivate'}
+                onPress={() => handleActiveChange(item)}
+                variant={item.active ? 'danger' : 'accent'}
+              />
+            </View>
           </View>
         )}
       />
@@ -221,10 +292,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  status: {
-    fontSize: 13,
-    fontWeight: '600',
   },
   empty: {
     color: colors.textMuted,

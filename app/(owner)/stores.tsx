@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import { listStores, saveStore, deleteStore } from '../../services/stores';
+import { listStores, saveStore, setStoreActive } from '../../services/stores';
 import { Store } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
@@ -68,19 +68,26 @@ export default function StoresScreen() {
     fetchStores();
   };
 
-  const handleDelete = (id: string) => {
+  const handleActiveChange = (store: Store) => {
     if (!user || !ownerId) return;
-    Alert.alert('Confirm', 'Delete this store?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteStore(ownerId, id);
-          fetchStores();
+    const nextActive = !store.active;
+    Alert.alert(
+      nextActive ? 'Reactivate Store' : 'Deactivate Store',
+      nextActive
+        ? `Reactivate ${store.name}?`
+        : `Deactivate ${store.name}? Historical visits will remain available, but employees cannot start new visits here.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: nextActive ? 'Reactivate' : 'Deactivate',
+          style: nextActive ? 'default' : 'destructive',
+          onPress: async () => {
+            await setStoreActive(ownerId, store.id, nextActive);
+            fetchStores();
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   return (
@@ -137,11 +144,15 @@ export default function StoresScreen() {
             <Text style={styles.storeName}>{store.name}</Text>
             <Text style={styles.storeAddress}>{store.address}</Text>
             <Text style={styles.storeSplit}>
-              Store {store.defaultStorePercent}% · Vendor {store.defaultVendorPercent}%
+              Store {store.defaultStorePercent}% · Vendor {store.defaultVendorPercent}% · {store.active ? 'Active' : 'Inactive'}
             </Text>
             <View style={styles.actions}>
               <Button title="Edit" onPress={() => handleEdit(store)} variant="secondary" />
-              <Button title="Delete" onPress={() => handleDelete(store.id)} variant="danger" />
+              <Button
+                title={store.active ? 'Deactivate' : 'Reactivate'}
+                onPress={() => handleActiveChange(store)}
+                variant={store.active ? 'danger' : 'accent'}
+              />
             </View>
           </Card>
         ))

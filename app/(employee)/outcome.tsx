@@ -7,7 +7,7 @@ import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../helpers/formatters';
 import { useVisit } from '../../hooks/useVisit';
-import { markPrinted, submitVisit } from '../../services/visits';
+import { submitVisit } from '../../services/visits';
 import { useState } from 'react';
 
 export default function OutcomeScreen() {
@@ -29,7 +29,6 @@ export default function OutcomeScreen() {
     if (!user || !ownerId) return;
     setWorking(true);
     try {
-      await markPrinted(ownerId, visit.id, user.uid);
       router.push(`/receipt?visitId=${visit.id}` as any);
     } catch (e: any) {
       Alert.alert('Print Error', e.message || 'Receipt preview could not be opened.');
@@ -43,7 +42,6 @@ export default function OutcomeScreen() {
     setWorking(true);
     try {
       await submitVisit(ownerId, visit.id, visit.storePercent, visit.vendorPercent);
-      await markPrinted(ownerId, visit.id, user.uid);
       router.replace(`/receipt?visitId=${visit.id}` as any);
     } catch (e: any) {
       Alert.alert('Submit Error', e.message || 'Settlement could not be submitted.');

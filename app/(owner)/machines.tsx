@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores } from '../../services/stores';
-import { listMachines, saveMachine, deleteMachine } from '../../services/machines';
+import { listMachines, saveMachine, setMachineActive } from '../../services/machines';
 import { Store, Machine } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
@@ -64,19 +64,26 @@ export default function MachinesScreen() {
     listMachines(ownerId, selectedStoreId).then(setMachines);
   };
 
-  const handleDelete = (machine: Machine) => {
+  const handleActiveChange = (machine: Machine) => {
     if (!user || !ownerId || !selectedStoreId) return;
-    Alert.alert('Confirm', `Delete machine ${machine.machineNumber}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteMachine(ownerId, selectedStoreId, machine.id);
-          listMachines(ownerId, selectedStoreId).then(setMachines);
+    const nextActive = !machine.active;
+    Alert.alert(
+      nextActive ? 'Reactivate Machine' : 'Deactivate Machine',
+      nextActive
+        ? `Reactivate machine ${machine.machineNumber}?`
+        : `Deactivate machine ${machine.machineNumber}? Historical visits and settled readings will remain unchanged.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: nextActive ? 'Reactivate' : 'Deactivate',
+          style: nextActive ? 'default' : 'destructive',
+          onPress: async () => {
+            await setMachineActive(ownerId, selectedStoreId, machine.id, nextActive);
+            listMachines(ownerId, selectedStoreId).then(setMachines);
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   return (
@@ -130,6 +137,8 @@ export default function MachinesScreen() {
                   onChangeValue={lastSettledIn =>
                     setForm(prev => ({ ...prev, lastSettledIn: lastSettledIn ?? 0 }))
                   }
+                  disabled={Boolean(form.id)}
+                  helperText={form.id ? 'Settled readings cannot be changed during a normal edit.' : undefined}
                 />
               </View>
               <View style={styles.half}>
@@ -139,6 +148,8 @@ export default function MachinesScreen() {
                   onChangeValue={lastSettledOut =>
                     setForm(prev => ({ ...prev, lastSettledOut: lastSettledOut ?? 0 }))
                   }
+                  disabled={Boolean(form.id)}
+                  helperText={form.id ? 'Settled readings cannot be changed during a normal edit.' : undefined}
                 />
               </View>
             </View>
@@ -164,11 +175,15 @@ export default function MachinesScreen() {
                   {machine.machineNumber} {machine.name ? `— ${machine.name}` : ''}
                 </Text>
                 <Text style={styles.machineReadings}>
-                  Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)}
+                  Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)} · {machine.active ? 'Active' : 'Inactive'}
                 </Text>
                 <View style={styles.actions}>
                   <Button title="Edit" onPress={() => handleEdit(machine)} variant="secondary" />
-                  <Button title="Delete" onPress={() => handleDelete(machine)} variant="danger" />
+                  <Button
+                    title={machine.active ? 'Deactivate' : 'Reactivate'}
+                    onPress={() => handleActiveChange(machine)}
+                    variant={machine.active ? 'danger' : 'accent'}
+                  />
                 </View>
               </Card>
             ))

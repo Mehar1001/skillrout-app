@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
@@ -9,14 +9,23 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function EmployeeLayout() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { user, role, loading, signOut } = useAuth();
+  const { user, role, mustChangePassword, loading, signOut } = useAuth();
   const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
-    if (!loading && (!user || !role)) router.replace('/owner');
-  }, [user, role, loading, router]);
+    if (loading) return;
+    if (!user || role !== 'employee') {
+      router.replace('/owner');
+      return;
+    }
+    const currentRoute = segments[segments.length - 1];
+    if (role === 'employee' && mustChangePassword && currentRoute !== 'change-password') {
+      router.replace('/change-password' as any);
+    }
+  }, [user, role, mustChangePassword, loading, router, segments]);
 
-  if (loading || !user || !role) return null;
+  if (loading || !user || role !== 'employee') return null;
 
   const handleSignOut = async () => {
     await signOut();
@@ -37,6 +46,7 @@ export default function EmployeeLayout() {
         ),
       }}
     >
+      <Stack.Screen name="change-password" options={{ title: 'Secure Your Account', headerBackVisible: false }} />
       <Stack.Screen name="select-store" options={{ title: 'Select Store', headerBackVisible: false }} />
       <Stack.Screen name="visit" options={{ title: 'Enter Readings' }} />
       <Stack.Screen name="results" options={{ title: 'Comparison' }} />

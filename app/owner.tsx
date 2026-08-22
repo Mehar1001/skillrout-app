@@ -6,8 +6,10 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signOut,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -25,9 +27,11 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { type Colors, fontSizes, lineHeights, radii, spacing } from '../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
-import { auth, db } from '../firebaseConfig';
+import { auth, db, functions } from '../firebaseConfig';
 
-const passwordComplexityRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+const passwordComplexityRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,128}$/;
+const registerOwnerProfile = httpsCallable(functions, 'registerOwnerProfile');
+const provisionOwner = httpsCallable(functions, 'provisionOwner');
 
 export default function OwnerScreen() {
   const colors = useColors();
@@ -41,15 +45,19 @@ export default function OwnerScreen() {
   const ScreenContainer = Platform.OS === 'web' ? View : Pressable;
 
   const handleRegistration = async () => {
-    if (email.trim() === '' || password.trim() === '') {
-      Alert.alert('Validation Error', 'Both Email and Password are required.');
+    if (!ownerName.trim() || email.trim() === '' || password.trim() === '') {
+      Alert.alert('Validation Error', 'Business name, email, and password are required.');
+      return;
+    }
+    if (ownerName.trim().length > 120) {
+      Alert.alert('Validation Error', 'Business name must be 120 characters or fewer.');
       return;
     }
 
     if (!passwordComplexityRegex.test(password)) {
       Alert.alert(
         'Weak Password',
-        'Password must be at least 6 characters long and include at least one letter, one number, and one special character (e.g., @$!%*?&).'
+        'Password must be 10–128 characters and include at least one letter, one number, and one special character (e.g., @$!%*?&).'
       );
       return;
     }
@@ -57,14 +65,15 @@ export default function OwnerScreen() {
     Keyboard.dismiss();
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       const user = userCredential.user;
-      await sendEmailVerification(user);
-      await setDoc(doc(db, 'owners', user.uid), {
-        email: user.email,
-        businessName: ownerName.trim(),
-        subscriptionStatus: 'active',
-      });
+      try {
+        await registerOwnerProfile({ businessName: ownerName.trim() });
+        await sendEmailVerification(user);
+      } catch (profileError) {
+        await user.delete().catch(() => undefined);
+        throw profileError;
+      }
       Alert.alert(
         'Verification Email Sent!',
         'Your account has been created. Please check your email and click the verification link.'
@@ -107,22 +116,26 @@ export default function OwnerScreen() {
             { text: 'Resend Email', onPress: () => sendEmailVerification(user) },
           ]
         );
-        auth.signOut();
+        await signOut(auth);
         setIsLoading(false);
         return;
       }
 
-      const ownerSnap = await getDoc(doc(db, 'owners', user.uid));
+      let ownerSnap = await getDoc(doc(db, 'owners', user.uid));
+      if (ownerSnap.exists()) {
+        await provisionOwner();
+        ownerSnap = await getDoc(doc(db, 'owners', user.uid));
+      }
       if (!ownerSnap.exists()) {
         const employeeSnap = await getDoc(doc(db, 'employees', user.uid));
         if (!employeeSnap.exists() || employeeSnap.data().active !== true) {
           Alert.alert('Access Denied', 'Your account is not active in Skillrout.');
-          auth.signOut();
+          await signOut(auth);
           setIsLoading(false);
           return;
         }
         Alert.alert('Welcome Back!', `Logged in as ${employeeSnap.data().name || 'Employee'}.`);
-        router.replace('/select-store' as any);
+        router.replace((employeeSnap.data().mustChangePassword ? '/change-password' : '/select-store') as any);
         return;
       }
 
@@ -131,18 +144,15 @@ export default function OwnerScreen() {
 
       if (ownerData.subscriptionStatus !== 'active') {
         Alert.alert('Subscription Inactive', 'Your account is not active. Please contact support.');
-        auth.signOut();
+        await signOut(auth);
         setIsLoading(false);
         return;
       }
 
-      const ownerPasswordKey = `ownerPassword_${user.uid}`;
-      const reportingPasswordKey = `reportingPassword_${user.uid}`;
-      const lastKnownPassword = await AsyncStorage.getItem(ownerPasswordKey);
-      if (lastKnownPassword && lastKnownPassword !== password) {
-        await AsyncStorage.removeItem(reportingPasswordKey);
-      }
-      await AsyncStorage.setItem(ownerPasswordKey, password);
+      await AsyncStorage.multiRemove([
+        `ownerPassword_${user.uid}`,
+        `reportingPassword_${user.uid}`,
+      ]);
       Alert.alert('Welcome Back!', `Logged in as ${fetchedOwnerName}.`);
       router.replace('/dashboard' as any);
     } catch (error: any) {
@@ -264,7 +274,7 @@ export default function OwnerScreen() {
               <View style={styles.requirements}>
                 <Text style={styles.requirementsTitle}>Password requirements</Text>
                 <Text style={styles.requirementsText}>
-                  • At least 6 characters{'\n'}
+                  • At least 10 characters{'\n'}
                   • One letter, one number, one special character (@$!%*?&)
                 </Text>
               </View>

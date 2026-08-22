@@ -20,6 +20,9 @@ export interface Employee {
   ownerId: string;
   businessName?: string;
   assignedStoreIds: string[];
+  mustChangePassword?: boolean;
+  deactivatedAt?: Timestamp;
+  reactivatedAt?: Timestamp;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -31,6 +34,8 @@ export interface Store {
   active: boolean;
   defaultStorePercent: number;
   defaultVendorPercent: number;
+  deactivatedAt?: Timestamp;
+  reactivatedAt?: Timestamp;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -44,7 +49,10 @@ export interface Machine {
   lastSettledOut: number;
   lastSubmittedVisitId: string | null;
   lastSubmittedAt: Timestamp | null;
+  baselineVersion?: number;
   active: boolean;
+  deactivatedAt?: Timestamp;
+  reactivatedAt?: Timestamp;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }

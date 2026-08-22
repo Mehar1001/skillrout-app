@@ -27,8 +27,8 @@ export default function ReceiptScreen() {
     if (!user || !ownerId) return;
     setPrinting(true);
     try {
-      await markPrinted(ownerId, visit.id, user.uid);
       await Print.printAsync({ html: generateReceiptHtml(visit) });
+      await markPrinted(ownerId, visit.id, user.uid);
     } catch (e: any) {
       Alert.alert('Print Error', e.message || 'Receipt could not be printed.');
     } finally {

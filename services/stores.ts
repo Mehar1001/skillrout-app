@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, documentId, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, documentId, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Store } from '../types';
 
@@ -62,6 +62,16 @@ export const updateStore = async (
   await updateDoc(ref, { ...updates, updatedAt: serverTimestamp() });
 };
 
-export const deleteStore = async (ownerId: string, storeId: string): Promise<void> => {
-  await deleteDoc(doc(db, `owners/${ownerId}/stores`, storeId));
+export const setStoreActive = async (
+  ownerId: string,
+  storeId: string,
+  active: boolean
+): Promise<void> => {
+  await updateDoc(doc(db, `owners/${ownerId}/stores`, storeId), {
+    active,
+    updatedAt: serverTimestamp(),
+    ...(active
+      ? { reactivatedAt: serverTimestamp() }
+      : { deactivatedAt: serverTimestamp() }),
+  });
 };
