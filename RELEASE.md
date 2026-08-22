@@ -3,7 +3,7 @@
 ## Current snapshot
 
 - Branch: `production-hardening`
-- Commit: `8807b9f18583c2a5e4176903d8bc9ec29a314193`
+- Commit: `34342a8b8fe8895e2c6f671f31ddd9d86435bc58`
 - Version: 1.0.0
 
 ## Environments
@@ -13,6 +13,15 @@
 | default   | `skillrout`         | live            | Production data lives here |
 | production| `skillrout`         | live            | Same as default           |
 | staging   | `skillrout-staging` | live / preview  | Synthetic/sanitized data only |
+
+## Current deployment status
+
+- `skillrout-staging` Firestore rules deployed and default database created (`nam5`).
+- `skillrout-staging` Hosting live site deployed to https://skillrout-staging.web.app.
+- `skillrout-staging` Auth is enabled (email/password).
+- `skillrout-staging` Storage is not set up yet; must be enabled via console.
+- `skillrout-staging` Functions cannot deploy until the project is upgraded to the Blaze plan.
+- Production (`skillrout`) has not been touched.
 
 ## Pre-deploy checklist
 
