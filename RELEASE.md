@@ -3,7 +3,7 @@
 ## Current snapshot
 
 - Branch: `production-hardening`
-- Commit: `c9aff61c06815768e2a50eec937986e5f15a03bc`
+- Commit: `99f755dfe191957f22865435cf098faaf1bfeafa`
 - Version: 1.0.0
 
 ## Environments
@@ -16,17 +16,24 @@
 
 ## Current deployment status
 
-- `skillrout-staging` Firestore rules deployed and default database created (`nam5`).
-- `skillrout-staging` Hosting live site deployed to https://skillrout-staging.web.app.
-- `skillrout-staging` Auth is enabled (email/password).
-- `skillrout-staging` Firestore rules deployed and default database created (`nam5`).
-- `skillrout-staging` Storage default bucket set up and `storage.rules` deployed.
-- `skillrout-staging` Auth enabled (email/password).
-- `skillrout-staging` Hosting live site deployed to https://skillrout-staging.web.app.
-- `skillrout-staging` All Cloud Functions (v2, Node.js 22) deployed to `us-central1`.
-- `skillrout-staging` Artifact Registry cleanup policy configured.
-- `skillrout-staging` Still to enable: **Cloud Vision API** for OCR (`extractReceiptReadings`).
-- Production (`skillrout`) has not been touched.
+### Staging (`skillrout-staging`)
+
+- Firestore rules deployed and default database created (`nam5`).
+- Storage default bucket set up and `storage.rules` deployed.
+- Auth enabled (email/password).
+- Hosting live site: https://skillrout-staging.web.app.
+- All Cloud Functions (v2, Node.js 22) deployed to `us-central1`.
+- Artifact Registry cleanup policy configured.
+- Cloud Vision API enabled for OCR (`extractReceiptReadings`).
+
+### Production (`skillrout`)
+
+- Firestore rules deployed to `cloud.firestore`.
+- Cloud Functions (v2, Node.js 22) deployed and all callable endpoints active.
+- Cloud Vision API enabled for OCR.
+- Hosting live site: https://skillrout.web.app.
+- Firestore backup created at `gs://skillrout-backups/firestore-20260822-164737` before backend changes.
+- **Storage is not set up yet** — must be enabled via console before photo upload/receipt OCR works.
 
 ## Pre-deploy checklist
 
