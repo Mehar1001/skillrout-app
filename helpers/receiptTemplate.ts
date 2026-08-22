@@ -40,7 +40,7 @@ export const generateReceiptHtml = (visit: Visit): string => {
           .machine { padding-bottom: 6px; border-bottom: 1px dashed #C8C4BB; }
           .row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
           .strong { font-weight: 700; }
-          .status { margin-top: 10px; padding: 7px; border: 1px solid #6B7C59; color: #445238; font-weight: 700; text-align: center; }
+          .status { margin-top: 10px; padding: 7px; border: 1px solid #7B5BB8; color: #5C4499; font-weight: 700; text-align: center; }
         </style>
       </head>
       <body>

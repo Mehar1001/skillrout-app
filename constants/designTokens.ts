@@ -46,9 +46,9 @@ export const letterSpacings = {
 } as const;
 
 export const darkColors = {
-  primary: '#C51C3A',
-  primaryHover: '#A0152D',
-  primarySubtle: 'rgba(197, 28, 58, 0.12)',
+  primary: '#9B7ED1',
+  primaryHover: '#8266B8',
+  primarySubtle: 'rgba(155, 126, 209, 0.12)',
 
   accent: '#F0C82D',
   accentDark: '#B8860B',
@@ -71,16 +71,16 @@ export const darkColors = {
   warning: '#FF9F0A',
   info: '#5AC8FA',
 
-  glowPrimary: 'rgba(197, 28, 58, 0.35)',
+  glowPrimary: 'rgba(155, 126, 209, 0.35)',
   glowAccent: 'rgba(240, 200, 45, 0.35)',
   glowSuccess: 'rgba(0, 168, 107, 0.35)',
   glowError: 'rgba(255, 59, 48, 0.35)',
 } as const;
 
 export const lightColors = {
-  primary: '#C51C3A',
-  primaryHover: '#A0152D',
-  primarySubtle: 'rgba(197, 28, 58, 0.08)',
+  primary: '#7B5BB8',
+  primaryHover: '#6A4CA8',
+  primarySubtle: 'rgba(123, 91, 184, 0.08)',
 
   accent: '#B8860B',
   accentDark: '#8A6A0B',
@@ -103,7 +103,7 @@ export const lightColors = {
   warning: '#C27D0A',
   info: '#0A7EA4',
 
-  glowPrimary: 'rgba(197, 28, 58, 0.12)',
+  glowPrimary: 'rgba(123, 91, 184, 0.12)',
   glowAccent: 'rgba(184, 134, 11, 0.12)',
   glowSuccess: 'rgba(0, 122, 77, 0.12)',
   glowError: 'rgba(196, 30, 58, 0.12)',

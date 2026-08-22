@@ -31,7 +31,7 @@ export default function EmployeeLayout() {
         headerTintColor: colors.textPrimary,
         headerRight: () => (
           <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.logout}>
-            <Ionicons name="log-out-outline" size={20} color={colors.accentDark} />
+            <Ionicons name="log-out-outline" size={20} color={colors.accent} />
             <Text style={styles.logoutText}>Log out</Text>
           </Pressable>
         ),
@@ -65,7 +65,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   logoutText: {
-    color: colors.accentDark,
+    color: colors.accent,
     fontSize: fontSizes.caption,
     fontWeight: '600',
   },

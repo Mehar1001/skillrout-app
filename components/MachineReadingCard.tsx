@@ -56,7 +56,7 @@ export const MachineReadingCard = ({
             </View>
           ) : (
             <Pressable accessibilityRole="button" onPress={onTakePhoto} style={styles.cameraButton}>
-              <Ionicons name="camera-outline" color={colors.primary} size={22} />
+              <Ionicons name="camera-outline" color={colors.accent} size={22} />
               <Text style={styles.cameraText}>Photo</Text>
             </Pressable>
           )}

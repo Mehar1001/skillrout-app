@@ -30,12 +30,12 @@ export default function OwnerLayout() {
         headerTitleStyle: styles.headerTitle,
         headerRight: () => (
           <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.logout}>
-            <Ionicons name="log-out-outline" size={20} color={colors.accentDark} />
+            <Ionicons name="log-out-outline" size={20} color={colors.accent} />
             <Text style={styles.logoutText}>Log out</Text>
           </Pressable>
         ),
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.primary,
         tabBarHideOnKeyboard: true,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
@@ -103,7 +103,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   logoutText: {
-    color: colors.accentDark,
+    color: colors.accent,
     fontSize: fontSizes.body,
     fontWeight: '600',
   },
