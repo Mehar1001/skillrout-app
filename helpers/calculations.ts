@@ -1,6 +1,6 @@
 import { Machine, MachineReadingDraft, VisitMachine } from '../types';
 
-export const round2 = (value: number): number => Math.round(value * 100) / 100;
+export const round2 = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 export const calculateMachine = (
   lastSettledIn: number,
