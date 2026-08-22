@@ -12,7 +12,8 @@ initializeApp(); // Called directly
 const db = getFirestore(); // Corrected: Get Firestore instance directly
 const auth = getAuth();
 
-const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+import { calculateMachine, calculateVisit, round2 } from './calculations.js';
+
 const passwordComplexity = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,128}$/;
 
 const requireActiveOwner = async (uid: string, emailVerified: boolean) => {
@@ -444,8 +445,7 @@ export const runVisit = onCall(async (request: CallableRequest) => {
       if (reading.ocrScanId && !/^[a-f0-9]{20}$/.test(reading.ocrScanId)) {
         throw new HttpsError('invalid-argument', 'Invalid OCR scan reference.');
       }
-      const newIn = round2(presentIn - machine.lastSettledIn);
-      const newOut = round2(presentOut - machine.lastSettledOut);
+      const { newIn, newOut, machineNet } = calculateMachine(machine as any, presentIn, presentOut);
       return {
         machineId: machineDoc.id,
         machineNumber: machine.machineNumber,
@@ -456,7 +456,7 @@ export const runVisit = onCall(async (request: CallableRequest) => {
         presentOut,
         newIn,
         newOut,
-        machineNet: round2(newIn - newOut),
+        machineNet,
         ...(reading.photoUrl ? { photoUrl: reading.photoUrl } : {}),
         ...(reading.photoPath ? { photoPath: reading.photoPath } : {}),
         readingSource: reading.readingSource === 'ocr_reviewed' ? 'ocr_reviewed' : 'manual',
@@ -464,17 +464,14 @@ export const runVisit = onCall(async (request: CallableRequest) => {
       };
     });
 
-    const totalNewIn = round2(visitMachines.reduce((sum, machine) => sum + machine.newIn, 0));
-    const totalNewOut = round2(visitMachines.reduce((sum, machine) => sum + machine.newOut, 0));
-    const totalNet = round2(totalNewIn - totalNewOut);
     const store = storeDoc.data()!;
     const storePercent = Number(store.defaultStorePercent);
     const vendorPercent = Number(store.defaultVendorPercent);
     if (storePercent + vendorPercent !== 100) {
       throw new HttpsError('failed-precondition', 'Store percentages must total 100 before RUN.');
     }
-    const storeAmount = round2(totalNet * (storePercent / 100));
-    const vendorAmount = round2(totalNet - storeAmount);
+    const { totalNewIn, totalNewOut, totalNet, result, storeAmount, vendorAmount, cashDueLocation } =
+      calculateVisit(visitMachines, storePercent);
 
     transaction.set(visitRef, {
       storeId,
@@ -487,12 +484,12 @@ export const runVisit = onCall(async (request: CallableRequest) => {
       totalNewIn,
       totalNewOut,
       totalNet,
-      result: totalNet > 0 ? 'positive' : totalNet < 0 ? 'negative' : 'zero',
+      result,
       storePercent,
       vendorPercent,
       storeAmount,
       vendorAmount,
-      cashDueLocation: round2(totalNewOut + storeAmount),
+      cashDueLocation,
       visitStatus: 'completed',
       settlementStatus: 'not_submitted',
       printStatus: 'not_printed',
@@ -531,14 +528,13 @@ export const setVisitSplit = onCall(async (request: CallableRequest) => {
     if (visit.settlementStatus === 'submitted') {
       throw new HttpsError('failed-precondition', 'Submitted settlement percentages cannot be changed.');
     }
-    const storeAmount = round2(visit.totalNet * (storePercent / 100));
-    const vendorAmount = round2(visit.totalNet - storeAmount);
+    const { storeAmount, vendorAmount, cashDueLocation } = calculateVisit(visit.machines, storePercent);
     transaction.update(visitRef, {
       storePercent,
       vendorPercent,
       storeAmount,
       vendorAmount,
-      cashDueLocation: round2(visit.totalNewOut + storeAmount),
+      cashDueLocation,
     });
   });
   return { success: true };
@@ -600,8 +596,7 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
       }
     });
 
-    const storeAmount = round2(visit.totalNet * (storePercent / 100));
-    const vendorAmount = round2(visit.totalNet - storeAmount);
+    const { storeAmount, vendorAmount, cashDueLocation } = calculateVisit(visit.machines, storePercent);
 
     machineRefs.forEach((machineRef: DocumentReference, index: number) => {
       const machine = visit.machines[index];
@@ -618,7 +613,7 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
       vendorPercent,
       storeAmount,
       vendorAmount,
-      cashDueLocation: round2(visit.totalNewOut + storeAmount),
+      cashDueLocation,
       settlementStatus: 'submitted',
       settlement: {
         submittedAt: FieldValue.serverTimestamp(),
