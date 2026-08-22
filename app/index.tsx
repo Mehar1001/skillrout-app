@@ -1,9 +1,12 @@
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
-import { colors, fontSizes, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, spacing } from '../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function IndexScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { user, role, loading } = useAuth();
 
   if (loading) {
@@ -24,7 +27,7 @@ export default function IndexScreen() {
   return <Redirect href={role === 'owner' ? '/dashboard' : '/select-store'} />;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',

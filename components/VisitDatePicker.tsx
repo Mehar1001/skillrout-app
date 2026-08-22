@@ -1,7 +1,8 @@
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fontSizes, radii, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, radii, spacing } from '../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 
 interface VisitDatePickerProps {
   value: string;
@@ -10,6 +11,8 @@ interface VisitDatePickerProps {
 }
 
 export const VisitDatePicker = ({ value, onChange, error }: VisitDatePickerProps) => {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const [open, setOpen] = useState(false);
   const options = useMemo(
     () => Array.from({ length: 8 }, (_, index) => dayjs().subtract(index, 'day')),
@@ -64,7 +67,7 @@ export const VisitDatePicker = ({ value, onChange, error }: VisitDatePickerProps
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   wrapper: {
     marginBottom: spacing.lg,
   },

@@ -3,10 +3,13 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function OwnerDashboard() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { user } = useAuth();
   const router = useRouter();
 
@@ -52,7 +55,7 @@ export default function OwnerDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     backgroundColor: colors.background,

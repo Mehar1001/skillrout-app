@@ -4,7 +4,8 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 're
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
-import { colors, fontSizes, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { calculateVisit } from '../../helpers/calculations';
 import { formatCurrency } from '../../helpers/formatters';
@@ -13,6 +14,8 @@ import { useVisit } from '../../hooks/useVisit';
 import { saveVisitSplit } from '../../services/visits';
 
 export default function SettlementScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { visitId } = useLocalSearchParams<{ visitId: string }>();
   const { ownerId } = useAuth();
   const router = useRouter();
@@ -114,15 +117,15 @@ export default function SettlementScreen() {
   );
 }
 
-const Center = ({ text, action }: { text: string; action?: () => void }) => (
+const Center = ({ text, action }: { text: string; action?: () => void }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.center}>
     {!action ? <ActivityIndicator size="large" color={colors.primary} /> : null}
     <Text style={action ? styles.error : styles.centerText}>{text}</Text>
     {action ? <Button title="Try Again" onPress={action} /> : null}
   </View>
-);
+); };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

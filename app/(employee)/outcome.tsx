@@ -2,7 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../helpers/formatters';
 import { useVisit } from '../../hooks/useVisit';
@@ -10,6 +11,8 @@ import { markPrinted, submitVisit } from '../../services/visits';
 import { useState } from 'react';
 
 export default function OutcomeScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { visitId } = useLocalSearchParams<{ visitId: string }>();
   const { user, ownerId } = useAuth();
   const router = useRouter();
@@ -87,22 +90,22 @@ export default function OutcomeScreen() {
   );
 }
 
-const Summary = ({ label, value, emphasis = false }: { label: string; value: number; emphasis?: boolean }) => (
+const Summary = ({ label, value, emphasis = false }: { label: string; value: number; emphasis?: boolean }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.summaryRow}>
     <Text style={styles.summaryLabel}>{label}</Text>
     <Text style={[styles.summaryValue, emphasis ? styles.summaryEmphasis : null]}>{formatCurrency(value)}</Text>
   </View>
-);
+); };
 
-const Center = ({ text, action }: { text: string; action?: () => void }) => (
+const Center = ({ text, action }: { text: string; action?: () => void }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.center}>
     {!action ? <ActivityIndicator size="large" color={colors.primary} /> : null}
     <Text style={action ? styles.error : styles.centerText}>{text}</Text>
     {action ? <Button title="Try Again" onPress={action} /> : null}
   </View>
-);
+); };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

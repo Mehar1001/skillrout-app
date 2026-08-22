@@ -2,10 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, fontSizes, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function OwnerLayout() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { user, role, loading, signOut } = useAuth();
   const router = useRouter();
 
@@ -77,7 +80,7 @@ export default function OwnerLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   header: {
     backgroundColor: colors.background,
   },

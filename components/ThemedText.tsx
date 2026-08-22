@@ -1,31 +1,24 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { useColors } from '@/hooks/useColors';
+import { fontSizes, lineHeights } from '@/constants/designTokens';
 
 export type ThemedTextProps = TextProps & {
-  lightColor?: string;
-  darkColor?: string;
   type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
 };
 
-export function ThemedText({
-  style,
-  lightColor,
-  darkColor,
-  type = 'default',
-  ...rest
-}: ThemedTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+export function ThemedText({ style, type = 'default', ...rest }: ThemedTextProps) {
+  const colors = useColors();
 
   return (
     <Text
       style={[
-        { color },
+        { color: colors.textPrimary },
         type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
+        type === 'title' ? [styles.title, { color: colors.accent }] : undefined,
         type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
+        type === 'subtitle' ? [styles.subtitle, { color: colors.textSecondary }] : undefined,
+        type === 'link' ? [styles.link, { color: colors.info }] : undefined,
         style,
       ]}
       {...rest}
@@ -35,26 +28,26 @@ export function ThemedText({
 
 const styles = StyleSheet.create({
   default: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
   },
   defaultSemiBold: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
     fontWeight: '600',
   },
   title: {
-    fontSize: 32,
+    fontSize: fontSizes.h1,
     fontWeight: 'bold',
-    lineHeight: 32,
+    lineHeight: lineHeights.h1,
   },
   subtitle: {
-    fontSize: 20,
+    fontSize: fontSizes.h2,
     fontWeight: 'bold',
+    lineHeight: lineHeights.h2,
   },
   link: {
-    lineHeight: 30,
-    fontSize: 16,
-    color: '#0a7ea4',
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
   },
 });

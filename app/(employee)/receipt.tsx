@@ -3,7 +3,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { ReceiptView } from '../../components/ReceiptView';
-import { colors, fontSizes, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateReceiptHtml } from '../../helpers/receiptTemplate';
 import { useVisit } from '../../hooks/useVisit';
@@ -11,6 +12,8 @@ import { markPrinted } from '../../services/visits';
 import { useState } from 'react';
 
 export default function ReceiptScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { visitId } = useLocalSearchParams<{ visitId: string }>();
   const { user, ownerId } = useAuth();
   const router = useRouter();
@@ -46,15 +49,15 @@ export default function ReceiptScreen() {
   );
 }
 
-const Center = ({ text, action }: { text: string; action?: () => void }) => (
+const Center = ({ text, action }: { text: string; action?: () => void }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.center}>
     {!action ? <ActivityIndicator size="large" color={colors.primary} /> : null}
     <Text style={action ? styles.error : styles.centerText}>{text}</Text>
     {action ? <Button title="Try Again" onPress={action} /> : null}
   </View>
-);
+); };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

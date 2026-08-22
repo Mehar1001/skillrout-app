@@ -4,7 +4,8 @@ import { calculateMachine } from '../helpers/calculations';
 import { formatCurrency } from '../helpers/formatters';
 import { validatePresentReading } from '../helpers/validators';
 import { Machine, MachineReadingDraft } from '../types';
-import { colors, fontSizes, radii, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, radii, spacing } from '../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { Card } from './Card';
 import { CurrencyInput } from './CurrencyInput';
 
@@ -25,6 +26,8 @@ export const MachineReadingCard = ({
   onRemovePhoto,
   showRequiredErrors = false,
 }: MachineReadingCardProps) => {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const inError = reading.presentIn === null && !showRequiredErrors
     ? null
     : validatePresentReading(reading.presentIn, machine.lastSettledIn, 'IN');
@@ -101,14 +104,14 @@ export const MachineReadingCard = ({
   );
 };
 
-const ActivityValue = ({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) => (
+const ActivityValue = ({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.activityItem}>
     <Text style={styles.activityLabel}>{label}</Text>
     <Text style={[styles.activityValue, emphasis ? styles.activityEmphasis : null]}>{value}</Text>
   </View>
-);
+); };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   card: {
     marginBottom: spacing.md,
   },

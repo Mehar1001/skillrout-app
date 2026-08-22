@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, TextInput, View, StyleSheet, TextInputProps } from 'react-native';
-import { colors, fontSizes, radii, spacing } from '../constants/designTokens';
+import { fontSizes, radii, spacing } from '@/constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -8,19 +9,25 @@ interface InputProps extends TextInputProps {
 }
 
 export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) => {
+  const colors = useColors();
+
   return (
     <View style={styles.wrapper}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>}
       <TextInput
         style={[
           styles.input,
-          { borderColor: error ? colors.error : colors.border },
+          {
+            backgroundColor: colors.surface,
+            borderColor: error ? colors.error : colors.border,
+            color: colors.textPrimary,
+          },
           style as any,
         ]}
         placeholderTextColor={colors.textMuted}
         {...props}
       />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
     </View>
   );
 };
@@ -31,22 +38,18 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: fontSizes.caption,
-    color: colors.textSecondary,
     marginBottom: spacing.xs,
     fontWeight: '600',
   },
   input: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: fontSizes.body,
-    color: colors.textPrimary,
     minHeight: 48,
   },
   errorText: {
-    color: colors.error,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
   },

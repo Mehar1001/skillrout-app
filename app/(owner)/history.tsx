@@ -2,13 +2,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { listVisits } from '../../services/visits';
 import { Visit } from '../../types';
 
 export default function HistoryScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { ownerId } = useAuth();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,14 +108,14 @@ export default function HistoryScreen() {
   );
 }
 
-const Metric = ({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) => (
+const Metric = ({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.metric}>
     <Text style={styles.metricLabel}>{label}</Text>
     <Text style={[styles.metricValue, emphasis && styles.metricEmphasis]}>{value}</Text>
   </View>
-);
+); };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

@@ -2,13 +2,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { useVisit } from '../../hooks/useVisit';
 import { VisitMachine } from '../../types';
 
 export default function ResultsScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { visitId } = useLocalSearchParams<{ visitId: string }>();
   const { ownerId } = useAuth();
   const router = useRouter();
@@ -55,7 +58,7 @@ const ComparisonTable = ({
   title: string;
   machines: VisitMachine[];
   mode: 'last' | 'present';
-}) => (
+}) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <Card style={styles.section}>
     <Text style={styles.sectionTitle}>{title}</Text>
     <View style={styles.tableHeader}>
@@ -89,23 +92,23 @@ const ComparisonTable = ({
       </View>
     ))}
   </Card>
-);
+); };
 
-const LoadingState = () => (
+const LoadingState = () => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.center}>
     <ActivityIndicator size="large" color={colors.primary} />
     <Text style={styles.centerText}>Loading comparison…</Text>
   </View>
-);
+); };
 
-const ErrorState = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
+const ErrorState = ({ message, onRetry }: { message: string; onRetry: () => void }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.center}>
     <Text style={styles.error}>{message || 'Visit not found.'}</Text>
     <Button title="Try Again" onPress={onRetry} />
   </View>
-);
+); };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

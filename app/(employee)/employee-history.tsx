@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { colors, fontSizes, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { listAssignedStoreVisits, listVisits } from '../../services/visits';
@@ -10,6 +11,8 @@ import { Visit } from '../../types';
 import { useRouter } from 'expo-router';
 
 export default function EmployeeHistoryScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { ownerId, role, assignedStoreIds } = useAuth();
   const router = useRouter();
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -89,7 +92,7 @@ export default function EmployeeHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

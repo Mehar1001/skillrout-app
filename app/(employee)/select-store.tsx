@@ -3,12 +3,15 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { colors, fontSizes, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { listAssignedStores, listStores } from '../../services/stores';
 import { Store } from '../../types';
 
 export default function SelectStoreScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { user, ownerId, role, assignedStoreIds } = useAuth();
   const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
@@ -55,7 +58,7 @@ export default function SelectStoreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     backgroundColor: colors.background,

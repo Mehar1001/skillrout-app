@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, fontSizes, radii, spacing } from '../constants/designTokens';
-import { formatCurrencyInput, parseCurrencyInput } from '../helpers/formatters';
+import { fontSizes, radii, spacing } from '@/constants/designTokens';
+import { formatCurrencyInput, parseCurrencyInput } from '@/helpers/formatters';
+import { useColors } from '@/hooks/useColors';
 
 interface CurrencyInputProps {
   label: string;
@@ -22,6 +23,7 @@ export const CurrencyInput = ({
   placeholder = '0.00',
   disabled = false,
 }: CurrencyInputProps) => {
+  const colors = useColors();
   const [text, setText] = useState(formatCurrencyInput(value));
   const [focused, setFocused] = useState(false);
 
@@ -48,9 +50,17 @@ export const CurrencyInput = ({
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={[styles.field, error ? styles.fieldError : null, disabled ? styles.disabled : null]}>
-        <Text style={styles.currency}>$</Text>
+      <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
+      <View
+        style={[
+          styles.field,
+          {
+            borderColor: error ? colors.error : colors.border,
+            backgroundColor: disabled ? colors.surfaceSecondary : colors.surface,
+          },
+        ]}
+      >
+        <Text style={[styles.currency, { color: colors.textPrimary }]}>$</Text>
         <TextInput
           value={text}
           onChangeText={handleChange}
@@ -60,12 +70,16 @@ export const CurrencyInput = ({
           placeholderTextColor={colors.textMuted}
           keyboardType="decimal-pad"
           editable={!disabled}
-          style={styles.input}
+          style={[styles.input, { color: colors.textPrimary }]}
           accessibilityLabel={label}
           accessibilityHint={helperText}
         />
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : helperText ? <Text style={styles.helper}>{helperText}</Text> : null}
+      {error ? (
+        <Text style={[styles.error, { color: colors.error }]}>{error}</Text>
+      ) : helperText ? (
+        <Text style={[styles.helper, { color: colors.textMuted }]}>{helperText}</Text>
+      ) : null}
     </View>
   );
 };
@@ -77,7 +91,6 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: spacing.xs,
     fontSize: fontSizes.caption,
-    color: colors.textSecondary,
     fontWeight: '600',
   },
   field: {
@@ -85,21 +98,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radii.md,
-    backgroundColor: colors.surface,
-  },
-  fieldError: {
-    borderColor: colors.error,
-    borderWidth: 2,
-  },
-  disabled: {
-    opacity: 0.6,
-    backgroundColor: colors.surfaceSecondary,
   },
   currency: {
     paddingLeft: spacing.md,
-    color: colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: '700',
   },
@@ -108,19 +110,16 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: spacing.xs,
     paddingRight: spacing.md,
-    color: colors.textPrimary,
     fontSize: fontSizes.body,
     outlineStyle: 'none',
   } as any,
   error: {
     marginTop: spacing.xs,
-    color: colors.error,
     fontSize: fontSizes.caption,
     lineHeight: 16,
   },
   helper: {
     marginTop: spacing.xs,
-    color: colors.textMuted,
     fontSize: fontSizes.caption,
   },
 });

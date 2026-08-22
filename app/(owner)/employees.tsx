@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { colors, spacing } from '../../constants/designTokens';
+import { type Colors, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { db, functions } from '../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores } from '../../services/stores';
@@ -13,6 +14,8 @@ import { Employee, Store } from '../../types';
 const createEmployeeFn = httpsCallable(functions, 'createEmployee');
 
 export default function EmployeesScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { user, ownerId } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -147,7 +150,7 @@ export default function EmployeesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
     padding: spacing.lg,

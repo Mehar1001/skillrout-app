@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, fontSizes, radii, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, radii, spacing } from '../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { formatCurrency } from '../helpers/formatters';
 import { Card } from './Card';
 
@@ -19,7 +20,7 @@ export const VisitTotals = ({
   newIn,
   newOut,
   activityNet,
-}: VisitTotalsProps) => (
+}: VisitTotalsProps) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <Card style={styles.card}>
     <Text style={styles.title}>Live totals</Text>
     <Text style={styles.sectionLabel}>Present readings</Text>
@@ -35,16 +36,16 @@ export const VisitTotals = ({
       <Total label="Net" value={activityNet} emphasis />
     </View>
   </Card>
-);
+); };
 
-const Total = ({ label, value, emphasis = false }: { label: string; value: number; emphasis?: boolean }) => (
+const Total = ({ label, value, emphasis = false }: { label: string; value: number; emphasis?: boolean }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={[styles.total, emphasis ? styles.totalEmphasis : null]}>
     <Text style={styles.label}>{label}</Text>
     <Text style={[styles.value, emphasis ? styles.valueEmphasis : null]}>{formatCurrency(value)}</Text>
   </View>
-);
+); };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   card: {
     marginTop: spacing.md,
     marginBottom: spacing.md,

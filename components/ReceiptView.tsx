@@ -1,9 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, fontSizes, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, spacing } from '../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { formatCurrency, formatDate, formatTime } from '../helpers/formatters';
 import { Visit } from '../types';
 
 export const ReceiptView = ({ visit }: { visit: Visit }) => {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const timestamp = visit.timestamp?.toDate?.();
   return (
     <View style={styles.receipt}>
@@ -45,14 +48,14 @@ export const ReceiptView = ({ visit }: { visit: Visit }) => {
   );
 };
 
-const ReceiptRow = ({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) => (
+const ReceiptRow = ({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.row}>
     <Text style={[styles.rowText, strong ? styles.strong : null]}>{label}</Text>
     <Text style={[styles.rowText, strong ? styles.strong : null]}>{value}</Text>
   </View>
-);
+); };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   receipt: {
     width: '100%',
     maxWidth: 460,

@@ -7,7 +7,8 @@ import { Button } from '../../components/Button';
 import { MachineReadingCard } from '../../components/MachineReadingCard';
 import { VisitDatePicker } from '../../components/VisitDatePicker';
 import { VisitTotals } from '../../components/VisitTotals';
-import { colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { calculateLiveReadings } from '../../helpers/calculations';
 import { validateBusinessDate, validatePresentReading } from '../../helpers/validators';
@@ -17,6 +18,8 @@ import { saveRun } from '../../services/visits';
 import { Machine, MachineReadingDraft, Store } from '../../types';
 
 export default function VisitScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { storeId } = useLocalSearchParams<{ storeId: string }>();
   const router = useRouter();
   const { user, ownerId } = useAuth();
@@ -177,7 +180,7 @@ export default function VisitScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

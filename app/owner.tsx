@@ -23,12 +23,15 @@ import {
 } from 'react-native';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { colors, fontSizes, lineHeights, radii, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, lineHeights, radii, spacing } from '../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { auth, db } from '../firebaseConfig';
 
 const passwordComplexityRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
 
 export default function OwnerScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -276,7 +279,7 @@ export default function OwnerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

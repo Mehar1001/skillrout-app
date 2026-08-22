@@ -6,10 +6,13 @@ import { Store } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Card } from '../../components/Card';
-import { colors, fontSizes, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
+import { useColors } from '@/hooks/useColors';
 import { validatePercentages } from '../../helpers/validators';
 
 export default function StoresScreen() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const { user, ownerId } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
@@ -147,7 +150,7 @@ export default function StoresScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     padding: spacing.lg,
     backgroundColor: colors.background,
