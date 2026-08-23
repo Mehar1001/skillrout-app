@@ -81,7 +81,7 @@ export default function SettlementScreen() {
           </View>
           <View style={styles.half}>
             <Input
-              label="Vendor %"
+              label="Games %"
               value={vendorPercent}
               onChangeText={text => setVendorPercent(text.replace(/[^\d.]/g, ''))}
               keyboardType="decimal-pad"
@@ -102,7 +102,7 @@ export default function SettlementScreen() {
           <Text style={styles.amountValue}>{formatCurrency(calculated?.storeAmount ?? 0)}</Text>
         </Card>
         <Card style={styles.amountCard}>
-          <Text style={styles.amountLabel}>Vendor amount</Text>
+          <Text style={styles.amountLabel}>Games amount</Text>
           <Text style={styles.amountValue}>{formatCurrency(calculated?.vendorAmount ?? 0)}</Text>
         </Card>
       </View>

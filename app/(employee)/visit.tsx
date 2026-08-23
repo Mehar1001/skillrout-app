@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
-import { MachineReadingCard } from '../../components/MachineReadingCard';
+import { MachineReadingTable } from '../../components/MachineReadingTable';
 import { AppliedReceiptReading, ReceiptScanReview } from '../../components/ReceiptScanReview';
 import { VisitDatePicker } from '../../components/VisitDatePicker';
 import { VisitTotals } from '../../components/VisitTotals';
@@ -309,20 +309,17 @@ export default function VisitScreen() {
           ) : null}
         </View>
 
-        {machines.map(machine => (
-          <MachineReadingCard
-            key={machine.id}
-            machine={machine}
-            reading={readings[machine.id] || { presentIn: null, presentOut: null }}
-            onChange={reading => updateReading(machine.id, reading)}
-            onTakePhoto={() => handleMachineImage(machine, 'camera')}
-            onUploadPhoto={() => handleMachineImage(machine, 'library')}
-            onReadPhoto={() => handleReadMachinePhoto(machine)}
-            onRemovePhoto={() => updateReading(machine.id, { ...readings[machine.id], photoUri: undefined, ocr: undefined })}
-            readingPhoto={readingReceipt && scanTargetMachineId === machine.id}
-            showRequiredErrors={showRequiredErrors}
-          />
-        ))}
+        <MachineReadingTable
+          machines={machines}
+          readings={readings}
+          onChange={updateReading}
+          onTakePhoto={machine => handleMachineImage(machine, 'camera')}
+          onUploadPhoto={machine => handleMachineImage(machine, 'library')}
+          onReadPhoto={handleReadMachinePhoto}
+          onRemovePhoto={machine => updateReading(machine.id, { ...readings[machine.id], photoUri: undefined, ocr: undefined })}
+          readingPhotoMachineId={readingReceipt ? scanTargetMachineId : null}
+          showRequiredErrors={showRequiredErrors}
+        />
 
         <VisitTotals {...totals} />
 

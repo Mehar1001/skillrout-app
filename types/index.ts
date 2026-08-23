@@ -123,6 +123,7 @@ export interface Visit {
   ownerId: string;
   storeId: string;
   storeName: string;
+  storeAddress?: string;
   employeeId: string;
   employeeName: string;
   businessDate: string; // YYYY-MM-DD

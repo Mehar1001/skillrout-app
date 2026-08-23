@@ -193,7 +193,7 @@ export default function ReportsScreen() {
             <Kpi label="Visits" value={String(summary.totalVisits)} />
             <Kpi label="Total Net" value={formatCurrency(summary.totalNet)} emphasis />
             <Kpi label="Store $" value={formatCurrency(summary.totalStoreAmount)} />
-            <Kpi label="Vendor $" value={formatCurrency(summary.totalVendorAmount)} />
+            <Kpi label="Games $" value={formatCurrency(summary.totalVendorAmount)} />
           </View>
 
           <Card style={styles.sectionCard}>
@@ -218,7 +218,7 @@ export default function ReportsScreen() {
                 </View>
                 <View style={styles.summaryRight}>
                   <Text style={styles.summaryNet}>{formatCurrency(s.totalNet)}</Text>
-                  <Text style={styles.summaryMeta}>Store {formatCurrency(s.storeAmount)} · Vendor {formatCurrency(s.vendorAmount)}</Text>
+                  <Text style={styles.summaryMeta}>Store {formatCurrency(s.storeAmount)} · Games {formatCurrency(s.vendorAmount)}</Text>
                 </View>
               </View>
             ))}

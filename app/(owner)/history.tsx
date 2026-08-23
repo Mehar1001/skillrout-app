@@ -98,7 +98,7 @@ export default function HistoryScreen() {
               </View>
 
               <Text style={styles.splitText}>
-                Store {visit.storePercent}%: {formatCurrency(visit.storeAmount)} · Vendor {visit.vendorPercent}%: {formatCurrency(visit.vendorAmount)}
+                Store {visit.storePercent}%: {formatCurrency(visit.storeAmount)} · Games {visit.vendorPercent}%: {formatCurrency(visit.vendorAmount)}
               </Text>
             </Card>
           );

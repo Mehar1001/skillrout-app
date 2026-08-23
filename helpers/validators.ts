@@ -30,7 +30,7 @@ export const validateBusinessDate = (businessDate: string): string | null => {
 
 export const validatePercentages = (store: number, vendor: number): string | null => {
   if (store < 0 || vendor < 0) return 'Percentages cannot be negative.';
-  if (store + vendor !== 100) return 'Store % and Vendor % must add up to 100.';
+  if (store + vendor !== 100) return 'Store % and Games % must add up to 100.';
   return null;
 };
 

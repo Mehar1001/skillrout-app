@@ -15,7 +15,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/skillrout-icon.png",
-        "backgroundColor": "#0D0F1A"
+        "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.skillrout"
@@ -41,7 +41,7 @@
           "image": "./assets/images/skillrout-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0D0F1A"
+          "backgroundColor": "#000000"
         }
       ],
       "expo-web-browser",

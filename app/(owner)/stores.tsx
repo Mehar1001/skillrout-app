@@ -126,7 +126,7 @@ export default function StoresScreen() {
           </View>
           <View style={styles.half}>
             <Input
-              label="Vendor %"
+              label="Games %"
               value={String(form.defaultVendorPercent ?? 50)}
               onChangeText={text =>
                 setForm(prev => ({ ...prev, defaultVendorPercent: Number(text) }))
@@ -167,7 +167,7 @@ export default function StoresScreen() {
             <Text style={styles.storeName}>{store.name}</Text>
             <Text style={styles.storeAddress}>{store.address}</Text>
             <Text style={styles.storeSplit}>
-              Store {store.defaultStorePercent}% · Vendor {store.defaultVendorPercent}% · {store.active ? 'Active' : 'Inactive'}
+              Store {store.defaultStorePercent}% · Games {store.defaultVendorPercent}% · {store.active ? 'Active' : 'Inactive'}
             </Text>
             <View style={styles.actions}>
               <Button title="Edit" onPress={() => handleEdit(store)} variant="secondary" />

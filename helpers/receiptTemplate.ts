@@ -1,28 +1,93 @@
 import { Visit } from '../types';
-import { formatCurrency, formatDate, formatTime } from './formatters';
 
 const escapeHtml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
-export const generateReceiptHtml = (visit: Visit): string => {
+const groupThousands = (value: string): string => value.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+// Plain amount, no $ sign: "1555.00" (machine rows on the bookkeeping receipt).
+export const receiptAmount = (value: number): string => {
+  const isNegative = value < 0;
+  const [int, dec] = Math.abs(value).toFixed(2).split('.');
+  return `${isNegative ? '-' : ''}${groupThousands(int)}.${dec}`;
+};
+
+// Money amount, "$6,405.00"; negative prints "$-2,738.00" to match the mockups.
+export const receiptMoney = (value: number): string => {
+  const isNegative = value < 0;
+  const [int, dec] = Math.abs(value).toFixed(2).split('.');
+  return `$${isNegative ? '-' : ''}${groupThousands(int)}.${dec}`;
+};
+
+const receiptPercent = (value: number): string => `${value.toFixed(2)}%`;
+
+export interface ReceiptLines {
+  title: string;
+  storeName: string;
+  storeAddress: string;
+  date: string;
+  time: string;
+  visitId: string;
+  employee: string;
+  vouchersTotal: string;
+  machines: { label: string; creditsIn: string; totalPaid: string }[];
+  moneyIn: string;
+  moneyOut: string;
+  net: string;
+  sharing: { label: string; amount: string }[];
+  cashDue: string;
+  status: string;
+}
+
+export const buildReceiptLines = (visit: Visit): ReceiptLines => {
   const timestamp = visit.timestamp?.toDate?.();
-  const machineRows = visit.machines
+  const positive = visit.totalNet > 0;
+  return {
+    title: 'SKILLROUT',
+    storeName: visit.storeName,
+    storeAddress: visit.storeAddress || '',
+    date: visit.businessDate,
+    time: timestamp
+      ? `${String(timestamp.getHours()).padStart(2, '0')}:${String(timestamp.getMinutes()).padStart(2, '0')}`
+      : '',
+    visitId: visit.id.slice(-8).toUpperCase(),
+    employee: visit.employeeName,
+    vouchersTotal: receiptMoney(visit.totalNewOut),
+    machines: visit.machines.map(machine => ({
+      label: `< ${machine.machineNumber} > Credits In`,
+      creditsIn: receiptAmount(machine.newIn),
+      totalPaid: receiptAmount(machine.newOut),
+    })),
+    moneyIn: receiptMoney(visit.totalNewIn),
+    moneyOut: receiptMoney(visit.totalNewOut),
+    net: receiptMoney(visit.totalNet),
+    sharing: positive
+      ? [
+          { label: `Store (${receiptPercent(visit.storePercent)})`, amount: receiptMoney(visit.storeAmount) },
+          { label: `Games (${receiptPercent(visit.vendorPercent)})`, amount: receiptMoney(visit.vendorAmount) },
+        ]
+      : [
+          { label: 'No split (0.00%)', amount: '$0.00' },
+          { label: 'No split (0.00%)', amount: '$0.00' },
+        ],
+    cashDue: receiptMoney(visit.cashDueLocation),
+    status: visit.settlementStatus === 'submitted' ? 'SUBMITTED' : 'NOT SUBMITTED',
+  };
+};
+
+export const generateReceiptHtml = (visit: Visit): string => {
+  const lines = buildReceiptLines(visit);
+  const machineRows = lines.machines
     .map(
       machine => `
-        <section class="machine">
-          <h2>Machine ${escapeHtml(machine.machineNumber)}${machine.name ? ` · ${escapeHtml(machine.name)}` : ''}</h2>
-          <div class="row"><span>Last Credits In</span><span>${formatCurrency(machine.lastSettledIn)}</span></div>
-          <div class="row"><span>Credits In</span><span>${formatCurrency(machine.presentIn)}</span></div>
-          <div class="row"><span>New Credits In</span><span>${formatCurrency(machine.newIn)}</span></div>
-          <div class="row"><span>Last Total Paid</span><span>${formatCurrency(machine.lastSettledOut)}</span></div>
-          <div class="row"><span>Total Paid</span><span>${formatCurrency(machine.presentOut)}</span></div>
-          <div class="row"><span>New Total Paid</span><span>${formatCurrency(machine.newOut)}</span></div>
-          <div class="row strong"><span>Machine Net</span><span>${formatCurrency(machine.machineNet)}</span></div>
-        </section>
+        <div class="row"><span>${escapeHtml(machine.label)}</span><span>${machine.creditsIn}</span></div>
+        <div class="row pad"><span>Total Paid</span><span>${machine.totalPaid}</span></div>
       `
     )
     .join('');
-  const status = visit.settlementStatus === 'submitted' ? 'SUBMITTED' : 'PRINTED — NOT SUBMITTED';
+  const sharingRows = lines.sharing
+    .map(share => `<div class="row"><span>${escapeHtml(share.label)}</span><span>${share.amount}</span></div>`)
+    .join('');
 
   return `
     <!doctype html>
@@ -31,37 +96,43 @@ export const generateReceiptHtml = (visit: Visit): string => {
         <meta charset="utf-8" />
         <style>
           @page { size: 80mm auto; margin: 4mm; }
-          body { width: 72mm; margin: 0 auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #2A2A2A; font-size: 11px; }
-          h1 { margin: 0; text-align: center; font-size: 18px; }
-          h2 { margin: 8px 0 4px; font-size: 12px; }
-          .store { margin-top: 3px; text-align: center; font-weight: 700; }
-          .meta { margin-top: 8px; line-height: 1.45; }
-          .divider { border-top: 1px dashed #5A5A5A; margin: 8px 0; }
-          .machine { padding-bottom: 6px; border-bottom: 1px dashed #C8C4BB; }
-          .row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+          body { width: 72mm; margin: 0 auto; font-family: 'Courier New', ui-monospace, SFMono-Regular, Menlo, monospace; color: #171A20; font-size: 12px; line-height: 1.5; }
+          h1 { margin: 0; text-align: center; font-size: 20px; letter-spacing: 2px; font-weight: 700; }
+          .center { text-align: center; }
+          .store { margin-top: 2px; text-align: center; }
+          .divider { border-top: 1px dashed #171A20; margin: 6px 0; }
+          .row { display: flex; justify-content: space-between; gap: 8px; }
+          .pad { margin-bottom: 4px; }
+          .section-title { text-align: center; letter-spacing: 1px; margin: 2px 0; }
+          .big { text-align: center; font-size: 24px; font-weight: 700; letter-spacing: 2px; margin: 4px 0; }
           .strong { font-weight: 700; }
-          .status { margin-top: 10px; padding: 7px; border: 1px solid #7B5BB8; color: #5C4499; font-weight: 700; text-align: center; }
+          .status { margin-top: 8px; text-align: center; font-weight: 700; letter-spacing: 1px; }
         </style>
       </head>
       <body>
-        <h1>SKILLROUT</h1>
-        <div class="store">${escapeHtml(visit.storeName)}</div>
-        <div class="meta">
-          Visit: ${escapeHtml(visit.id)}<br />
-          Employee: ${escapeHtml(visit.employeeName)}<br />
-          Business date: ${formatDate(visit.businessDate)}<br />
-          ${timestamp ? `RUN: ${formatDate(timestamp)} ${formatTime(timestamp)}` : ''}
-        </div>
+        <h1>${escapeHtml(lines.title)}</h1>
+        <div class="store">${escapeHtml(lines.storeName)}</div>
+        ${lines.storeAddress ? `<div class="store">${escapeHtml(lines.storeAddress)}</div>` : ''}
+        <div class="divider"></div>
+        <div class="row"><span>Date</span><span>${escapeHtml(lines.date)}</span></div>
+        ${lines.time ? `<div class="row"><span>Time</span><span>${escapeHtml(lines.time)}</span></div>` : ''}
+        <div class="row"><span>Visit</span><span>${escapeHtml(lines.visitId)}</span></div>
+        <div class="row"><span>Employee</span><span>${escapeHtml(lines.employee)}</span></div>
+        <div class="divider"></div>
+        <div class="section-title">TOTAL VOUCHERS PRINTED</div>
+        <div class="big">${lines.vouchersTotal}</div>
         <div class="divider"></div>
         ${machineRows}
         <div class="divider"></div>
-        <div class="row"><span>Total Money In</span><span>${formatCurrency(visit.totalNewIn)}</span></div>
-        <div class="row"><span>Total Money Out</span><span>${formatCurrency(visit.totalNewOut)}</span></div>
-        <div class="row strong"><span>Total Net</span><span>${formatCurrency(visit.totalNet)}</span></div>
-        <div class="row"><span>Store ${visit.storePercent}%</span><span>${formatCurrency(visit.storeAmount)}</span></div>
-        <div class="row"><span>Vendor ${visit.vendorPercent}%</span><span>${formatCurrency(visit.vendorAmount)}</span></div>
-        <div class="row strong"><span>Cash Due Location</span><span>${formatCurrency(visit.cashDueLocation)}</span></div>
-        <div class="status">${status}</div>
+        <div class="row strong"><span>Money In</span><span>${lines.moneyIn}</span></div>
+        <div class="row strong"><span>Money Out</span><span>${lines.moneyOut}</span></div>
+        <div class="row strong"><span>Net</span><span>${lines.net}</span></div>
+        <div class="divider"></div>
+        <div class="section-title strong">NET SHARING</div>
+        ${sharingRows}
+        <div class="divider"></div>
+        <div class="row strong"><span>Cash Due Location</span><span>${lines.cashDue}</span></div>
+        <div class="status">${escapeHtml(lines.status)}</div>
       </body>
     </html>
   `;

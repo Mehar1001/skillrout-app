@@ -477,6 +477,7 @@ export const runVisit = onCall(async (request: CallableRequest) => {
       ownerId: caller.ownerId,
       storeId,
       storeName: store.name || '',
+      storeAddress: store.address || '',
       employeeId: request.auth!.uid,
       employeeName: caller.name,
       businessDate,

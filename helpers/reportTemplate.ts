@@ -225,8 +225,8 @@ export const generateReportHtml = (
         <style>
           @page { size: A4; margin: 14mm; }
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1A1505; font-size: 11px; }
-          h1 { margin: 0 0 2px; font-size: 22px; color: #7B5BB8; }
-          h2 { margin: 18px 0 6px; font-size: 14px; color: #B8860B; border-bottom: 1px solid #DCD7CD; padding-bottom: 3px; }
+          h1 { margin: 0 0 2px; font-size: 22px; color: #C41E23; }
+          h2 { margin: 18px 0 6px; font-size: 14px; color: #171A20; border-bottom: 1px solid #D0D1D2; padding-bottom: 3px; }
           .meta { color: #5C5750; font-size: 10px; margin-bottom: 12px; }
           .kpi-row { display: flex; gap: 10px; margin-bottom: 12px; }
           .kpi { flex: 1; border: 1px solid #DCD7CD; border-radius: 6px; padding: 8px 10px; }
@@ -252,7 +252,7 @@ export const generateReportHtml = (
           <div class="kpi"><div class="label">Visits</div><div class="value">${summary.totalVisits}</div></div>
           <div class="kpi"><div class="label">Total Net</div><div class="value">${formatCurrency(summary.totalNet)}</div></div>
           <div class="kpi"><div class="label">Store Amount</div><div class="value">${formatCurrency(summary.totalStoreAmount)}</div></div>
-          <div class="kpi"><div class="label">Vendor Amount</div><div class="value">${formatCurrency(summary.totalVendorAmount)}</div></div>
+          <div class="kpi"><div class="label">Games Amount</div><div class="value">${formatCurrency(summary.totalVendorAmount)}</div></div>
         </div>
 
         <h2>Settlement Breakdown</h2>
@@ -274,7 +274,7 @@ export const generateReportHtml = (
 
         <h2>Store Summary</h2>
         <table>
-          <tr><th>Store</th><th>Visits</th><th>New Money In</th><th>New Money Out</th><th>Net</th><th>Store $</th><th>Vendor $</th></tr>
+          <tr><th>Store</th><th>Visits</th><th>New Money In</th><th>New Money Out</th><th>Net</th><th>Store $</th><th>Games $</th></tr>
           ${storeRows || '<tr><td colspan="7">No visits in range.</td></tr>'}
         </table>
 

@@ -55,7 +55,7 @@ test('validatePercentages requires non-negative 100% total', () => {
   assert.equal(validatePercentages(0, 100), null);
   assert.equal(validatePercentages(100, 0), null);
   assert.equal(validatePercentages(35, 65), null);
-  assert.equal(validatePercentages(50, 40), 'Store % and Vendor % must add up to 100.');
-  assert.equal(validatePercentages(50, 60), 'Store % and Vendor % must add up to 100.');
+  assert.equal(validatePercentages(50, 40), 'Store % and Games % must add up to 100.');
+  assert.equal(validatePercentages(50, 60), 'Store % and Games % must add up to 100.');
   assert.equal(validatePercentages(-10, 110), 'Percentages cannot be negative.');
 });

@@ -1,4 +1,4 @@
-// Skillrout — Casino/slot-machine design tokens
+// Skillrout — Tesla-style white/black/red design tokens
 // Dual-mode (light/dark) system. Use `useColors()` to access the active palette.
 
 export const spacing = {
@@ -46,67 +46,67 @@ export const letterSpacings = {
 } as const;
 
 export const darkColors = {
-  primary: '#9B7ED1',
-  primaryHover: '#8266B8',
-  primarySubtle: 'rgba(155, 126, 209, 0.12)',
+  primary: '#E82127',
+  primaryHover: '#FF3B41',
+  primarySubtle: 'rgba(232, 33, 39, 0.14)',
 
-  accent: '#F0C82D',
-  accentDark: '#B8860B',
-  accentHover: '#D4AF37',
-  accentSubtle: 'rgba(240, 200, 45, 0.12)',
+  accent: '#FFFFFF',
+  accentDark: '#D0D1D2',
+  accentHover: '#E8E8E8',
+  accentSubtle: 'rgba(255, 255, 255, 0.10)',
 
-  background: '#0D0F1A',
-  surface: '#161B2E',
-  surfaceSecondary: '#1E253A',
-  border: '#3D3527',
+  background: '#000000',
+  surface: '#121317',
+  surfaceSecondary: '#1B1D22',
+  border: '#33363C',
 
-  textPrimary: '#F4F1EA',
-  textSecondary: '#B8B0A3',
-  textMuted: '#7A7266',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#B0B2B6',
+  textMuted: '#82858A',
   textOnPrimary: '#FFFFFF',
-  textOnAccent: '#1A1505',
+  textOnAccent: '#171A20',
 
-  success: '#00A86B',
-  error: '#FF3B30',
+  success: '#2FBF5F',
+  error: '#FF5A5F',
   warning: '#FF9F0A',
   info: '#5AC8FA',
 
-  glowPrimary: 'rgba(155, 126, 209, 0.35)',
-  glowAccent: 'rgba(240, 200, 45, 0.35)',
-  glowSuccess: 'rgba(0, 168, 107, 0.35)',
-  glowError: 'rgba(255, 59, 48, 0.35)',
+  glowPrimary: 'rgba(232, 33, 39, 0.35)',
+  glowAccent: 'rgba(255, 255, 255, 0.20)',
+  glowSuccess: 'rgba(47, 191, 95, 0.35)',
+  glowError: 'rgba(255, 90, 95, 0.35)',
 } as const;
 
 export const lightColors = {
-  primary: '#7B5BB8',
-  primaryHover: '#6A4CA8',
-  primarySubtle: 'rgba(123, 91, 184, 0.08)',
+  primary: '#C41E23',
+  primaryHover: '#A8181D',
+  primarySubtle: 'rgba(232, 33, 39, 0.08)',
 
-  accent: '#B8860B',
-  accentDark: '#8A6A0B',
-  accentHover: '#D4AF37',
-  accentSubtle: 'rgba(184, 134, 11, 0.08)',
+  accent: '#171A20',
+  accentDark: '#000000',
+  accentHover: '#2F343E',
+  accentSubtle: 'rgba(23, 26, 32, 0.06)',
 
-  background: '#F9F5ED',
+  background: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceSecondary: '#EFEBE2',
-  border: '#DCD7CD',
+  surfaceSecondary: '#F4F4F4',
+  border: '#D0D1D2',
 
-  textPrimary: '#1A1505',
-  textSecondary: '#5C5750',
-  textMuted: '#8A857C',
+  textPrimary: '#171A20',
+  textSecondary: '#5C5E62',
+  textMuted: '#84868A',
   textOnPrimary: '#FFFFFF',
   textOnAccent: '#FFFFFF',
 
-  success: '#007A4D',
-  error: '#C41E3A',
-  warning: '#C27D0A',
+  success: '#12823B',
+  error: '#B7212A',
+  warning: '#B35C00',
   info: '#0A7EA4',
 
-  glowPrimary: 'rgba(123, 91, 184, 0.12)',
-  glowAccent: 'rgba(184, 134, 11, 0.12)',
-  glowSuccess: 'rgba(0, 122, 77, 0.12)',
-  glowError: 'rgba(196, 30, 58, 0.12)',
+  glowPrimary: 'rgba(196, 30, 35, 0.14)',
+  glowAccent: 'rgba(23, 26, 32, 0.10)',
+  glowSuccess: 'rgba(18, 130, 59, 0.12)',
+  glowError: 'rgba(183, 33, 42, 0.12)',
 } as const;
 
 export type Colors = typeof darkColors;
