@@ -123,10 +123,11 @@ app/
 }
 ```
 
-### `owners/{ownerId}/visits/{visitId}`
+### `owners/{ownerId}/stores/{storeId}/visits/{visitId}`
 ```ts
 {
   id: string,
+  ownerId: string,                  // denormalized for collection-group queries
   storeId: string,
   storeName: string,
   employeeId: string,
@@ -205,9 +206,9 @@ Planned but not yet implemented:
 All Cloud Functions live in `functions/src/index.ts`.
 
 1. **`createEmployee`**: Owner calls with `{email, name, password, assignedStoreIds}`. Creates a Firebase Auth user and writes a top-level `employees/{uid}` document.
-2. **`runVisit`**: Employee/owner calls with `{visitId, storeId, businessDate, readings}`. Records a permanent visit in `owners/{ownerId}/visits/{visitId}` and never updates `machine.lastSettled`.
+2. **`runVisit`**: Employee/owner calls with `{visitId, storeId, businessDate, readings}`. Records a permanent visit in `owners/{ownerId}/stores/{storeId}/visits/{visitId}` and never updates `machine.lastSettled`.
 3. **`setVisitSplit`**: Updates `storePercent`, `vendorPercent`, `storeAmount`, `vendorAmount`, and `cashDueLocation` on an unsubmitted visit. Enforces `storePercent + vendorPercent === 100`.
-4. **`submitVisit`**: Client passes `{ownerId, visitId, storePercent, vendorPercent}`. Runs a Firestore transaction that:
+4. **`submitVisit`**: Client passes `{ownerId, storeId, visitId, storePercent, vendorPercent}`. Runs a Firestore transaction that:
    - Verifies `totalNet > 0`.
    - Verifies `storePercent + vendorPercent === 100` and that the split matches the saved visit.
    - Verifies each machine's current `lastSettledIn/Out` still matches the visit's `lastSettledIn/Out` (concurrency guard).

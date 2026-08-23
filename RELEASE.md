@@ -25,6 +25,8 @@
 - All Cloud Functions (v2, Node.js 22) deployed to `us-central1`.
 - Artifact Registry cleanup policy configured.
 - Cloud Vision API enabled for OCR (`extractReceiptReadings`).
+- Visits moved to `owners/{ownerId}/stores/{storeId}/visits/{visitId}` with `ownerId` denormalized for cross-store collection-group queries.
+- New collection-group index on `visits` (`ownerId` ASC, `timestamp` DESC) deployed for owner reports/history.
 
 ### Production (`skillrout`)
 
@@ -35,6 +37,8 @@
 - Firestore backup created at `gs://skillrout-backups/firestore-20260822-164737` before backend changes.
 - **Storage is not set up yet** — must be enabled via console before photo upload/receipt OCR works.
 - Replaced hidden native `Alert` dialogs with web-visible inline messages and `window.confirm` fallbacks on owner sign-in, dashboard, employees, stores, and machines screens.
+- Visits moved to `owners/{ownerId}/stores/{storeId}/visits/{visitId}` with `ownerId` denormalized for cross-store collection-group queries.
+- New collection-group index on `visits` (`ownerId` ASC, `timestamp` DESC) deployed for owner reports/history.
 
 ## Pre-deploy checklist
 
