@@ -48,9 +48,10 @@
 
 1. `git status` is clean on `production-hardening`.
 2. All local verification commands pass (see below).
-3. Staging project services are enabled (Firestore, Storage, Functions, Auth, Hosting).
-4. `.env.staging` exists with the staging Firebase web config and is gitignored.
-5. A backup of production Firestore/Auth/Storage has been made before live changes.
+3. `npx expo export --platform web` (or `npm run export:web`) has been run **immediately before** `firebase deploy --only hosting`; `dist/` must reflect the current code and env.
+4. Staging project services are enabled (Firestore, Storage, Functions, Auth, Hosting).
+5. `.env.staging` exists with the staging Firebase web config and is gitignored.
+6. A backup of production Firestore/Auth/Storage has been made before live changes.
 
 ## Local verification
 
