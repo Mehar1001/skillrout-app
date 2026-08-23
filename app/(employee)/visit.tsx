@@ -221,10 +221,10 @@ export default function VisitScreen() {
 
     for (const machine of machines) {
       const reading = readings[machine.id];
-      const inError = validatePresentReading(reading?.presentIn ?? null, machine.lastSettledIn, 'IN');
-      const outError = validatePresentReading(reading?.presentOut ?? null, machine.lastSettledOut, 'OUT');
+      const inError = validatePresentReading(reading?.presentIn ?? null, machine.lastSettledIn, 'Credits In');
+      const outError = validatePresentReading(reading?.presentOut ?? null, machine.lastSettledOut, 'Total Paid');
       if (inError || outError) {
-        Alert.alert(`Machine ${machine.machineNumber}`, inError || outError || 'Correct the reading.');
+        Alert.alert(`Machine ${machine.machineNumber}`, inError || outError || 'Correct the Credits In or Total Paid reading.');
         return;
       }
     }
@@ -276,7 +276,7 @@ export default function VisitScreen() {
           <Text style={styles.title}>{store.name}</Text>
           <Text style={styles.address}>{store.address}</Text>
           <Text style={styles.subtitle}>
-            Enter every cumulative present reading. Values below the last settlement are not accepted.
+            Enter every cumulative Credits In and Total Paid reading. Values below the last settlement are not accepted.
           </Text>
         </View>
 

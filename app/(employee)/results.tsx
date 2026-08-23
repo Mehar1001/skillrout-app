@@ -41,7 +41,7 @@ export default function ResultsScreen() {
       <ComparisonTable title="Last settled readings" machines={visit.machines} mode="last" />
       <ComparisonTable title="Present readings — this RUN" machines={visit.machines} mode="present" />
 
-      <Text style={styles.guidance}>Confirm each machine’s IN and OUT values before continuing.</Text>
+      <Text style={styles.guidance}>Confirm each machine’s Credits In and Total Paid values before continuing.</Text>
       <Button
         title="Continue to Calculations"
         onPress={() => router.push(`/calculation?visitId=${visit.id}` as any)}
@@ -63,8 +63,8 @@ const ComparisonTable = ({
     <Text style={styles.sectionTitle}>{title}</Text>
     <View style={styles.tableHeader}>
       <Text style={[styles.headerCell, styles.machineColumn, styles.machineHeader]}>MACHINE</Text>
-      <Text style={[styles.headerCell, styles.valueColumn]}>{mode === 'last' ? 'LAST IN' : 'PRESENT IN'}</Text>
-      <Text style={[styles.headerCell, styles.valueColumn]}>{mode === 'last' ? 'LAST OUT' : 'PRESENT OUT'}</Text>
+      <Text style={[styles.headerCell, styles.valueColumn]}>{mode === 'last' ? 'LAST CREDITS IN' : 'PRESENT CREDITS IN'}</Text>
+      <Text style={[styles.headerCell, styles.valueColumn]}>{mode === 'last' ? 'LAST TOTAL PAID' : 'PRESENT TOTAL PAID'}</Text>
     </View>
     {machines.map(machine => (
       <View key={machine.machineId} style={styles.tableRow}>

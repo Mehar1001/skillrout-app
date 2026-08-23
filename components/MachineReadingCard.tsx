@@ -36,10 +36,10 @@ export const MachineReadingCard = ({
   const styles = makeStyles(colors);
   const inError = reading.presentIn === null && !showRequiredErrors
     ? null
-    : validatePresentReading(reading.presentIn, machine.lastSettledIn, 'IN');
+    : validatePresentReading(reading.presentIn, machine.lastSettledIn, 'Credits In');
   const outError = reading.presentOut === null && !showRequiredErrors
     ? null
-    : validatePresentReading(reading.presentOut, machine.lastSettledOut, 'OUT');
+    : validatePresentReading(reading.presentOut, machine.lastSettledOut, 'Total Paid');
   const valid = reading.presentIn !== null && reading.presentOut !== null && !inError && !outError;
   const activity = valid
     ? calculateMachine(machine.lastSettledIn, machine.lastSettledOut, reading.presentIn!, reading.presentOut!)
@@ -92,11 +92,11 @@ export const MachineReadingCard = ({
 
       <View style={styles.baselines}>
         <View style={styles.baseline}>
-          <Text style={styles.baselineLabel}>Last Settled IN</Text>
+          <Text style={styles.baselineLabel}>Last Settled Credits In</Text>
           <Text style={styles.baselineValue}>{formatCurrency(machine.lastSettledIn)}</Text>
         </View>
         <View style={styles.baseline}>
-          <Text style={styles.baselineLabel}>Last Settled OUT</Text>
+          <Text style={styles.baselineLabel}>Last Settled Total Paid</Text>
           <Text style={styles.baselineValue}>{formatCurrency(machine.lastSettledOut)}</Text>
         </View>
       </View>
@@ -104,7 +104,7 @@ export const MachineReadingCard = ({
       <View style={styles.inputs}>
         <View style={styles.inputHalf}>
           <CurrencyInput
-            label="Present IN"
+            label="Credits In"
             value={reading.presentIn}
             onChangeValue={presentIn => onChange({ ...reading, presentIn })}
             error={inError}
@@ -113,7 +113,7 @@ export const MachineReadingCard = ({
         </View>
         <View style={styles.inputHalf}>
           <CurrencyInput
-            label="Present OUT"
+            label="Total Paid"
             value={reading.presentOut}
             onChangeValue={presentOut => onChange({ ...reading, presentOut })}
             error={outError}
@@ -123,8 +123,8 @@ export const MachineReadingCard = ({
       </View>
 
       <View style={styles.activity}>
-        <ActivityValue label="New IN" value={activity ? formatCurrency(activity.newIn) : '—'} />
-        <ActivityValue label="New OUT" value={activity ? formatCurrency(activity.newOut) : '—'} />
+        <ActivityValue label="New Credits In" value={activity ? formatCurrency(activity.newIn) : '—'} />
+        <ActivityValue label="New Total Paid" value={activity ? formatCurrency(activity.newOut) : '—'} />
         <ActivityValue label="Machine Net" value={activity ? formatCurrency(activity.machineNet) : '—'} emphasis />
       </View>
     </Card>

@@ -9,11 +9,11 @@ export const isPositiveNumber = (value: string): boolean => {
 export const validatePresentReading = (
   present: number | null,
   lastSettled: number,
-  label: 'IN' | 'OUT'
+  label: string
 ): string | null => {
-  if (present === null) return `Present ${label} is required.`;
+  if (present === null) return `${label} is required.`;
   if (present < lastSettled) {
-    return `Present ${label} must be equal to or greater than the last settled ${label}.`;
+    return `${label} must be equal to or greater than the last settled value.`;
   }
   return null;
 };

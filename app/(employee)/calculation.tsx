@@ -23,7 +23,7 @@ export default function CalculationScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>RUN RESULTS · CALCULATION</Text>
       <Text style={styles.title}>{visit.storeName}</Text>
-      <Text style={styles.subtitle}>New activity is calculated from Last Settled versus Present readings.</Text>
+      <Text style={styles.subtitle}>New activity is calculated from Last Settled versus Credits In and Total Paid readings.</Text>
 
       <Card style={styles.card}>
         {visit.machines.map(machine => (
@@ -32,8 +32,8 @@ export default function CalculationScreen() {
               <Text style={styles.machineName}>Machine {machine.machineNumber}</Text>
               {machine.name ? <Text style={styles.machineSubtitle}>{machine.name}</Text> : null}
             </View>
-            <Amount label="New IN" value={machine.newIn} />
-            <Amount label="New OUT" value={machine.newOut} />
+            <Amount label="New Credits In" value={machine.newIn} />
+            <Amount label="New Total Paid" value={machine.newOut} />
             <Amount label="Net" value={machine.machineNet} emphasis />
           </View>
         ))}
@@ -42,8 +42,8 @@ export default function CalculationScreen() {
       <Card style={styles.totalsCard}>
         <Text style={styles.totalsTitle}>Totals</Text>
         <View style={styles.totalRow}>
-          <Amount label="Total New IN" value={visit.totalNewIn} />
-          <Amount label="Total New OUT" value={visit.totalNewOut} />
+          <Amount label="Total Money In" value={visit.totalNewIn} />
+          <Amount label="Total Money Out" value={visit.totalNewOut} />
           <Amount label="Total Net" value={visit.totalNet} emphasis />
         </View>
       </Card>

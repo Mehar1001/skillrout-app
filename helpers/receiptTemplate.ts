@@ -11,12 +11,12 @@ export const generateReceiptHtml = (visit: Visit): string => {
       machine => `
         <section class="machine">
           <h2>Machine ${escapeHtml(machine.machineNumber)}${machine.name ? ` · ${escapeHtml(machine.name)}` : ''}</h2>
-          <div class="row"><span>Last IN</span><span>${formatCurrency(machine.lastSettledIn)}</span></div>
-          <div class="row"><span>Present IN</span><span>${formatCurrency(machine.presentIn)}</span></div>
-          <div class="row"><span>New IN</span><span>${formatCurrency(machine.newIn)}</span></div>
-          <div class="row"><span>Last OUT</span><span>${formatCurrency(machine.lastSettledOut)}</span></div>
-          <div class="row"><span>Present OUT</span><span>${formatCurrency(machine.presentOut)}</span></div>
-          <div class="row"><span>New OUT</span><span>${formatCurrency(machine.newOut)}</span></div>
+          <div class="row"><span>Last Credits In</span><span>${formatCurrency(machine.lastSettledIn)}</span></div>
+          <div class="row"><span>Credits In</span><span>${formatCurrency(machine.presentIn)}</span></div>
+          <div class="row"><span>New Credits In</span><span>${formatCurrency(machine.newIn)}</span></div>
+          <div class="row"><span>Last Total Paid</span><span>${formatCurrency(machine.lastSettledOut)}</span></div>
+          <div class="row"><span>Total Paid</span><span>${formatCurrency(machine.presentOut)}</span></div>
+          <div class="row"><span>New Total Paid</span><span>${formatCurrency(machine.newOut)}</span></div>
           <div class="row strong"><span>Machine Net</span><span>${formatCurrency(machine.machineNet)}</span></div>
         </section>
       `
@@ -55,8 +55,8 @@ export const generateReceiptHtml = (visit: Visit): string => {
         <div class="divider"></div>
         ${machineRows}
         <div class="divider"></div>
-        <div class="row"><span>Total New IN</span><span>${formatCurrency(visit.totalNewIn)}</span></div>
-        <div class="row"><span>Total New OUT</span><span>${formatCurrency(visit.totalNewOut)}</span></div>
+        <div class="row"><span>Total Money In</span><span>${formatCurrency(visit.totalNewIn)}</span></div>
+        <div class="row"><span>Total Money Out</span><span>${formatCurrency(visit.totalNewOut)}</span></div>
         <div class="row strong"><span>Total Net</span><span>${formatCurrency(visit.totalNet)}</span></div>
         <div class="row"><span>Store ${visit.storePercent}%</span><span>${formatCurrency(visit.storeAmount)}</span></div>
         <div class="row"><span>Vendor ${visit.vendorPercent}%</span><span>${formatCurrency(visit.vendorAmount)}</span></div>

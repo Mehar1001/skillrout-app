@@ -25,14 +25,14 @@ export const VisitTotals = ({
     <Text style={styles.title}>Live totals</Text>
     <Text style={styles.sectionLabel}>Present readings</Text>
     <View style={styles.row}>
-      <Total label="Present IN" value={presentIn} />
-      <Total label="Present OUT" value={presentOut} />
-      <Total label="Present Net" value={presentNet} emphasis />
+      <Total label="Money In" value={presentIn} />
+      <Total label="Money Out" value={presentOut} />
+      <Total label="Net" value={presentNet} emphasis />
     </View>
     <Text style={styles.sectionLabel}>Activity since last settlement</Text>
     <View style={styles.row}>
-      <Total label="New IN" value={newIn} />
-      <Total label="New OUT" value={newOut} />
+      <Total label="New Money In" value={newIn} />
+      <Total label="New Money Out" value={newOut} />
       <Total label="Net" value={activityNet} emphasis />
     </View>
   </Card>

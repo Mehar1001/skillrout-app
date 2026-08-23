@@ -274,13 +274,13 @@ export const generateReportHtml = (
 
         <h2>Store Summary</h2>
         <table>
-          <tr><th>Store</th><th>Visits</th><th>New IN</th><th>New OUT</th><th>Net</th><th>Store $</th><th>Vendor $</th></tr>
+          <tr><th>Store</th><th>Visits</th><th>New Money In</th><th>New Money Out</th><th>Net</th><th>Store $</th><th>Vendor $</th></tr>
           ${storeRows || '<tr><td colspan="7">No visits in range.</td></tr>'}
         </table>
 
         <h2>Machine Summary</h2>
         <table>
-          <tr><th>Store</th><th>Machine #</th><th>Name</th><th>Visits</th><th>New IN</th><th>New OUT</th><th>Net</th></tr>
+          <tr><th>Store</th><th>Machine #</th><th>Name</th><th>Visits</th><th>New Money In</th><th>New Money Out</th><th>Net</th></tr>
           ${machineRows || '<tr><td colspan="7">No machine activity in range.</td></tr>'}
         </table>
 

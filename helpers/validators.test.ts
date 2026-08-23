@@ -14,17 +14,17 @@ test('isPositiveNumber accepts valid non-negative numbers', () => {
 });
 
 test('validatePresentReading requires value and not below baseline', () => {
-  assert.equal(validatePresentReading(null, 1000, 'IN'), 'Present IN is required.');
-  assert.equal(validatePresentReading(1000, 1000, 'IN'), null);
-  assert.equal(validatePresentReading(1001, 1000, 'IN'), null);
+  assert.equal(validatePresentReading(null, 1000, 'Credits In'), 'Credits In is required.');
+  assert.equal(validatePresentReading(1000, 1000, 'Credits In'), null);
+  assert.equal(validatePresentReading(1001, 1000, 'Credits In'), null);
   assert.equal(
-    validatePresentReading(999, 1000, 'IN'),
-    'Present IN must be equal to or greater than the last settled IN.'
+    validatePresentReading(999, 1000, 'Credits In'),
+    'Credits In must be equal to or greater than the last settled value.'
   );
-  assert.equal(validatePresentReading(700, 500, 'OUT'), null);
+  assert.equal(validatePresentReading(700, 500, 'Total Paid'), null);
   assert.equal(
-    validatePresentReading(499, 500, 'OUT'),
-    'Present OUT must be equal to or greater than the last settled OUT.'
+    validatePresentReading(499, 500, 'Total Paid'),
+    'Total Paid must be equal to or greater than the last settled value.'
   );
 });
 
