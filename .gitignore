@@ -46,6 +46,9 @@ ui-debug.*.log
 google-services.json
 GoogleService-Info.plist
 
+# One-time seeding scripts (may contain temp credentials)
+functions/scripts/
+
 # Native build artifacts (run expo prebuild to recreate)
 android/
 ios/

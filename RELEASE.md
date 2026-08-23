@@ -27,6 +27,9 @@
 - Cloud Vision API enabled for OCR (`extractReceiptReadings`).
 - Visits moved to `owners/{ownerId}/stores/{storeId}/visits/{visitId}` with `ownerId` denormalized for cross-store collection-group queries.
 - New collection-group index on `visits` (`ownerId` ASC, `timestamp` DESC) deployed for owner reports/history.
+- **Note: Auth is NOT actually enabled on staging** (Identity Toolkit `CONFIGURATION_NOT_FOUND`). Seeded stores live under owner UID `hDyaBWtutsP8HH5v2UmwSbncAOI2` (production owner UID) without an auth user. Enable Email/Password in the console before staging login testing.
+- Tesla theme (white/black/red), BOOK KEEPING receipt format (SKILLROUT header, TOTAL VOUCHERS PRINTED = Money Out), Vendor → Games labels, and the compact machine readings table are deployed to staging.
+- 14 real stores + 51 machines seeded into staging (dry-run → apply, `--skip-auth`).
 
 ### Production (`skillrout`)
 

@@ -50,27 +50,10 @@ Clarity → Usability → Accessibility → Consistency → Visual Beauty.
 Every screen must answer in ~10 seconds: where am I, what matters, what action, what happens next.
 
 ### Color Palette
-The originally specified palette was:
-```ts
-const colors = {
-  primary: '#6B7C59',      // Muted Olive
-  accent: '#C46A3D',       // Terracotta
-  accentDark: '#8A4A2A',   // Contrast
-  background: '#F7F4F0',   // Warm Cream
-  surface: '#FFFFFF',
-  surfaceSecondary: '#E0DDD6',
-  border: '#C8C4BB',
-  textPrimary: '#2A2A2A',
-  textSecondary: '#5A5A5A',
-  textMuted: '#8A8A8A',
-  success: '#4CAF50',
-  error: '#D32F2F',
-  warning: '#F9A825',
-  info: '#1E90FF',
-};
-```
-
-**Current code discrepancy**: the runtime tokens in `constants/designTokens.ts` use `#8C6E5F` (primary), `#5F8C7B` (accent), and `#F4F1EA` (background). Do **not** change the code colors to match this palette unless explicitly asked. Use the tokens in `designTokens.ts` for any new UI.
+Tesla-style white/black/red, dual-mode:
+- Light: `background #FFFFFF`, `textPrimary #171A20`, `primary #C41E23` (red).
+- Dark: `background #000000`, `textPrimary #FFFFFF`, `primary #E82127` (red).
+- Full token set lives in `constants/designTokens.ts` (`lightColors` / `darkColors`). Use `useColors()`; never hardcode colors.
 
 Apply the 60/30/10 rule: 60% background, 30% surface/neutrals, 10% primary + accent.
 
@@ -105,13 +88,13 @@ Create and reuse these first when they exist:
 - `Card`
 - `Modal` (use a Dialog-like abstraction)
 - `ReceiptView`
-- `MachineReadingCard` (use in place of the planned `MachineRow`)
+- `MachineReadingTable` (compact readings table used by `visit.tsx`)
 - `VisitTotals`
 - `VisitDatePicker`
 - `CurrencyInput`
 - `ThemedText` / `ThemedView`
 
-Planned primitives that are **not yet implemented**: `Select.tsx`, `Badge.tsx`, `MachineRow.tsx` (use `MachineReadingCard.tsx` instead), `VisitSummary.tsx`, `OwnerShell.tsx`. Before creating a one-off component, ask: can an existing primitive handle this?
+Planned primitives that are **not yet implemented**: `Select.tsx`, `Badge.tsx`, `VisitSummary.tsx`, `OwnerShell.tsx`. Before creating a one-off component, ask: can an existing primitive handle this?
 
 ## 6. Cloud Functions
 All Cloud Functions live in `functions/src/index.ts` and currently are:
