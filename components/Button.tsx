@@ -41,38 +41,38 @@ export const Button: React.FC<ButtonProps> = ({
         styles.button,
         {
           backgroundColor: palette.bg,
-          borderWidth: isSecondary || variant === 'danger' ? 2 : 0,
+          borderWidth: isSecondary || variant === 'danger' ? 1.5 : 0,
           borderColor,
           shadowColor: palette.glow,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: disabled ? 0 : 0.5,
-          shadowRadius: 12,
-          elevation: disabled ? 0 : 5,
-          transform: [{ scale: pressed ? 0.97 : 1 }],
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: disabled ? 0 : 0.25,
+          shadowRadius: 6,
+          elevation: disabled ? 0 : 3,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
           opacity: disabled ? 0.45 : 1,
         },
       ]}
     >
-      <Text style={[styles.text, { color: palette.fg }]}>{loading ? 'LOADING…' : title.toUpperCase()}</Text>
+      <Text style={[styles.text, { color: palette.fg }]}>{loading ? 'Loading…' : title}</Text>
     </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 54,
+    minHeight: 48,
     minWidth: 120,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radii.xl,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.lg,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'stretch',
   },
   text: {
-    fontSize: fontSizes.h3,
-    fontWeight: '800',
-    letterSpacing: letterSpacings.uppercase,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+    letterSpacing: letterSpacings.wide,
     textTransform: 'uppercase',
   },
 });

@@ -89,8 +89,8 @@ export const lightColors = {
 
   background: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceSecondary: '#F4F4F4',
-  border: '#D0D1D2',
+  surfaceSecondary: '#F8F8F8',
+  border: '#E5E5E6',
 
   textPrimary: '#171A20',
   textSecondary: '#5C5E62',
@@ -103,10 +103,10 @@ export const lightColors = {
   warning: '#B35C00',
   info: '#0A7EA4',
 
-  glowPrimary: 'rgba(196, 30, 35, 0.14)',
-  glowAccent: 'rgba(23, 26, 32, 0.10)',
-  glowSuccess: 'rgba(18, 130, 59, 0.12)',
-  glowError: 'rgba(183, 33, 42, 0.12)',
+  glowPrimary: 'rgba(196, 30, 35, 0.08)',
+  glowAccent: 'rgba(23, 26, 32, 0.06)',
+  glowSuccess: 'rgba(18, 130, 59, 0.10)',
+  glowError: 'rgba(183, 33, 42, 0.10)',
 } as const;
 
 export type Colors = typeof darkColors;
