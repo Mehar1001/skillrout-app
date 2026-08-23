@@ -13,10 +13,10 @@ import { useState } from 'react';
 export default function OutcomeScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { visitId } = useLocalSearchParams<{ visitId: string }>();
+  const { visitId, storeId } = useLocalSearchParams<{ visitId: string; storeId: string }>();
   const { user, ownerId } = useAuth();
   const router = useRouter();
-  const { visit, loading, error, refresh } = useVisit(ownerId, visitId);
+  const { visit, loading, error, refresh } = useVisit(ownerId, storeId, visitId);
   const [working, setWorking] = useState(false);
 
   if (loading) return <Center text="Loading outcome…" />;
@@ -29,7 +29,7 @@ export default function OutcomeScreen() {
     if (!user || !ownerId) return;
     setWorking(true);
     try {
-      router.push(`/receipt?visitId=${visit.id}` as any);
+      router.push(`/receipt?visitId=${visit.id}&storeId=${visit.storeId}` as any);
     } catch (e: any) {
       Alert.alert('Print Error', e.message || 'Receipt preview could not be opened.');
     } finally {
@@ -41,8 +41,8 @@ export default function OutcomeScreen() {
     if (!user || !ownerId || !positive) return;
     setWorking(true);
     try {
-      await submitVisit(ownerId, visit.id, visit.storePercent, visit.vendorPercent);
-      router.replace(`/receipt?visitId=${visit.id}` as any);
+      await submitVisit(ownerId, visit.storeId, visit.id, visit.storePercent, visit.vendorPercent);
+      router.replace(`/receipt?visitId=${visit.id}&storeId=${visit.storeId}` as any);
     } catch (e: any) {
       Alert.alert('Submit Error', e.message || 'Settlement could not be submitted.');
     } finally {

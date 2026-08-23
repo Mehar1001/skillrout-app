@@ -16,10 +16,10 @@ import { saveVisitSplit } from '../../services/visits';
 export default function SettlementScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { visitId } = useLocalSearchParams<{ visitId: string }>();
+  const { visitId, storeId } = useLocalSearchParams<{ visitId: string; storeId: string }>();
   const { ownerId } = useAuth();
   const router = useRouter();
-  const { visit, loading, error, refresh } = useVisit(ownerId, visitId);
+  const { visit, loading, error, refresh } = useVisit(ownerId, storeId, visitId);
   const [storePercent, setStorePercent] = useState('50');
   const [vendorPercent, setVendorPercent] = useState('50');
   const [saving, setSaving] = useState(false);
@@ -48,8 +48,8 @@ export default function SettlementScreen() {
     }
     setSaving(true);
     try {
-      await saveVisitSplit(ownerId, visit.id, storeValue, vendorValue);
-      router.push(`/outcome?visitId=${visit.id}` as any);
+      await saveVisitSplit(ownerId, visit.storeId, visit.id, storeValue, vendorValue);
+      router.push(`/outcome?visitId=${visit.id}&storeId=${visit.storeId}` as any);
     } catch (e: any) {
       Alert.alert('Split Error', e.message || 'The percentage split could not be saved.');
     } finally {

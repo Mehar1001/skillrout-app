@@ -402,7 +402,7 @@ export const runVisit = onCall(async (request: CallableRequest) => {
   }
 
   const storeRef = db.doc(`owners/${caller.ownerId}/stores/${storeId}`);
-  const visitRef = db.doc(`owners/${caller.ownerId}/visits/${visitId}`);
+  const visitRef = db.doc(`owners/${caller.ownerId}/stores/${storeId}/visits/${visitId}`);
   const machineQuery = db.collection(`owners/${caller.ownerId}/stores/${storeId}/machines`).where('active', '==', true);
 
   await db.runTransaction(async transaction => {
@@ -474,6 +474,7 @@ export const runVisit = onCall(async (request: CallableRequest) => {
       calculateVisit(visitMachines, storePercent);
 
     transaction.set(visitRef, {
+      ownerId: caller.ownerId,
       storeId,
       storeName: store.name || '',
       employeeId: request.auth!.uid,
@@ -505,19 +506,20 @@ export const setVisitSplit = onCall(async (request: CallableRequest) => {
   if (!request.auth?.uid) {
     throw new HttpsError('unauthenticated', 'You must be logged in to set a settlement split.');
   }
-  const { ownerId, visitId, storePercent, vendorPercent } = request.data as {
+  const { ownerId, storeId, visitId, storePercent, vendorPercent } = request.data as {
     ownerId: string;
+    storeId: string;
     visitId: string;
     storePercent: number;
     vendorPercent: number;
   };
-  if (!ownerId || !visitId || storePercent < 0 || vendorPercent < 0 || storePercent + vendorPercent !== 100) {
-    throw new HttpsError('invalid-argument', 'Store and Vendor percentages must total 100.');
+  if (!ownerId || !storeId || !visitId || storePercent < 0 || vendorPercent < 0 || storePercent + vendorPercent !== 100) {
+    throw new HttpsError('invalid-argument', 'Store, visit, and percentages totaling 100 are required.');
   }
 
   const caller = await resolveCaller(request.auth.uid);
   if (caller.ownerId !== ownerId) throw new HttpsError('permission-denied', 'You cannot update this visit.');
-  const visitRef = db.doc(`owners/${ownerId}/visits/${visitId}`);
+  const visitRef = db.doc(`owners/${ownerId}/stores/${storeId}/visits/${visitId}`);
   await db.runTransaction(async transaction => {
     const visitDoc = await transaction.get(visitRef);
     if (!visitDoc.exists) throw new HttpsError('not-found', 'Visit not found.');
@@ -545,14 +547,15 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
     throw new HttpsError('unauthenticated', 'You must be logged in to submit a visit.');
   }
 
-  const { ownerId, visitId, storePercent, vendorPercent } = request.data as {
+  const { ownerId, storeId, visitId, storePercent, vendorPercent } = request.data as {
     ownerId: string;
+    storeId: string;
     visitId: string;
     storePercent: number;
     vendorPercent: number;
   };
-  if (!ownerId || !visitId || storePercent + vendorPercent !== 100) {
-    throw new HttpsError('invalid-argument', 'A visit and percentages totaling 100 are required.');
+  if (!ownerId || !storeId || !visitId || storePercent + vendorPercent !== 100) {
+    throw new HttpsError('invalid-argument', 'A visit, store, and percentages totaling 100 are required.');
   }
 
   const callerId = request.auth.uid;
@@ -561,7 +564,7 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
     throw new HttpsError('permission-denied', 'You cannot submit this visit.');
   }
 
-  const visitRef = db.doc(`owners/${ownerId}/visits/${visitId}`);
+  const visitRef = db.doc(`owners/${ownerId}/stores/${storeId}/visits/${visitId}`);
   await db.runTransaction(async transaction => {
     const visitDoc = await transaction.get(visitRef);
     if (!visitDoc.exists) throw new HttpsError('not-found', 'Visit not found.');

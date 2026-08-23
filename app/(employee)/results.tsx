@@ -12,10 +12,10 @@ import { VisitMachine } from '../../types';
 export default function ResultsScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { visitId } = useLocalSearchParams<{ visitId: string }>();
+  const { visitId, storeId } = useLocalSearchParams<{ visitId: string; storeId: string }>();
   const { ownerId } = useAuth();
   const router = useRouter();
-  const { visit, loading, error, refresh } = useVisit(ownerId, visitId);
+  const { visit, loading, error, refresh } = useVisit(ownerId, storeId, visitId);
 
   if (loading) return <LoadingState />;
   if (!visit) return <ErrorState message={error} onRetry={refresh} />;
@@ -44,7 +44,7 @@ export default function ResultsScreen() {
       <Text style={styles.guidance}>Confirm each machine’s Credits In and Total Paid values before continuing.</Text>
       <Button
         title="Continue to Calculations"
-        onPress={() => router.push(`/calculation?visitId=${visit.id}` as any)}
+        onPress={() => router.push(`/calculation?visitId=${visit.id}&storeId=${visit.storeId}` as any)}
       />
     </ScrollView>
   );

@@ -14,10 +14,10 @@ import { useState } from 'react';
 export default function ReceiptScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { visitId } = useLocalSearchParams<{ visitId: string }>();
+  const { visitId, storeId } = useLocalSearchParams<{ visitId: string; storeId: string }>();
   const { user, ownerId } = useAuth();
   const router = useRouter();
-  const { visit, loading, error, refresh } = useVisit(ownerId, visitId);
+  const { visit, loading, error, refresh } = useVisit(ownerId, storeId, visitId);
   const [printing, setPrinting] = useState(false);
 
   if (loading) return <Center text="Loading receipt…" />;
@@ -28,7 +28,7 @@ export default function ReceiptScreen() {
     setPrinting(true);
     try {
       await Print.printAsync({ html: generateReceiptHtml(visit) });
-      await markPrinted(ownerId, visit.id, user.uid);
+      await markPrinted(ownerId, visit.storeId, visit.id, user.uid);
     } catch (e: any) {
       Alert.alert('Print Error', e.message || 'Receipt could not be printed.');
     } finally {

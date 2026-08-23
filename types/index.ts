@@ -120,6 +120,7 @@ export interface VisitMachine {
 
 export interface Visit {
   id: string;
+  ownerId: string;
   storeId: string;
   storeName: string;
   employeeId: string;

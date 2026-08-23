@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getVisit } from '../services/visits';
 import { Visit } from '../types';
 
-export const useVisit = (ownerId?: string | null, visitId?: string) => {
+export const useVisit = (ownerId?: string | null, storeId?: string | null, visitId?: string) => {
   const [visit, setVisit] = useState<Visit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,7 +12,7 @@ export const useVisit = (ownerId?: string | null, visitId?: string) => {
     setLoading(true);
     setError('');
     try {
-      const value = await getVisit(ownerId, visitId);
+      const value = await getVisit(ownerId, storeId || undefined, visitId);
       if (!value) throw new Error('Visit not found.');
       setVisit(value);
     } catch (e: any) {
@@ -20,7 +20,7 @@ export const useVisit = (ownerId?: string | null, visitId?: string) => {
     } finally {
       setLoading(false);
     }
-  }, [ownerId, visitId]);
+  }, [ownerId, storeId, visitId]);
 
   useEffect(() => {
     refresh();

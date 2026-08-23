@@ -262,10 +262,10 @@ export default function VisitScreen() {
   if (!store) return null;
 
   const handleViewResults = () => {
-    if (!completedVisitId) return;
+    if (!completedVisitId || !storeId) return;
     const visitId = completedVisitId;
     setCompletedVisitId(null);
-    router.push(`/results?visitId=${visitId}` as any);
+    router.push(`/results?visitId=${visitId}&storeId=${storeId}` as any);
   };
 
   return (

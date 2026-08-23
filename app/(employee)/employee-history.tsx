@@ -83,7 +83,7 @@ export default function EmployeeHistoryScreen() {
                 <Text style={styles.status}>Settlement: {visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
                 <Text style={styles.status}>Receipt: {visit.printStatus === 'printed' ? 'Printed' : 'Not printed'}</Text>
               </View>
-              <Button title="View Receipt" onPress={() => router.push(`/receipt?visitId=${visit.id}` as any)} variant="secondary" />
+              <Button title="View Receipt" onPress={() => router.push(`/receipt?visitId=${visit.id}&storeId=${visit.storeId}` as any)} variant="secondary" />
             </Card>
           );
         })

@@ -1,31 +1,67 @@
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import {
+  collection,
+  collectionGroup,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebaseConfig';
 import { Machine, MachineReadingDraft, Visit } from '../types';
 import { uploadVisitPhoto, uploadVisitReceipt, UploadedVisitPhoto } from './visitPhotos';
 
-const getVisitsRef = (ownerId: string) => collection(db, `owners/${ownerId}/visits`);
+const getVisitRef = (ownerId: string, storeId: string, visitId: string) =>
+  doc(db, `owners/${ownerId}/stores/${storeId}/visits`, visitId);
 
-export const getVisit = async (ownerId: string, visitId: string): Promise<Visit | null> => {
-  const snap = await getDoc(doc(db, `owners/${ownerId}/visits`, visitId));
-  return snap.exists() ? ({ id: snap.id, ...snap.data() } as Visit) : null;
+const getVisitsRef = (ownerId: string, storeId: string) =>
+  collection(db, `owners/${ownerId}/stores/${storeId}/visits`);
+
+export const getVisit = async (
+  ownerId: string,
+  storeId: string | undefined,
+  visitId: string
+): Promise<Visit | null> => {
+  if (storeId) {
+    const snap = await getDoc(getVisitRef(ownerId, storeId, visitId));
+    return snap.exists() ? ({ id: snap.id, ...snap.data() } as Visit) : null;
+  }
+  const fallback = query(
+    collectionGroup(db, 'visits'),
+    where('ownerId', '==', ownerId),
+    where('__name__', '==', visitId)
+  );
+  const snap = await getDocs(fallback);
+  const doc = snap.docs[0];
+  return doc ? ({ id: doc.id, ...doc.data() } as Visit) : null;
 };
 
 export const listVisits = async (ownerId: string, pageSize = 100): Promise<Visit[]> => {
   const snapshot = await getDocs(
-    query(getVisitsRef(ownerId), orderBy('timestamp', 'desc'), limit(pageSize))
+    query(
+      collectionGroup(db, 'visits'),
+      where('ownerId', '==', ownerId),
+      orderBy('timestamp', 'desc'),
+      limit(pageSize)
+    )
   );
   return snapshot.docs.map(visit => ({ id: visit.id, ...visit.data() } as Visit));
 };
 
 export const listAssignedStoreVisits = async (
   ownerId: string,
-  assignedStoreIds: string[]
+  assignedStoreIds: string[],
+  pageSize = 100
 ): Promise<Visit[]> => {
   if (assignedStoreIds.length === 0) return [];
   const snapshots = await Promise.all(
     assignedStoreIds.map(storeId =>
-      getDocs(query(getVisitsRef(ownerId), where('storeId', '==', storeId)))
+      getDocs(query(getVisitsRef(ownerId, storeId), orderBy('timestamp', 'desc'), limit(pageSize)))
     )
   );
   return snapshots
@@ -46,7 +82,7 @@ export const saveRun = async (
     preUploadedReceipt?: UploadedVisitPhoto;
   }
 ): Promise<string> => {
-  const visitId = options?.visitId || doc(getVisitsRef(ownerId)).id;
+  const visitId = options?.visitId || doc(getVisitsRef(ownerId, storeId)).id;
   const uploadedPhotos = new Map<string, UploadedVisitPhoto>();
   if (options?.preUploadedPhotos) {
     Object.entries(options.preUploadedPhotos).forEach(([machineId, photo]) => {
@@ -92,26 +128,33 @@ export const saveRun = async (
 
 export const saveVisitSplit = async (
   ownerId: string,
+  storeId: string,
   visitId: string,
   storePercent: number,
   vendorPercent: number
 ): Promise<void> => {
   const setVisitSplit = httpsCallable(functions, 'setVisitSplit');
-  await setVisitSplit({ ownerId, visitId, storePercent, vendorPercent });
+  await setVisitSplit({ ownerId, storeId, visitId, storePercent, vendorPercent });
 };
 
 export const submitVisit = async (
   ownerId: string,
+  storeId: string,
   visitId: string,
   storePercent: number,
   vendorPercent: number
 ): Promise<void> => {
   const submitVisitFn = httpsCallable(functions, 'submitVisit');
-  await submitVisitFn({ ownerId, visitId, storePercent, vendorPercent });
+  await submitVisitFn({ ownerId, storeId, visitId, storePercent, vendorPercent });
 };
 
-export const markPrinted = async (ownerId: string, visitId: string, userId: string): Promise<void> => {
-  await updateDoc(doc(db, `owners/${ownerId}/visits`, visitId), {
+export const markPrinted = async (
+  ownerId: string,
+  storeId: string,
+  visitId: string,
+  userId: string
+): Promise<void> => {
+  await updateDoc(getVisitRef(ownerId, storeId, visitId), {
     printStatus: 'printed',
     printedAt: serverTimestamp(),
     printedBy: userId,

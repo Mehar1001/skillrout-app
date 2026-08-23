@@ -11,10 +11,10 @@ import { useVisit } from '../../hooks/useVisit';
 export default function CalculationScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { visitId } = useLocalSearchParams<{ visitId: string }>();
+  const { visitId, storeId } = useLocalSearchParams<{ visitId: string; storeId: string }>();
   const { ownerId } = useAuth();
   const router = useRouter();
-  const { visit, loading, error, refresh } = useVisit(ownerId, visitId);
+  const { visit, loading, error, refresh } = useVisit(ownerId, storeId, visitId);
 
   if (loading) return <Center text="Calculating RUN…" />;
   if (!visit) return <Center text={error || 'Visit not found.'} action={refresh} />;
@@ -50,7 +50,7 @@ export default function CalculationScreen() {
 
       <Button
         title="Continue to Settlement Split"
-        onPress={() => router.push(`/settlement?visitId=${visit.id}` as any)}
+        onPress={() => router.push(`/settlement?visitId=${visit.id}&storeId=${visit.storeId}` as any)}
       />
     </ScrollView>
   );

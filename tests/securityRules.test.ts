@@ -59,7 +59,8 @@ const seed = async (testEnv: RulesTestEnvironment) => {
     batch.set(db.doc('employees/employeeOtherOwner'), { ...employeeA, ownerId: 'ownerB' });
     batch.set(db.doc('employees/employeeUnassigned'), { ...employeeA, assignedStoreIds: ['store2'] });
     // A visit that can be updated for print metadata.
-    batch.set(db.doc('owners/ownerA/visits/visit1'), {
+    batch.set(db.doc('owners/ownerA/stores/store1/visits/visit1'), {
+      ownerId: 'ownerA',
       storeId: 'store1',
       businessDate: '2026-08-21',
       printStatus: 'pending',
@@ -205,14 +206,14 @@ describe('Firestore security rules', () => {
     it('denies creating or deleting visits from client', async () => {
       const owner = testEnv.authenticatedContext('ownerA', { email_verified: true });
       const db = owner.firestore();
-      await assertFails(db.doc('owners/ownerA/visits/visit2').set({ storeId: 'store1', businessDate: '2026-08-21' }));
-      await assertFails(db.doc('owners/ownerA/visits/visit1').delete());
+      await assertFails(db.doc('owners/ownerA/stores/store1/visits/visit2').set({ ownerId: 'ownerA', storeId: 'store1', businessDate: '2026-08-21' }));
+      await assertFails(db.doc('owners/ownerA/stores/store1/visits/visit1').delete());
     });
 
     it('allows employee to update print fields only', async () => {
       const emp = testEnv.authenticatedContext('employeeA', { email_verified: true });
       const db = emp.firestore();
-      await assertSucceeds(db.doc('owners/ownerA/visits/visit1').update({
+      await assertSucceeds(db.doc('owners/ownerA/stores/store1/visits/visit1').update({
         printStatus: 'printed', printedAt: new Date().toISOString(), printedBy: 'employeeA',
       }));
     });
@@ -220,20 +221,20 @@ describe('Firestore security rules', () => {
     it('denies updating non-print visit fields', async () => {
       const emp = testEnv.authenticatedContext('employeeA', { email_verified: true });
       const db = emp.firestore();
-      await assertFails(db.doc('owners/ownerA/visits/visit1').update({ totalNet: 100 }));
+      await assertFails(db.doc('owners/ownerA/stores/store1/visits/visit1').update({ totalNet: 100 }));
     });
 
     it('denies print update from unassigned employee', async () => {
       const emp = testEnv.authenticatedContext('employeeUnassigned', { email_verified: true });
       const db = emp.firestore();
-      await assertFails(db.doc('owners/ownerA/visits/visit1').update({
+      await assertFails(db.doc('owners/ownerA/stores/store1/visits/visit1').update({
         printStatus: 'printed', printedAt: new Date().toISOString(), printedBy: 'employeeUnassigned',
       }));
     });
 
     it('denies visit access from wrong tenant', async () => {
       const emp = testEnv.authenticatedContext('employeeOtherOwner', { email_verified: true });
-      await assertFails(emp.firestore().doc('owners/ownerA/visits/visit1').get());
+      await assertFails(emp.firestore().doc('owners/ownerA/stores/store1/visits/visit1').get());
     });
   });
 
