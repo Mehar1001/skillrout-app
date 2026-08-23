@@ -42,6 +42,7 @@
 - Replaced hidden native `Alert` dialogs with web-visible inline messages and `window.confirm` fallbacks on owner sign-in, dashboard, employees, stores, and machines screens.
 - Visits moved to `owners/{ownerId}/stores/{storeId}/visits/{visitId}` with `ownerId` denormalized for cross-store collection-group queries.
 - New collection-group index on `visits` (`ownerId` ASC, `timestamp` DESC) deployed for owner reports/history.
+- Tesla theme (white/black/red), BOOK KEEPING receipt format, Vendor → Games rename, compact readings table, and `storeAddress` visit snapshots deployed.
 
 ## Pre-deploy checklist
 
