@@ -632,3 +632,96 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
 
   return { success: true };
 });
+
+export const employeeOnboardStore = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Sign in to onboard a store.');
+  }
+
+  const caller = await resolveCaller(request.auth.uid);
+  if (caller.role !== 'employee') {
+    throw new HttpsError('permission-denied', 'Only employees can onboard a store through this flow.');
+  }
+
+  const { name, address, defaultStorePercent, defaultVendorPercent, machines } = request.data as {
+    name: string;
+    address: string;
+    defaultStorePercent: number;
+    defaultVendorPercent: number;
+    machines: Array<{ machineNumber: string; name: string }>;
+  };
+
+  if (typeof name !== 'string' || name.trim().length === 0 || name.trim().length > 200) {
+    throw new HttpsError('invalid-argument', 'Store name is required (1-200 characters).');
+  }
+  if (
+    typeof defaultStorePercent !== 'number' ||
+    typeof defaultVendorPercent !== 'number' ||
+    defaultStorePercent < 0 ||
+    defaultVendorPercent < 0 ||
+    defaultStorePercent + defaultVendorPercent !== 100
+  ) {
+    throw new HttpsError('invalid-argument', 'Store and Games percentages must total 100.');
+  }
+  if (!Array.isArray(machines) || machines.length === 0) {
+    throw new HttpsError('invalid-argument', 'At least one machine is required.');
+  }
+
+  const ownerId = caller.ownerId;
+  const storeRef = db.collection(`owners/${ownerId}/stores`).doc();
+  const storeId = storeRef.id;
+  const employeeRef = db.doc(`employees/${request.auth.uid}`);
+
+  const machineEntries = machines.map(machine => {
+    if (typeof machine?.machineNumber !== 'string' || !machine.machineNumber.trim() ||
+        typeof machine?.name !== 'string' || !machine.name.trim()) {
+      throw new HttpsError('invalid-argument', 'Each machine needs a number and a name.');
+    }
+    const machineRef = db.collection(`owners/${ownerId}/stores/${storeId}/machines`).doc();
+    return {
+      id: machineRef.id,
+      ref: machineRef,
+      data: {
+        machineNumber: machine.machineNumber.trim(),
+        name: machine.name.trim(),
+        storeId,
+        active: true,
+        lastSettledIn: 0,
+        lastSettledOut: 0,
+        baselineVersion: 0,
+        schemaVersion: 1,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+    };
+  });
+
+  await db.runTransaction(async transaction => {
+    const employeeDoc = await transaction.get(employeeRef);
+    if (!employeeDoc.exists) {
+      throw new HttpsError('not-found', 'Employee record not found.');
+    }
+    const employee = employeeDoc.data()!;
+    const assignedStoreIds = employee.assignedStoreIds || [];
+
+    transaction.set(storeRef, {
+      name: name.trim(),
+      address: (address || '').trim(),
+      active: true,
+      defaultStorePercent,
+      defaultVendorPercent,
+      schemaVersion: 1,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    machineEntries.forEach(entry => transaction.set(entry.ref, entry.data));
+
+    transaction.update(employeeRef, {
+      assignedStoreIds: [...assignedStoreIds, storeId],
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { storeId, ownerId, machineCount: machineEntries.length };
+});

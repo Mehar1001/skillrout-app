@@ -33,6 +33,9 @@ export default function SelectStoreScreen() {
         <View style={styles.headerActions}>
           <Button title="Drafts" onPress={() => router.push('/drafts' as any)} variant={pendingCount > 0 ? 'primary' : 'secondary'} />
           <Button title="History" onPress={() => router.push('/employee-history' as any)} variant="secondary" />
+          {role === 'employee' && (
+            <Button title="Add Store" onPress={() => router.push('/onboard-store' as any)} variant="secondary" />
+          )}
         </View>
       </View>
       {stores.length === 0 ? (

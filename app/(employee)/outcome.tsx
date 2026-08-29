@@ -24,6 +24,7 @@ export default function OutcomeScreen() {
 
   const positive = visit.totalNet > 0;
   const zero = visit.totalNet === 0;
+  const result = positive ? 'positive' : zero ? 'zero' : 'negative';
 
   const handlePrint = async () => {
     if (!user || !ownerId) return;
@@ -54,7 +55,7 @@ export default function OutcomeScreen() {
   const outcomeTitle = positive ? 'Amounts are positive' : zero ? 'Net amount is zero' : 'Net amount is negative';
   const outcomeBody = positive
     ? 'You can submit the settlement and print, or print without submitting.'
-    : 'This RUN is permanently saved. It can be printed, but it cannot be submitted.';
+    : 'This RUN is permanently saved. No payment is due right now.';
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -76,14 +77,30 @@ export default function OutcomeScreen() {
         <Summary label="Cash Due Location" value={visit.cashDueLocation} emphasis />
       </Card>
 
-      <View style={styles.actions}>
-        {positive && visit.settlementStatus !== 'submitted' ? (
-          <Button title="Submit & Print" onPress={handleSubmit} loading={working} />
-        ) : null}
-        <Button title={visit.printStatus === 'printed' ? 'Reprint' : 'Print'} onPress={handlePrint} loading={working} variant="secondary" />
-        <Button title="Cancel" onPress={() => router.replace('/select-store' as any)} variant="secondary" disabled={working} />
-      </View>
-      <Text style={styles.rule}>Only SUBMIT advances Last Settled readings. RUN and PRINT never change them.</Text>
+      {result === 'positive' ? (
+        <>
+          <View style={styles.actions}>
+            {visit.settlementStatus !== 'submitted' ? (
+              <Button title="Submit & Print" onPress={handleSubmit} loading={working} />
+            ) : null}
+            <Button title={visit.printStatus === 'printed' ? 'Reprint' : 'Print'} onPress={handlePrint} loading={working} variant="secondary" />
+            <Button title="Cancel" onPress={() => router.replace('/select-store' as any)} variant="secondary" disabled={working} />
+          </View>
+          <Text style={styles.rule}>Only SUBMIT advances Last Settled readings. RUN and PRINT never change them.</Text>
+        </>
+      ) : (
+        <View style={styles.emptyState}>
+          <Card style={styles.negativeCard}>
+            <Text style={[styles.negativeTitle, { color: outcomeColor }]}>{outcomeTitle}</Text>
+            <Text style={styles.negativeBody}>
+              {result === 'negative'
+                ? 'This visit closed with a negative net, so no payment is due right now. No action needed — come back next time. 🙏'
+                : 'This visit closed with a zero net, so no payment is due right now. No action needed — come back next time. ⚖️'}
+            </Text>
+            <Button title="Back to Stores" onPress={() => router.replace('/select-store' as any)} />
+          </Card>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -210,5 +227,31 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   error: {
     color: colors.error,
     fontSize: fontSizes.body,
+  },
+  emptyState: {
+    flex: 1,
+    minHeight: 280,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.xl,
+  },
+  negativeCard: {
+    width: '100%',
+    maxWidth: 420,
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  negativeTitle: {
+    fontSize: fontSizes.h2,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  negativeBody: {
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
+    textAlign: 'center',
   },
 });

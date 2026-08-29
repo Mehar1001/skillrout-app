@@ -38,6 +38,36 @@ export default function EmployeeLayout() {
         headerStyle: styles.header,
         headerTitleStyle: styles.headerTitle,
         headerTintColor: colors.textPrimary,
+        headerLeft: () => {
+          const currentRoute = segments[segments.length - 1];
+          const hideBack = currentRoute === 'select-store' || currentRoute === 'change-password';
+          if (hideBack) return null;
+          const isVisit = currentRoute === 'visit';
+          return (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                onPress={() => router.back()}
+                style={styles.navIcon}
+                hitSlop={spacing.xs}
+              >
+                <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+              </Pressable>
+              {isVisit && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Stores"
+                  onPress={() => router.replace('/select-store')}
+                  style={styles.navIcon}
+                  hitSlop={spacing.xs}
+                >
+                  <Ionicons name="storefront-outline" size={22} color={colors.textPrimary} />
+                </Pressable>
+              )}
+            </>
+          );
+        },
         headerRight: () => (
           <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.logout}>
             <Ionicons name="log-out-outline" size={20} color={colors.accent} />
@@ -47,6 +77,7 @@ export default function EmployeeLayout() {
       }}
     >
       <Stack.Screen name="change-password" options={{ title: 'Secure Your Account', headerBackVisible: false }} />
+      <Stack.Screen name="onboard-store" options={{ title: 'Onboard Store' }} />
       <Stack.Screen name="select-store" options={{ title: 'Select Store', headerBackVisible: false }} />
       <Stack.Screen name="drafts" options={{ title: 'Offline Drafts' }} />
       <Stack.Screen name="visit" options={{ title: 'Enter Readings' }} />
@@ -67,6 +98,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   headerTitle: {
     color: colors.textPrimary,
     fontWeight: '700',
+  },
+  navIcon: {
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logout: {
     minHeight: 44,

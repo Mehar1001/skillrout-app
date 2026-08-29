@@ -1,18 +1,17 @@
 import dayjs from 'dayjs';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { MachineReadingTable } from '../../components/MachineReadingTable';
 import { AppliedReceiptReading, ReceiptScanReview } from '../../components/ReceiptScanReview';
 import { VisitDatePicker } from '../../components/VisitDatePicker';
-import { VisitTotals } from '../../components/VisitTotals';
 import { type Colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDraftQueue } from '../../contexts/DraftQueueContext';
-import { calculateLiveReadings } from '../../helpers/calculations';
+
 import { matchReceiptCandidates, ReceiptReviewRow } from '../../helpers/receiptMachineMatching';
 import { validateBusinessDate, validatePresentReading } from '../../helpers/validators';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
@@ -58,7 +57,6 @@ export default function VisitScreen() {
     });
   }, [user, ownerId, storeId]);
 
-  const totals = useMemo(() => calculateLiveReadings(machines, readings), [machines, readings]);
   const dateError = validateBusinessDate(businessDate);
 
   const updateReading = (machineId: string, reading: MachineReadingDraft) => {
@@ -320,8 +318,6 @@ export default function VisitScreen() {
           readingPhotoMachineId={readingReceipt ? scanTargetMachineId : null}
           showRequiredErrors={showRequiredErrors}
         />
-
-        <VisitTotals {...totals} />
 
         <View style={styles.runArea}>
           <Button title={isOnline ? 'RUN' : 'Save Offline Draft'} onPress={handleRun} loading={saving} disabled={saving} variant="primary" />
