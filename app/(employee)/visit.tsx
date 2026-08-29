@@ -294,8 +294,8 @@ export default function VisitScreen() {
             <Text style={styles.receiptScannerHelp}>Scan the full bookkeeping receipt once. Review every suggested value before applying.</Text>
           </View>
           <View style={styles.receiptActions}>
-            <Button title="Scan Receipt" onPress={() => handleReceiptImage('camera')} variant="accent" disabled={readingReceipt} loading={readingReceipt} />
-            <Button title="Upload Receipt" onPress={() => handleReceiptImage('library')} variant="secondary" disabled={readingReceipt} />
+            <Button title="Scan" iconName="camera-outline" onPress={() => handleReceiptImage('camera')} variant="accent" disabled={readingReceipt} loading={readingReceipt} />
+            <Button title="Upload" iconName="cloud-upload-outline" onPress={() => handleReceiptImage('library')} variant="secondary" disabled={readingReceipt} />
           </View>
           {receiptImageUri && !scanTargetMachineId && !receiptOcr ? (
             <View style={styles.receiptAttachmentRow}>
@@ -452,6 +452,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     lineHeight: 16,
   },
   receiptActions: {
+    flexDirection: 'row',
     gap: spacing.sm,
   },
   receiptAttachmentRow: {

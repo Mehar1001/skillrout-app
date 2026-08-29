@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
 import { fontSizes, letterSpacings, radii, spacing } from '@/constants/designTokens';
@@ -11,6 +12,7 @@ interface ButtonProps {
   variant?: ButtonVariant;
   disabled?: boolean;
   loading?: boolean;
+  iconName?: keyof typeof Ionicons.glyphMap;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -19,6 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   disabled,
   loading,
+  iconName,
 }) => {
   const colors = useColors();
 
@@ -39,6 +42,7 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.button,
+        iconName ? styles.buttonWithIcon : null,
         {
           backgroundColor: palette.bg,
           borderWidth: isSecondary || variant === 'danger' ? 1.5 : 0,
@@ -53,6 +57,7 @@ export const Button: React.FC<ButtonProps> = ({
         },
       ]}
     >
+      {iconName ? <Ionicons name={iconName} size={18} color={palette.fg} /> : null}
       <Text style={[styles.text, { color: palette.fg }]}>{loading ? 'Loading…' : title}</Text>
     </Pressable>
   );
@@ -68,6 +73,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'stretch',
+  },
+  buttonWithIcon: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   text: {
     fontSize: fontSizes.body,
