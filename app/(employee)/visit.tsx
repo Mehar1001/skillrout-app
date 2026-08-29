@@ -18,7 +18,7 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { listMachines } from '../../services/machines';
 import { prepareReceiptImage, readReceiptImage } from '../../services/receiptOcr';
 import { getStore } from '../../services/stores';
-import { saveRun } from '../../services/visits';
+import { getVisit, saveRun } from '../../services/visits';
 import { Machine, MachineReadingDraft, ReceiptOcrResponse, Store } from '../../types';
 
 export default function VisitScreen() {
@@ -259,11 +259,16 @@ export default function VisitScreen() {
 
   if (!store) return null;
 
-  const handleViewResults = () => {
-    if (!completedVisitId || !storeId) return;
+  const handleViewResults = async () => {
+    if (!completedVisitId || !storeId || !ownerId) return;
     const visitId = completedVisitId;
     setCompletedVisitId(null);
-    router.push(`/results?visitId=${visitId}&storeId=${storeId}` as any);
+    const visit = await getVisit(ownerId, storeId, visitId);
+    if (visit && Number(visit.totalNet) > 0) {
+      router.push(`/settlement?visitId=${visitId}&storeId=${storeId}` as any);
+    } else {
+      router.push(`/outcome?visitId=${visitId}&storeId=${storeId}` as any);
+    }
   };
 
   return (
