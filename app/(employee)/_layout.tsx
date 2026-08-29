@@ -52,7 +52,7 @@ export default function EmployeeLayout() {
                 style={styles.navIcon}
                 hitSlop={spacing.xs}
               >
-                <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
               </Pressable>
               {isVisit && (
                 <Pressable
@@ -70,7 +70,7 @@ export default function EmployeeLayout() {
         },
         headerRight: () => (
           <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.logout}>
-            <Ionicons name="log-out-outline" size={20} color={colors.accent} />
+            <Ionicons name="log-out-outline" size={20} color={colors.error} />
             <Text style={styles.logoutText}>Log out</Text>
           </Pressable>
         ),
@@ -113,7 +113,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   logoutText: {
-    color: colors.accent,
+    color: colors.error,
     fontSize: fontSizes.caption,
     fontWeight: '600',
   },
