@@ -295,10 +295,10 @@ export default function VisitScreen() {
           </View>
           <View style={styles.receiptActions}>
             <View style={styles.receiptActionHalf}>
-              <Button title="Scan" iconName="camera-outline" onPress={() => handleReceiptImage('camera')} variant="accent" disabled={readingReceipt} loading={readingReceipt} />
+              <Button title="Scan" iconName="camera-outline" onPress={() => handleReceiptImage('camera')} variant="accent" disabled={readingReceipt} loading={readingReceipt} compact />
             </View>
             <View style={styles.receiptActionHalf}>
-              <Button title="Upload" iconName="cloud-upload-outline" onPress={() => handleReceiptImage('library')} variant="secondary" disabled={readingReceipt} />
+              <Button title="Upload" iconName="cloud-upload-outline" onPress={() => handleReceiptImage('library')} variant="secondary" disabled={readingReceipt} compact />
             </View>
           </View>
           {receiptImageUri && !scanTargetMachineId && !receiptOcr ? (
@@ -324,7 +324,9 @@ export default function VisitScreen() {
         />
 
         <View style={styles.runArea}>
-          <Button title={isOnline ? 'RUN' : 'Save Offline Draft'} onPress={handleRun} loading={saving} disabled={saving} variant="primary" />
+          <View style={styles.runButtonWrapper}>
+            <Button title={isOnline ? 'RUN' : 'Save Offline Draft'} onPress={handleRun} loading={saving} disabled={saving} variant="primary" />
+          </View>
           <Text style={styles.runHelp}>
             {isOnline
               ? 'RUN saves this visit permanently and does not update settled readings.'
@@ -458,9 +460,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   receiptActions: {
     flexDirection: 'row',
     gap: spacing.sm,
+    alignItems: 'center',
   },
   receiptActionHalf: {
-    flex: 1,
+    width: 120,
   },
   receiptAttachmentRow: {
     minHeight: 44,
@@ -488,6 +491,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   runArea: {
     gap: spacing.sm,
     marginTop: spacing.xl,
+    alignItems: 'center',
+  },
+  runButtonWrapper: {
+    width: '50%',
+    maxWidth: 280,
+    minWidth: 200,
   },
   runHelp: {
     color: colors.textMuted,

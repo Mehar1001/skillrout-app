@@ -13,6 +13,7 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   iconName?: keyof typeof Ionicons.glyphMap;
+  compact?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -22,6 +23,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   loading,
   iconName,
+  compact,
 }) => {
   const colors = useColors();
 
@@ -62,6 +64,7 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.button,
+        compact && styles.compact,
         {
           backgroundColor: pressed ? palette.pressedBg : palette.bg,
           borderWidth: variant === 'secondary' ? 1.5 : 1,
@@ -76,7 +79,7 @@ export const Button: React.FC<ButtonProps> = ({
         },
       ]}
     >
-      {iconName ? <Ionicons name={iconName} size={18} color={palette.fg} /> : null}
+      {iconName ? <Ionicons name={iconName} size={compact ? 16 : 18} color={palette.fg} /> : null}
       <Text style={[styles.text, { color: palette.fg }]}>{loading ? 'Loading…' : title}</Text>
     </Pressable>
   );
@@ -93,6 +96,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     alignSelf: 'stretch',
+  },
+  compact: {
+    minHeight: 40,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
   },
   text: {
     fontSize: fontSizes.body,

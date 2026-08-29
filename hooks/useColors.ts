@@ -1,8 +1,7 @@
-import { useColorScheme } from 'react-native';
-
 import { darkColors, lightColors, type Colors } from '@/constants/designTokens';
 
+// Defaulting to light mode for the financial-institution white-dominant UI.
+// Dark colors are still exported from design tokens for future use.
 export const useColors = (): Colors => {
-  const scheme = useColorScheme() ?? 'light';
-  return (scheme === 'light' ? lightColors : darkColors) as Colors;
+  return lightColors as Colors;
 };

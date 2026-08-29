@@ -111,11 +111,11 @@ export const lightColors = {
   glowError: 'rgba(220, 38, 38, 0.10)',
 } as const;
 
-export type Colors = typeof darkColors;
+export type Colors = typeof lightColors | typeof darkColors;
 
 // Convenience for components that are not yet theme-aware.
 // For full dark/light support, prefer `useColors()` from `hooks/useColors`.
-export const colors = lightColors;
+export const colors: Colors = lightColors;
 
 const baseShadows = {
   shadowOffset: { width: 0, height: 1 },
