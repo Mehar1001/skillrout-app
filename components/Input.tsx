@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Text, TextInput, View, StyleSheet, TextInputProps } from 'react-native';
 import { fontSizes, radii, spacing } from '@/constants/designTokens';
 import { useColors } from '@/hooks/useColors';
@@ -8,8 +8,9 @@ interface InputProps extends TextInputProps {
   error?: string;
 }
 
-export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) => {
+export const Input: React.FC<InputProps> = ({ label, error, style, onFocus, onBlur, ...props }) => {
   const colors = useColors();
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.wrapper}>
@@ -19,12 +20,26 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) =
           styles.input,
           {
             backgroundColor: colors.surface,
-            borderColor: error ? colors.error : colors.border,
+            borderColor: error ? colors.error : focused ? colors.primary : colors.border,
+            borderWidth: focused ? 2 : 1,
             color: colors.textPrimary,
+            shadowColor: focused ? colors.primary : colors.glowAccent,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: focused ? 0.15 : 0.06,
+            shadowRadius: focused ? 4 : 2,
+            elevation: focused ? 3 : 1,
           },
           style as any,
         ]}
         placeholderTextColor={colors.textMuted}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
         {...props}
       />
       {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
@@ -39,11 +54,10 @@ const styles = StyleSheet.create({
   label: {
     fontSize: fontSizes.caption,
     marginBottom: spacing.xs,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   input: {
-    borderWidth: 1,
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: fontSizes.body,

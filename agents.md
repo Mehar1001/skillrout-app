@@ -50,9 +50,9 @@ Clarity → Usability → Accessibility → Consistency → Visual Beauty.
 Every screen must answer in ~10 seconds: where am I, what matters, what action, what happens next.
 
 ### Color Palette
-Tesla-style white/black/red, dual-mode:
-- Light: `background #FFFFFF`, `textPrimary #171A20`, `primary #C41E23` (red).
-- Dark: `background #000000`, `textPrimary #FFFFFF`, `primary #E82127` (red).
+shadcn/ui-inspired white-dominant, blue-shades and black, dual-mode:
+- Light: `background #FFFFFF`, `surface #FFFFFF`, `textPrimary #0F172A`, `primary #2563EB` (blue).
+- Dark: `background #020617`, `surface #0F172A`, `textPrimary #F8FAFC`, `primary #3B82F6` (blue).
 - Full token set lives in `constants/designTokens.ts` (`lightColors` / `darkColors`). Use `useColors()`; never hardcode colors.
 
 Apply the 60/30/10 rule: 60% background, 30% surface/neutrals, 10% primary + accent.

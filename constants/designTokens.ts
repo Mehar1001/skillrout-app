@@ -1,6 +1,8 @@
-// Skillrout — Tesla-style white/black/red design tokens
+// Skillrout — shadcn-inspired white/blue/black design tokens
+// White-dominant light mode, deep slate dark mode.
 // Dual-mode (light/dark) system. Use `useColors()` to access the active palette.
 
+// Fibonacci-based spacing scale (golden-ratio progression).
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -46,108 +48,108 @@ export const letterSpacings = {
 } as const;
 
 export const darkColors = {
-  primary: '#E82127',
-  primaryHover: '#FF3B41',
-  primarySubtle: 'rgba(232, 33, 39, 0.14)',
+  primary: '#3B82F6',
+  primaryHover: '#60A5FA',
+  primarySubtle: 'rgba(59, 130, 246, 0.16)',
 
-  accent: '#FFFFFF',
-  accentDark: '#D0D1D2',
-  accentHover: '#E8E8E8',
-  accentSubtle: 'rgba(255, 255, 255, 0.10)',
+  accent: '#1E293B',
+  accentDark: '#0F172A',
+  accentHover: '#334155',
+  accentSubtle: 'rgba(30, 41, 59, 0.5)',
 
-  background: '#000000',
-  surface: '#121317',
-  surfaceSecondary: '#1B1D22',
-  border: '#33363C',
+  background: '#020617',
+  surface: '#0F172A',
+  surfaceSecondary: '#1E293B',
+  border: '#1E293B',
 
-  textPrimary: '#FFFFFF',
-  textSecondary: '#B0B2B6',
-  textMuted: '#82858A',
+  textPrimary: '#F8FAFC',
+  textSecondary: '#CBD5E1',
+  textMuted: '#94A3B8',
   textOnPrimary: '#FFFFFF',
-  textOnAccent: '#171A20',
+  textOnAccent: '#F8FAFC',
 
-  success: '#2FBF5F',
-  error: '#FF5A5F',
-  warning: '#FF9F0A',
-  info: '#5AC8FA',
+  success: '#22C55E',
+  error: '#F87171',
+  warning: '#FBBF24',
+  info: '#38BDF8',
 
-  glowPrimary: 'rgba(232, 33, 39, 0.35)',
-  glowAccent: 'rgba(255, 255, 255, 0.20)',
-  glowSuccess: 'rgba(47, 191, 95, 0.35)',
-  glowError: 'rgba(255, 90, 95, 0.35)',
+  glowPrimary: 'rgba(59, 130, 246, 0.25)',
+  glowAccent: 'rgba(248, 250, 252, 0.08)',
+  glowSuccess: 'rgba(34, 197, 94, 0.25)',
+  glowError: 'rgba(248, 113, 113, 0.25)',
 } as const;
 
 export const lightColors = {
-  primary: '#C41E23',
-  primaryHover: '#A8181D',
-  primarySubtle: 'rgba(232, 33, 39, 0.08)',
+  primary: '#2563EB',
+  primaryHover: '#1D4ED8',
+  primarySubtle: 'rgba(37, 99, 235, 0.08)',
 
-  accent: '#171A20',
-  accentDark: '#000000',
-  accentHover: '#2F343E',
-  accentSubtle: 'rgba(23, 26, 32, 0.06)',
+  accent: '#F1F5F9',
+  accentDark: '#E2E8F0',
+  accentHover: '#E2E8F0',
+  accentSubtle: 'rgba(241, 245, 249, 0.5)',
 
   background: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceSecondary: '#F8F8F8',
-  border: '#E5E5E6',
+  surfaceSecondary: '#F8FAFC',
+  border: '#E2E8F0',
 
-  textPrimary: '#171A20',
-  textSecondary: '#5C5E62',
-  textMuted: '#84868A',
+  textPrimary: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#94A3B8',
   textOnPrimary: '#FFFFFF',
-  textOnAccent: '#FFFFFF',
+  textOnAccent: '#0F172A',
 
-  success: '#12823B',
-  error: '#B7212A',
-  warning: '#B35C00',
-  info: '#0A7EA4',
+  success: '#16A34A',
+  error: '#DC2626',
+  warning: '#D97706',
+  info: '#0EA5E9',
 
-  glowPrimary: 'rgba(196, 30, 35, 0.08)',
-  glowAccent: 'rgba(23, 26, 32, 0.06)',
-  glowSuccess: 'rgba(18, 130, 59, 0.10)',
-  glowError: 'rgba(183, 33, 42, 0.10)',
+  glowPrimary: 'rgba(37, 99, 235, 0.10)',
+  glowAccent: 'rgba(15, 23, 42, 0.04)',
+  glowSuccess: 'rgba(22, 163, 74, 0.10)',
+  glowError: 'rgba(220, 38, 38, 0.10)',
 } as const;
 
 export type Colors = typeof darkColors;
 
 // Convenience for components that are not yet theme-aware.
 // For full dark/light support, prefer `useColors()` from `hooks/useColors`.
-export const colors = darkColors;
+export const colors = lightColors;
 
 const baseShadows = {
-  shadowOffset: { width: 0, height: 2 },
-  shadowRadius: 4,
+  shadowOffset: { width: 0, height: 1 },
+  shadowRadius: 3,
   elevation: 2,
 } as const;
 
 export const darkShadows = {
   button: {
     ...baseShadows,
-    shadowColor: darkColors.glowPrimary,
-    shadowOpacity: 0.45,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#000000',
+    shadowOpacity: 0.20,
+    shadowRadius: 4,
+    elevation: 3,
   },
   buttonAccent: {
     ...baseShadows,
     shadowColor: darkColors.glowAccent,
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   card: {
     ...baseShadows,
     shadowColor: '#000000',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowOpacity: 0.20,
+    shadowRadius: 10,
     elevation: 3,
   },
   input: {
     ...baseShadows,
     shadowColor: darkColors.glowAccent,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
     elevation: 2,
   },
 } as const;
@@ -155,29 +157,29 @@ export const darkShadows = {
 export const lightShadows = {
   button: {
     ...baseShadows,
-    shadowColor: lightColors.glowPrimary,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowColor: '#000000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   buttonAccent: {
     ...baseShadows,
     shadowColor: lightColors.glowAccent,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 3,
   },
   card: {
     ...baseShadows,
     shadowColor: '#000000',
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
   input: {
     ...baseShadows,
     shadowColor: lightColors.glowAccent,
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.10,
     shadowRadius: 4,
     elevation: 1,
   },

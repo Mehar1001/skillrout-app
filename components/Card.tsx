@@ -13,11 +13,11 @@ export const Card: React.FC<ViewProps> = ({ children, style, ...props }) => {
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          shadowColor: colors.glowAccent,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
-          elevation: 3,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.05,
+          shadowRadius: 6,
+          elevation: 2,
         },
         style,
       ]}
@@ -30,7 +30,7 @@ export const Card: React.FC<ViewProps> = ({ children, style, ...props }) => {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.lg,
+    borderRadius: radii.md,
     padding: spacing.lg,
     borderWidth: 1,
   },

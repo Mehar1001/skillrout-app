@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { fontSizes, letterSpacings, radii, spacing } from '@/constants/designTokens';
+import { fontSizes, radii, spacing } from '@/constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 
 type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'danger';
@@ -25,16 +25,36 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const colors = useColors();
 
-  const isSecondary = variant === 'secondary';
-
   const palette = {
-    primary: { bg: colors.primary, fg: colors.textOnPrimary, glow: colors.glowPrimary },
-    secondary: { bg: 'transparent', fg: colors.primary, glow: colors.glowPrimary },
-    accent: { bg: colors.accent, fg: colors.textOnAccent, glow: colors.glowAccent },
-    danger: { bg: colors.error, fg: colors.textOnPrimary, glow: colors.glowError },
+    primary: {
+      bg: colors.primary,
+      fg: colors.textOnPrimary,
+      glow: colors.glowPrimary,
+      pressedBg: colors.primaryHover,
+      border: 'transparent',
+    },
+    secondary: {
+      bg: 'transparent',
+      fg: colors.primary,
+      glow: colors.glowPrimary,
+      pressedBg: colors.primarySubtle,
+      border: colors.primary,
+    },
+    accent: {
+      bg: colors.accent,
+      fg: colors.textOnAccent,
+      glow: colors.glowAccent,
+      pressedBg: colors.accentHover,
+      border: colors.border,
+    },
+    danger: {
+      bg: colors.error,
+      fg: colors.textOnPrimary,
+      glow: colors.glowError,
+      pressedBg: colors.error,
+      border: 'transparent',
+    },
   }[variant];
-
-  const borderColor = isSecondary ? colors.primary : variant === 'danger' ? colors.error : 'transparent';
 
   return (
     <Pressable
@@ -42,16 +62,15 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.button,
-        iconName ? styles.buttonWithIcon : null,
         {
-          backgroundColor: palette.bg,
-          borderWidth: isSecondary || variant === 'danger' ? 1.5 : 0,
-          borderColor,
+          backgroundColor: pressed ? palette.pressedBg : palette.bg,
+          borderWidth: variant === 'secondary' ? 1.5 : 1,
+          borderColor: palette.border,
           shadowColor: palette.glow,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: disabled ? 0 : 0.25,
-          shadowRadius: 6,
-          elevation: disabled ? 0 : 3,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: disabled ? 0 : 0.12,
+          shadowRadius: 4,
+          elevation: disabled ? 0 : 2,
           transform: [{ scale: pressed ? 0.98 : 1 }],
           opacity: disabled ? 0.45 : 1,
         },
@@ -66,22 +85,18 @@ export const Button: React.FC<ButtonProps> = ({
 const styles = StyleSheet.create({
   button: {
     minHeight: 48,
-    minWidth: 120,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radii.lg,
+    borderRadius: radii.md,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'stretch',
-  },
-  buttonWithIcon: {
-    flexDirection: 'row',
     gap: spacing.sm,
+    alignSelf: 'stretch',
   },
   text: {
     fontSize: fontSizes.body,
-    fontWeight: '700',
-    letterSpacing: letterSpacings.wide,
-    textTransform: 'uppercase',
+    fontWeight: '600',
+    lineHeight: fontSizes.body + 4,
   },
 });
