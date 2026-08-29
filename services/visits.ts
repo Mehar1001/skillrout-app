@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebaseConfig';
+import { listStores } from './stores';
 import { Machine, MachineReadingDraft, Visit } from '../types';
 import { uploadVisitPhoto, uploadVisitReceipt, UploadedVisitPhoto } from './visitPhotos';
 
@@ -42,15 +43,9 @@ export const getVisit = async (
 };
 
 export const listVisits = async (ownerId: string, pageSize = 100): Promise<Visit[]> => {
-  const snapshot = await getDocs(
-    query(
-      collectionGroup(db, 'visits'),
-      where('ownerId', '==', ownerId),
-      orderBy('timestamp', 'desc'),
-      limit(pageSize)
-    )
-  );
-  return snapshot.docs.map(visit => ({ id: visit.id, ...visit.data() } as Visit));
+  const stores = await listStores(ownerId);
+  const storeIds = stores.map(s => s.id);
+  return listAssignedStoreVisits(ownerId, storeIds, pageSize);
 };
 
 export const listAssignedStoreVisits = async (

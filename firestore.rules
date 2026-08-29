@@ -91,7 +91,8 @@ service cloud.firestore {
         }
 
         match /visits/{visitId} {
-          allow read: if isVisitOwnerOrEmployee(storeId);
+          allow list: if isOwner(ownerId) || isActiveEmployee(ownerId, storeId);
+          allow get: if isVisitOwnerOrEmployee(storeId);
           allow create, delete: if false;
           allow update: if isVisitOwnerOrEmployee(storeId)
                         && request.resource.data.diff(resource.data).affectedKeys()
