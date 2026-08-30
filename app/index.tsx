@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
-import { type Colors, fontSizes, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, radii, spacing } from '../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -36,9 +36,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   logo: {
-    width: 89,
-    height: 89,
-    borderRadius: 21,
+    width: spacing.xxl,
+    height: spacing.xxl,
+    borderRadius: radii.xl,
   },
   text: {
     fontSize: fontSizes.body,

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Button } from './Button';
 import { Card } from './Card';
 import { Input } from './Input';
-import { type Colors, fontSizes, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, letterSpacings, spacing } from '../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../contexts/AuthContext';
+import { alert } from '../helpers/alert';
 import { calculateMachine, calculateVisit } from '../helpers/calculations';
 import { formatCurrency } from '../helpers/formatters';
 import { adjustVisit } from '../services/visits';
@@ -27,13 +28,7 @@ const formatTwoDecimals = (value: string) => {
 
 const baselineInfo = `When to use it:\n\nEnable it ONLY if this is the most recent submitted visit for these machines and you need future visits to start counting from these newly adjusted numbers.\n\nKeep it disabled if there have already been newer visits submitted after this one, or if you are simply correcting a past record without changing the current baseline for future readings.`;
 
-const showInfo = () => {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    window.alert(baselineInfo.replace(/\n/g, '\n'));
-  } else {
-    Alert.alert('Rewrite machine baselines', baselineInfo);
-  }
-};
+const showInfo = () => alert('Rewrite machine baselines', baselineInfo);
 
 export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjustmentModalProps) => {
   const colors = useColors();
@@ -198,8 +193,13 @@ export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjust
           <View style={styles.switchRow}>
             <View style={styles.switchLabelGroup}>
               <Text style={styles.switchLabel}>Rewrite machine baselines</Text>
-              <Pressable onPress={showInfo} style={styles.infoButton}>
-                <Text style={[styles.infoIcon, { color: colors.accent }]}>?</Text>
+              <Pressable
+                onPress={showInfo}
+                style={styles.infoButton}
+                accessibilityRole="button"
+                accessibilityLabel="Baseline rewrite info"
+              >
+                <Text style={[styles.infoIcon, { color: colors.primary }]}>?</Text>
               </Pressable>
             </View>
             <Switch
@@ -251,7 +251,7 @@ const makeStyles = (colors: Colors) =>
       color: colors.primary,
       fontSize: fontSizes.caption,
       fontWeight: '700',
-      letterSpacing: 0.8,
+      letterSpacing: letterSpacings.label,
     },
     title: {
       marginTop: spacing.xs,
@@ -333,8 +333,8 @@ const makeStyles = (colors: Colors) =>
       fontWeight: '600',
     },
     infoButton: {
-      minWidth: 24,
-      minHeight: 24,
+      minWidth: 44,
+      minHeight: 44,
       alignItems: 'center',
       justifyContent: 'center',
     },

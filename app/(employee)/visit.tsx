@@ -6,7 +6,7 @@ import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text,
 import { Button } from '../../components/Button';
 import { MachineReadingTable } from '../../components/MachineReadingTable';
 import { AppliedReceiptReading, ReceiptScanReview } from '../../components/ReceiptScanReview';
-import { type Colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDraftQueue } from '../../contexts/DraftQueueContext';
@@ -405,7 +405,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.primary,
     fontSize: fontSizes.caption,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: letterSpacings.label,
   },
   title: {
     marginTop: spacing.xs,
@@ -463,7 +463,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.xs,
     color: colors.textSecondary,
     fontSize: fontSizes.caption,
-    lineHeight: 16,
+    lineHeight: lineHeights.caption,
   },
   receiptActions: {
     flexDirection: 'row',
@@ -539,7 +539,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
-    backgroundColor: 'rgba(42, 42, 42, 0.48)',
+    backgroundColor: colors.overlay,
   },
   modalCard: {
     width: '100%',
@@ -550,11 +550,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   successMark: {
-    width: 55,
-    height: 55,
+    width: spacing.xxl,
+    height: spacing.xxl,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 28,
+    borderRadius: radii.pill,
     backgroundColor: colors.success,
   },
   successMarkText: {
@@ -576,7 +576,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     textAlign: 'center',
   },
   modalButton: {
-    minHeight: 48,
+    minHeight: 44,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',

@@ -5,7 +5,7 @@ import { calculateLiveReadings, calculateMachine } from '../helpers/calculations
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '../helpers/formatters';
 import { validatePresentReading } from '../helpers/validators';
 import { Machine, MachineReadingDraft } from '../types';
-import { type Colors, fontSizes, radii, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, letterSpacings, radii, spacing } from '../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { Card } from './Card';
 
@@ -374,9 +374,9 @@ const makeStyles = (colors: Colors) =>
     },
     headerCell: {
       color: colors.textMuted,
-      fontSize: 10,
+      fontSize: fontSizes.caption,
       fontWeight: '700',
-      letterSpacing: 0.4,
+      letterSpacing: letterSpacings.wide,
     },
     headerRight: {
       textAlign: 'right',
@@ -420,7 +420,7 @@ const makeStyles = (colors: Colors) =>
       width: 72,
     },
     photoCol: {
-      width: 36,
+      width: 44,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -431,7 +431,7 @@ const makeStyles = (colors: Colors) =>
     },
     machineName: {
       color: colors.textMuted,
-      fontSize: 10,
+      fontSize: fontSizes.caption,
     },
     compactInput: {
       width: '100%',
@@ -469,8 +469,8 @@ const makeStyles = (colors: Colors) =>
       borderColor: colors.primary,
     },
     photoThumb: {
-      width: 36,
-      height: 36,
+      width: 44,
+      height: 44,
       borderRadius: radii.sm,
     },
     errorText: {
@@ -486,7 +486,7 @@ const makeStyles = (colors: Colors) =>
     },
     ocrText: {
       color: colors.textSecondary,
-      fontSize: 10,
+      fontSize: fontSizes.caption,
       fontWeight: '600',
     },
     actionsRow: {

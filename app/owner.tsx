@@ -6,7 +6,6 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
-  signOut,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -24,8 +23,10 @@ import {
 } from 'react-native';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { type Colors, fontSizes, lineHeights, radii, spacing } from '../constants/designTokens';
+import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuth } from '../contexts/AuthContext';
 import { mapFirebaseError } from '../helpers/firebaseErrors';
 import { auth, db, functions } from '../firebaseConfig';
 
@@ -36,13 +37,15 @@ const provisionOwner = httpsCallable(functions, 'provisionOwner');
 export default function OwnerScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
+  const { signOut: authSignOut } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
-  const router = useRouter();
+  const scheme = useColorScheme() ?? 'light';
 
   const clearMessage = () => setMessage(null);
   const ScreenContainer = Platform.OS === 'web' ? View : Pressable;
@@ -116,7 +119,7 @@ export default function OwnerScreen() {
           type: 'error',
           text: 'Email not verified. A new verification link has been sent — check your inbox and click it before signing in.',
         });
-        await signOut(auth);
+        await authSignOut();
         setIsLoading(false);
         return;
       }
@@ -130,7 +133,7 @@ export default function OwnerScreen() {
         const employeeSnap = await getDoc(doc(db, 'employees', user.uid));
         if (!employeeSnap.exists() || employeeSnap.data().active !== true) {
           setMessage({ type: 'error', text: 'Your account is not active in Skillrout.' });
-          await signOut(auth);
+          await authSignOut();
           setIsLoading(false);
           return;
         }
@@ -142,7 +145,7 @@ export default function OwnerScreen() {
 
       if (ownerData.subscriptionStatus !== 'active') {
         setMessage({ type: 'error', text: 'Your account is not active. Please contact support.' });
-        await signOut(auth);
+        await authSignOut();
         setIsLoading(false);
         return;
       }
@@ -212,12 +215,16 @@ export default function OwnerScreen() {
             <Pressable
               onPress={() => setIsRegistering(false)}
               style={[styles.tab, !isRegistering && styles.tabActive]}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in"
             >
               <Text style={[styles.tabText, !isRegistering && styles.tabTextActive]}>Sign In</Text>
             </Pressable>
             <Pressable
               onPress={() => setIsRegistering(true)}
               style={[styles.tab, isRegistering && styles.tabActive]}
+              accessibilityRole="button"
+              accessibilityLabel="Create account"
             >
               <Text style={[styles.tabText, isRegistering && styles.tabTextActive]}>Create Account</Text>
             </Pressable>
@@ -252,7 +259,7 @@ export default function OwnerScreen() {
             />
 
             {!isRegistering && (
-              <Pressable onPress={handlePasswordReset} style={styles.forgot}>
+              <Pressable onPress={handlePasswordReset} style={styles.forgot} accessibilityRole="button" accessibilityLabel="Forgot password">
                 <Text style={styles.forgotText}>Forgot password?</Text>
               </Pressable>
             )}
@@ -297,7 +304,7 @@ export default function OwnerScreen() {
 
           <Text style={styles.footer}>Secure admin access — Skillrout</Text>
         </ScrollView>
-        <StatusBar style="dark" />
+        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       </KeyboardAvoidingView>
     </ScreenContainer>
   );
@@ -319,8 +326,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.xl,
   },
   logo: {
-    width: 89,
-    height: 89,
+    width: spacing.xxl,
+    height: spacing.xxl,
     borderRadius: radii.lg,
     marginBottom: spacing.md,
   },
@@ -342,6 +349,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   tab: {
     flex: 1,
+    minHeight: 44,
     paddingVertical: spacing.md,
     alignItems: 'center',
     borderBottomWidth: 2,
@@ -368,12 +376,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   forgot: {
     alignSelf: 'flex-end',
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: spacing.sm,
     marginBottom: spacing.sm,
   },
   forgotText: {
     fontSize: fontSizes.body,
-    color: colors.accent,
+    color: colors.primary,
     fontWeight: '600',
   },
   action: {
@@ -401,7 +411,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: '700',
     marginBottom: spacing.xs,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: letterSpacings.wide,
   },
   requirementsText: {
     fontSize: fontSizes.caption,

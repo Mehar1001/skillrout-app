@@ -1,10 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { type Colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+import { alert, confirm } from '../../helpers/alert';
 import { formatCurrency } from '../../helpers/formatters';
 import { useVisit } from '../../hooks/useVisit';
 import { submitVisit } from '../../services/visits';
@@ -26,13 +27,7 @@ export default function OutcomeScreen() {
   const zero = visit.totalNet === 0;
   const result = positive ? 'positive' : zero ? 'zero' : 'negative';
 
-  const showError = (title: string, message: string) => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.alert(`${title}\n\n${message}`);
-    } else {
-      Alert.alert(title, message);
-    }
-  };
+  const showError = (title: string, message: string) => alert(title, message);
 
   const handlePrint = async () => {
     if (!user || !ownerId) return;
@@ -46,24 +41,6 @@ export default function OutcomeScreen() {
     }
   };
 
-  const confirmAndSubmit = () => {
-    const title = 'Submit & Print';
-    const message = 'This will submit the settlement, advance the Last Settled readings, and open the receipt. Continue?';
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      if (window.confirm(`${title}\n\n${message}`)) {
-        handleSubmit();
-      }
-      return;
-    }
-    Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Submit & Print',
-        onPress: handleSubmit,
-      },
-    ]);
-  };
-
   const handleSubmit = async () => {
     if (!user || !ownerId || !positive) return;
     setWorking(true);
@@ -75,6 +52,14 @@ export default function OutcomeScreen() {
     } finally {
       setWorking(false);
     }
+  };
+
+  const confirmAndSubmit = () => {
+    confirm(
+      'Submit & Print',
+      'This will submit the settlement, advance the Last Settled readings, and open the receipt. Continue?',
+      handleSubmit
+    );
   };
 
   const outcomeColor = positive ? colors.success : colors.error;
@@ -162,7 +147,7 @@ const makeStyles = (colors: Colors) =>
       color: colors.primary,
       fontSize: fontSizes.caption,
       fontWeight: '700',
-      letterSpacing: 0.8,
+      letterSpacing: letterSpacings.label,
     },
     title: {
       marginTop: spacing.xs,
@@ -177,11 +162,11 @@ const makeStyles = (colors: Colors) =>
       borderWidth: 2,
     },
     statusIcon: {
-      width: 55,
-      height: 55,
+      width: spacing.xxl,
+      height: spacing.xxl,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 28,
+      borderRadius: radii.pill,
     },
     statusIconText: {
       color: colors.textOnPrimary,

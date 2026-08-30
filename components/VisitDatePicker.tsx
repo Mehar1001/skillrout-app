@@ -230,7 +230,7 @@ const makeStyles = (colors: Colors) =>
       alignItems: 'center',
       justifyContent: 'center',
       padding: spacing.lg,
-      backgroundColor: 'rgba(42, 42, 42, 0.42)',
+      backgroundColor: colors.overlay,
     },
     modal: {
       width: '100%',

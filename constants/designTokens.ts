@@ -72,6 +72,7 @@ export const darkColors = {
   error: '#F87171',
   warning: '#FBBF24',
   info: '#38BDF8',
+  overlay: 'rgba(0, 0, 0, 0.48)',
 
   glowPrimary: 'rgba(59, 130, 246, 0.25)',
   glowAccent: 'rgba(248, 250, 252, 0.08)',
@@ -104,6 +105,7 @@ export const lightColors = {
   error: '#DC2626',
   warning: '#D97706',
   info: '#0EA5E9',
+  overlay: 'rgba(0, 0, 0, 0.48)',
 
   glowPrimary: 'rgba(37, 99, 235, 0.10)',
   glowAccent: 'rgba(15, 23, 42, 0.04)',

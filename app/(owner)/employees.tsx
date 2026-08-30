@@ -265,7 +265,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   title: {
-    fontSize: 24,
+    fontSize: fontSizes.h1,
     fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: spacing.md,
@@ -275,7 +275,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   fieldLabel: {
-    fontSize: 14,
+    fontSize: fontSizes.body,
     fontWeight: '600',
     color: colors.textPrimary,
   },
@@ -290,7 +290,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     backgroundColor: colors.surface,
   },
   storeChoiceSelected: {
@@ -299,13 +299,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   storeChoiceText: {
     color: colors.textPrimary,
+    fontSize: fontSizes.body,
   },
   storeChoiceTextSelected: {
-    color: colors.surface,
+    color: colors.textOnPrimary,
     fontWeight: '600',
+    fontSize: fontSizes.body,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: fontSizes.h2,
     fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: spacing.sm,
@@ -315,20 +317,20 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: 8,
+    borderRadius: radii.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
   rowName: {
-    fontSize: 16,
+    fontSize: fontSizes.h3,
     color: colors.textPrimary,
     fontWeight: '500',
   },
   rowEmail: {
-    fontSize: 13,
+    fontSize: fontSizes.caption,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   empty: {
     color: colors.textMuted,

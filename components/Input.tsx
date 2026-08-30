@@ -13,6 +13,7 @@ interface InputProps extends TextInputProps {
 export const Input: React.FC<InputProps> = ({ label, error, style, onFocus, onBlur, prefix, suffix, ...props }) => {
   const colors = useColors();
   const [focused, setFocused] = useState(false);
+  const a11yLabel = props.accessibilityLabel ?? label;
 
   const textStyle = [
     styles.input,
@@ -29,6 +30,20 @@ export const Input: React.FC<InputProps> = ({ label, error, style, onFocus, onBl
     },
     style as any,
   ];
+
+  const sharedTextInputProps = {
+    accessibilityLabel: a11yLabel,
+    placeholderTextColor: colors.textMuted,
+    onFocus: (e: any) => {
+      setFocused(true);
+      onFocus?.(e);
+    },
+    onBlur: (e: any) => {
+      setFocused(false);
+      onBlur?.(e);
+    },
+    ...props,
+  };
 
   const inner = prefix || suffix ? (
     <View style={[textStyle as any, styles.inputRow, { paddingHorizontal: 0, paddingVertical: 0 }]}>
@@ -48,35 +63,14 @@ export const Input: React.FC<InputProps> = ({ label, error, style, onFocus, onBl
           },
           style as any,
         ]}
-        placeholderTextColor={colors.textMuted}
-        onFocus={(e) => {
-          setFocused(true);
-          onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocused(false);
-          onBlur?.(e);
-        }}
-        {...props}
+        {...sharedTextInputProps}
       />
       {suffix ? (
         <Text style={[styles.affix, { color: colors.textMuted, paddingRight: spacing.md }]}>{suffix}</Text>
       ) : null}
     </View>
   ) : (
-    <TextInput
-      style={textStyle}
-      placeholderTextColor={colors.textMuted}
-      onFocus={(e) => {
-        setFocused(true);
-        onFocus?.(e);
-      }}
-      onBlur={(e) => {
-        setFocused(false);
-        onBlur?.(e);
-      }}
-      {...props}
-    />
+    <TextInput style={textStyle} {...sharedTextInputProps} />
   );
 
   return (
