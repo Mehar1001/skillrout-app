@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Button } from './Button';
 import { Card } from './Card';
 import { Input } from './Input';
@@ -17,6 +17,24 @@ interface VisitAdjustmentModalProps {
   onAdjusted: () => void;
 }
 
+const sanitizeNumeric = (value: string) =>
+  value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+
+const formatTwoDecimals = (value: string) => {
+  const numeric = Number(value);
+  return (Number.isFinite(numeric) ? numeric : 0).toFixed(2);
+};
+
+const baselineInfo = `When to use it:\n\nEnable it ONLY if this is the most recent submitted visit for these machines and you need future visits to start counting from these newly adjusted numbers.\n\nKeep it disabled if there have already been newer visits submitted after this one, or if you are simply correcting a past record without changing the current baseline for future readings.`;
+
+const showInfo = () => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(baselineInfo.replace(/\n/g, '\n'));
+  } else {
+    Alert.alert('Rewrite machine baselines', baselineInfo);
+  }
+};
+
 export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjustmentModalProps) => {
   const colors = useColors();
   const styles = makeStyles(colors);
@@ -27,8 +45,8 @@ export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjust
       machineNumber: m.machineNumber,
       lastSettledIn: m.lastSettledIn,
       lastSettledOut: m.lastSettledOut,
-      presentIn: String(m.presentIn),
-      presentOut: String(m.presentOut),
+      presentIn: String(Number(m.presentIn).toFixed(2)),
+      presentOut: String(Number(m.presentOut).toFixed(2)),
     }))
   );
   const [note, setNote] = useState('');
@@ -48,8 +66,20 @@ export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjust
   })();
 
   const updatePresent = (machineId: string, field: 'presentIn' | 'presentOut', value: string) => {
-    setReadings(prev => prev.map(r => (r.machineId === machineId ? { ...r, [field]: value } : r)));
+    setReadings(prev =>
+      prev.map(r => (r.machineId === machineId ? { ...r, [field]: sanitizeNumeric(value) } : r))
+    );
   };
+
+  const formatPresent = (machineId: string, field: 'presentIn' | 'presentOut', value: string) => {
+    setReadings(prev =>
+      prev.map(r =>
+        r.machineId === machineId ? { ...r, [field]: formatTwoDecimals(value) } : r
+      )
+    );
+  };
+
+  const canSave = note.trim().length > 0;
 
   const handleSave = async () => {
     if (!ownerId) return;
@@ -58,22 +88,16 @@ export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjust
       setError('An adjustment note is required.');
       return;
     }
-    if (!tag.trim()) {
-      setError('An adjustment tag (e.g. CORRECTION) is required.');
-      return;
-    }
-    const payloadReadings = readings
-      .map(r => ({
-        machineId: r.machineId,
-        presentIn: Number(r.presentIn) || 0,
-        presentOut: Number(r.presentOut) || 0,
-      }))
-      .filter(r => visit.machines.some((m: VisitMachine) => m.machineId === r.machineId));
+    const payloadReadings = readings.map(r => ({
+      machineId: r.machineId,
+      presentIn: Number(r.presentIn) || 0,
+      presentOut: Number(r.presentOut) || 0,
+    }));
     setSaving(true);
     try {
       await adjustVisit(ownerId, visit.storeId, visit.id, {
         note: note.trim(),
-        tag: tag.trim(),
+        tag: tag.trim() || 'ADJUSTMENT',
         rewriteBaselines,
         readings: payloadReadings,
       });
@@ -112,6 +136,8 @@ export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjust
                     label="Present IN"
                     value={r.presentIn}
                     onChangeText={text => updatePresent(r.machineId, 'presentIn', text)}
+                    onBlur={() => formatPresent(r.machineId, 'presentIn', r.presentIn)}
+                    prefix="$"
                     keyboardType="decimal-pad"
                   />
                 </View>
@@ -120,6 +146,8 @@ export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjust
                     label="Present OUT"
                     value={r.presentOut}
                     onChangeText={text => updatePresent(r.machineId, 'presentOut', text)}
+                    onBlur={() => formatPresent(r.machineId, 'presentOut', r.presentOut)}
+                    prefix="$"
                     keyboardType="decimal-pad"
                   />
                 </View>
@@ -168,7 +196,12 @@ export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjust
             multiline
           />
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Rewrite machine baselines</Text>
+            <View style={styles.switchLabelGroup}>
+              <Text style={styles.switchLabel}>Rewrite machine baselines</Text>
+              <Pressable onPress={showInfo} style={styles.infoButton}>
+                <Text style={[styles.infoIcon, { color: colors.accent }]}>?</Text>
+              </Pressable>
+            </View>
             <Switch
               value={rewriteBaselines}
               onValueChange={setRewriteBaselines}
@@ -184,7 +217,12 @@ export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjust
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.actions}>
-          <Button title="Save Adjustment" onPress={handleSave} loading={saving} disabled={saving} />
+          <Button
+            title="Save Adjustment"
+            onPress={handleSave}
+            loading={saving}
+            disabled={saving || !canSave}
+          />
           <Button title="Cancel" onPress={onClose} variant="secondary" disabled={saving} />
         </View>
       </ScrollView>
@@ -283,10 +321,26 @@ const makeStyles = (colors: Colors) =>
       alignItems: 'center',
       marginTop: spacing.sm,
     },
+    switchLabelGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flex: 1,
+    },
     switchLabel: {
       color: colors.textPrimary,
       fontSize: fontSizes.body,
       fontWeight: '600',
+    },
+    infoButton: {
+      minWidth: 24,
+      minHeight: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    infoIcon: {
+      fontSize: fontSizes.body,
+      fontWeight: '700',
     },
     switchHint: {
       color: colors.textMuted,
