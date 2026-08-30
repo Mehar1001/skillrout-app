@@ -155,3 +155,18 @@ export const markPrinted = async (
     printedBy: userId,
   });
 };
+
+export const adjustVisit = async (
+  ownerId: string,
+  storeId: string,
+  visitId: string,
+  payload: {
+    note: string;
+    tag: string;
+    rewriteBaselines: boolean;
+    readings: { machineId: string; presentIn: number; presentOut: number }[];
+  }
+): Promise<void> => {
+  const adjustVisitFn = httpsCallable(functions, 'adjustVisit');
+  await adjustVisitFn({ ownerId, storeId, visitId, ...payload });
+};

@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from '../../helpers/formatters';
 import { buildReportSummary, generateReportHtml, type ReportSummary } from '../../helpers/reportTemplate';
 import { listVisits } from '../../services/visits';
 import { Visit } from '../../types';
+import { VisitAdjustmentModal } from '../../components/VisitAdjustmentModal';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const daysAgoIso = (days: number) => {
@@ -33,6 +34,7 @@ export default function ReportsScreen() {
   const [startDate, setStartDate] = useState(daysAgoIso(30));
   const [endDate, setEndDate] = useState(todayIso());
   const [generating, setGenerating] = useState(false);
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
 
   const fetchVisits = useCallback(async () => {
     if (!ownerId) return;
@@ -121,7 +123,8 @@ export default function ReportsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.screen}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <View style={styles.headingRow}>
         <View style={styles.headingText}>
           <Text style={styles.title}>Reports</Text>
@@ -245,22 +248,23 @@ export default function ReportsScreen() {
 
           <Card style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Recent Visits</Text>
-            {summary.visitRows.slice(0, 15).map(v => (
-              <View key={v.visitId} style={styles.summaryRow}>
+            {filteredVisits.slice(0, 15).map(visit => (
+              <View key={visit.id} style={styles.summaryRow}>
                 <View style={styles.summaryLeft}>
-                  <Text style={styles.summaryName}>{v.storeName}</Text>
-                  <Text style={styles.summaryMeta}>{v.runAt} · {v.employeeName}</Text>
+                  <Text style={styles.summaryName}>{visit.storeName}</Text>
+                  <Text style={styles.summaryMeta}>{visit.businessDate} · {visit.employeeName}</Text>
                 </View>
                 <View style={styles.summaryRight}>
-                  <Text style={[styles.summaryNet, { color: v.result === 'positive' ? colors.success : v.result === 'negative' ? colors.error : colors.textMuted }]}>
-                    {formatCurrency(v.totalNet)}
+                  <Text style={[styles.summaryNet, { color: visit.result === 'positive' ? colors.success : visit.result === 'negative' ? colors.error : colors.textMuted }]}>
+                    {formatCurrency(visit.totalNet)}
                   </Text>
-                  <Text style={styles.summaryMeta}>{v.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
+                  <Text style={styles.summaryMeta}>{visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
+                  <Button title="Adjust" onPress={() => setSelectedVisit(visit)} variant="secondary" compact />
                 </View>
               </View>
             ))}
-            {summary.visitRows.length > 15 && (
-              <Text style={styles.moreText}>+{summary.visitRows.length - 15} more visits in the PDF.</Text>
+            {filteredVisits.length > 15 && (
+              <Text style={styles.moreText}>+{filteredVisits.length - 15} more visits in the PDF.</Text>
             )}
           </Card>
         </>
@@ -273,6 +277,17 @@ export default function ReportsScreen() {
         </View>
       )}
     </ScrollView>
+    {selectedVisit ? (
+      <VisitAdjustmentModal
+        visit={selectedVisit}
+        onClose={() => setSelectedVisit(null)}
+        onAdjusted={() => {
+          setSelectedVisit(null);
+          fetchVisits();
+        }}
+      />
+    ) : null}
+    </View>
   );
 }
 
@@ -325,6 +340,14 @@ const BreakdownItem = ({ label, value, color }: { label: string; value: number; 
 };
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  screen: {
+    flex: 1,
+    position: 'relative',
+    backgroundColor: colors.background,
+  },
+  scroll: {
+    flex: 1,
+  },
   container: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

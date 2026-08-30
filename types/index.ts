@@ -159,4 +159,36 @@ export interface Visit {
     voidedBy: string;
     reason: string;
   };
+  adjustments?: Adjustment[];
+}
+
+export interface Adjustment {
+  adjustedAt: Timestamp;
+  adjustedBy: string;
+  adjustedByName?: string;
+  tag: string;
+  note: string;
+  rewroteBaselines: boolean;
+  oldTotalNewIn: number;
+  oldTotalNewOut: number;
+  oldTotalNet: number;
+  oldStoreAmount: number;
+  oldVendorAmount: number;
+  newTotalNewIn: number;
+  newTotalNewOut: number;
+  newTotalNet: number;
+  newStoreAmount: number;
+  newVendorAmount: number;
+  machineChanges: {
+    machineId: string;
+    machineNumber: string;
+    oldPresentIn: number;
+    oldPresentOut: number;
+    newPresentIn: number;
+    newPresentOut: number;
+    oldLastSettledIn: number;
+    oldLastSettledOut: number;
+    newLastSettledIn?: number;
+    newLastSettledOut?: number;
+  }[];
 }

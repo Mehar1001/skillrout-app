@@ -804,3 +804,184 @@ export const employeeAddMachine = onCall(async (request: CallableRequest) => {
 
   return { machineId };
 });
+
+interface MachineChange {
+  machineId: string;
+  machineNumber: string;
+  oldPresentIn: number;
+  oldPresentOut: number;
+  newPresentIn: number;
+  newPresentOut: number;
+  oldLastSettledIn: number;
+  oldLastSettledOut: number;
+  newLastSettledIn?: number;
+  newLastSettledOut?: number;
+}
+
+export const adjustVisit = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Sign in to adjust a visit.');
+  }
+
+  const { ownerId, storeId, visitId, note, tag, rewriteBaselines, readings } = request.data as {
+    ownerId: string;
+    storeId: string;
+    visitId: string;
+    note: string;
+    tag: string;
+    rewriteBaselines: boolean;
+    readings: { machineId: string; presentIn: number; presentOut: number }[];
+  };
+
+  if (!ownerId || !storeId || !visitId || !Array.isArray(readings) || readings.length === 0) {
+    throw new HttpsError('invalid-argument', 'Owner, store, visit, and at least one reading are required.');
+  }
+  if (typeof note !== 'string' || !note.trim()) {
+    throw new HttpsError('invalid-argument', 'An adjustment note is required.');
+  }
+  if (typeof tag !== 'string' || !tag.trim()) {
+    throw new HttpsError('invalid-argument', 'An adjustment tag is required.');
+  }
+  if (readings.some(r => typeof r.machineId !== 'string' || !r.machineId ||
+      typeof r.presentIn !== 'number' || typeof r.presentOut !== 'number' ||
+      r.presentIn < 0 || r.presentOut < 0)) {
+    throw new HttpsError('invalid-argument', 'Each reading must have a machine and non-negative present IN/OUT.');
+  }
+
+  const callerId = request.auth.uid;
+  const caller = await resolveCaller(callerId);
+  if (caller.role !== 'owner' || caller.ownerId !== ownerId) {
+    throw new HttpsError('permission-denied', 'Only the owner can adjust visits.');
+  }
+
+  const visitRef = db.doc(`owners/${ownerId}/stores/${storeId}/visits/${visitId}`);
+  const machineIds = readings.map(r => r.machineId);
+
+  await db.runTransaction(async transaction => {
+    const visitDoc = await transaction.get(visitRef);
+    if (!visitDoc.exists) throw new HttpsError('not-found', 'Visit not found.');
+    const visit = visitDoc.data()!;
+    if (visit.storeId !== storeId) {
+      throw new HttpsError('invalid-argument', 'Visit does not belong to this store.');
+    }
+
+    const machineRefs = new Map(machineIds.map(id => [id, db.doc(`owners/${ownerId}/stores/${storeId}/machines/${id}`)]));
+    const machineDocs = new Map<string, any>();
+    for (const [id, ref] of machineRefs) {
+      machineDocs.set(id, await transaction.get(ref));
+    }
+
+    const oldMachines = visit.machines as Array<{
+      machineId: string;
+      machineNumber: string;
+      name: string;
+      lastSettledIn: number;
+      lastSettledOut: number;
+      presentIn: number;
+      presentOut: number;
+      newIn: number;
+      newOut: number;
+      machineNet: number;
+      photoUrl?: string;
+      photoPath?: string;
+      readingSource?: 'manual' | 'ocr_reviewed';
+      ocrScanId?: string;
+    }>;
+
+    const readingMap = new Map(readings.map(r => [r.machineId, r]));
+    const newMachines: typeof oldMachines = [];
+    const machineChanges: MachineChange[] = [];
+    let updatedBaselines = false;
+
+    for (const m of oldMachines) {
+      const reading = readingMap.get(m.machineId);
+      const machineDoc = machineDocs.get(m.machineId);
+      if (!machineDoc?.exists) {
+        throw new HttpsError('not-found', `Machine ${m.machineNumber} not found.`);
+      }
+      const machine = machineDoc.data()!;
+
+      const newPresentIn = reading ? Number(reading.presentIn) : m.presentIn;
+      const newPresentOut = reading ? Number(reading.presentOut) : m.presentOut;
+      const calc = calculateMachine(m, newPresentIn, newPresentOut);
+
+      newMachines.push({
+        ...m,
+        presentIn: newPresentIn,
+        presentOut: newPresentOut,
+        newIn: calc.newIn,
+        newOut: calc.newOut,
+        machineNet: calc.machineNet,
+      });
+
+      if (reading) {
+        machineChanges.push({
+          machineId: m.machineId,
+          machineNumber: m.machineNumber,
+          oldPresentIn: m.presentIn,
+          oldPresentOut: m.presentOut,
+          newPresentIn,
+          newPresentOut,
+          oldLastSettledIn: m.lastSettledIn,
+          oldLastSettledOut: m.lastSettledOut,
+        });
+
+        if (rewriteBaselines && visit.settlementStatus === 'submitted' && machine.lastSubmittedVisitId === visitId) {
+          transaction.update(machineDoc.ref, {
+            lastSettledIn: newPresentIn,
+            lastSettledOut: newPresentOut,
+            baselineVersion: (machine.baselineVersion || 0) + 1,
+            lastSubmittedVisitId: visitId,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+          machineChanges[machineChanges.length - 1].newLastSettledIn = newPresentIn;
+          machineChanges[machineChanges.length - 1].newLastSettledOut = newPresentOut;
+          updatedBaselines = true;
+        }
+      }
+    }
+
+    const calc = calculateVisit(newMachines, visit.storePercent);
+    const oldTotals = {
+      totalNewIn: visit.totalNewIn,
+      totalNewOut: visit.totalNewOut,
+      totalNet: visit.totalNet,
+      storeAmount: visit.storeAmount,
+      vendorAmount: visit.vendorAmount,
+    };
+
+    const adjustment: any = {
+      adjustedAt: FieldValue.serverTimestamp(),
+      adjustedBy: callerId,
+      tag: tag.trim(),
+      note: note.trim(),
+      rewroteBaselines: updatedBaselines,
+      oldTotalNewIn: oldTotals.totalNewIn,
+      oldTotalNewOut: oldTotals.totalNewOut,
+      oldTotalNet: oldTotals.totalNet,
+      oldStoreAmount: oldTotals.storeAmount,
+      oldVendorAmount: oldTotals.vendorAmount,
+      newTotalNewIn: calc.totalNewIn,
+      newTotalNewOut: calc.totalNewOut,
+      newTotalNet: calc.totalNet,
+      newStoreAmount: calc.storeAmount,
+      newVendorAmount: calc.vendorAmount,
+      machineChanges,
+    };
+
+    transaction.update(visitRef, {
+      machines: newMachines,
+      totalNewIn: calc.totalNewIn,
+      totalNewOut: calc.totalNewOut,
+      totalNet: calc.totalNet,
+      result: calc.result,
+      storeAmount: calc.storeAmount,
+      vendorAmount: calc.vendorAmount,
+      cashDueLocation: calc.cashDueLocation,
+      adjustments: [...(visit.adjustments || []), adjustment],
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { success: true };
+});
