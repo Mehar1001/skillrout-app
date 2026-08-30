@@ -57,6 +57,12 @@ export default function SelectStoreScreen() {
                   onPress={() => router.push(`/visit?storeId=${store.id}` as any)}
                   variant="primary"
                 />
+                <Button
+                  title="Manage"
+                  onPress={() => router.push(`/store-detail?storeId=${store.id}` as any)}
+                  variant="secondary"
+                  compact
+                />
               </View>
             </View>
           </Card>
@@ -86,11 +92,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   greeting: {
     flex: 1,
-    minWidth: 220,
-    fontSize: fontSizes.h1,
+    minWidth: 160,
+    fontSize: fontSizes.h2,
     color: colors.textPrimary,
     fontWeight: '700',
-    lineHeight: fontSizes.h1 + 8,
+    lineHeight: fontSizes.h2 + 8,
   },
   storeCard: {
     marginBottom: spacing.md,
@@ -123,7 +129,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: '600',
   },
   storeAction: {
-    minWidth: 90,
+    gap: spacing.sm,
+    alignItems: 'flex-end',
   },
   empty: {
     color: colors.textMuted,

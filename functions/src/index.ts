@@ -729,3 +729,78 @@ export const employeeOnboardStore = onCall(async (request: CallableRequest) => {
 
   return { storeId, ownerId, machineCount: machineEntries.length };
 });
+
+export const employeeAddMachine = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Sign in to add a machine.');
+  }
+
+  const caller = await resolveCaller(request.auth.uid);
+  if (caller.role !== 'employee') {
+    throw new HttpsError('permission-denied', 'Only employees can add machines through this flow.');
+  }
+
+  const { ownerId, storeId, machineNumber, name, lastSettledIn, lastSettledOut } = request.data as {
+    ownerId: string;
+    storeId: string;
+    machineNumber: string;
+    name: string;
+    lastSettledIn: number;
+    lastSettledOut: number;
+  };
+
+  if (typeof ownerId !== 'string' || !ownerId || typeof storeId !== 'string' || !storeId) {
+    throw new HttpsError('invalid-argument', 'Owner and store are required.');
+  }
+  if (caller.ownerId !== ownerId) {
+    throw new HttpsError('permission-denied', 'You can only add machines to your owner\'s stores.');
+  }
+
+  const employeeRef = db.doc(`employees/${request.auth.uid}`);
+  const employeeDoc = await employeeRef.get();
+  if (!employeeDoc.exists) {
+    throw new HttpsError('not-found', 'Employee record not found.');
+  }
+  const employee = employeeDoc.data()!;
+  if (!employee.assignedStoreIds?.includes(storeId)) {
+    throw new HttpsError('permission-denied', 'This store is not assigned to you.');
+  }
+
+  const storeRef = db.doc(`owners/${ownerId}/stores/${storeId}`);
+  const storeDoc = await storeRef.get();
+  if (!storeDoc.exists) {
+    throw new HttpsError('not-found', 'Store not found.');
+  }
+
+  if (typeof machineNumber !== 'string' || !machineNumber.trim() ||
+      typeof name !== 'string' || !name.trim()) {
+    throw new HttpsError('invalid-argument', 'Machine number and name are required.');
+  }
+  if (typeof lastSettledIn !== 'number' || typeof lastSettledOut !== 'number' ||
+      lastSettledIn <= 0 || lastSettledOut <= 0) {
+    throw new HttpsError('invalid-argument', 'Last IN and Last OUT must be greater than 0.');
+  }
+
+  const machineRef = db.collection(`owners/${ownerId}/stores/${storeId}/machines`).doc();
+  const machineId = machineRef.id;
+
+  await db.runTransaction(async transaction => {
+    transaction.set(machineRef, {
+      machineNumber: machineNumber.trim(),
+      name: name.trim(),
+      storeId,
+      active: true,
+      lastSettledIn,
+      lastSettledOut,
+      baselineVersion: 0,
+      schemaVersion: 1,
+      lastSubmittedVisitId: null,
+      lastSubmittedAt: null,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.update(storeRef, { updatedAt: FieldValue.serverTimestamp() });
+  });
+
+  return { machineId };
+});

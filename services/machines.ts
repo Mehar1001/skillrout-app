@@ -1,5 +1,6 @@
 import { collection, doc, getDocs, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../firebaseConfig';
 import { Machine } from '../types';
 
 const getMachinesRef = (ownerId: string, storeId: string) =>
@@ -61,4 +62,14 @@ export const setMachineActive = async (
       ? { reactivatedAt: serverTimestamp() }
       : { deactivatedAt: serverTimestamp() }),
   });
+};
+
+export const employeeAddMachine = async (
+  ownerId: string,
+  storeId: string,
+  payload: { machineNumber: string; name: string; lastSettledIn: number; lastSettledOut: number }
+): Promise<{ machineId: string }> => {
+  const addMachine = httpsCallable(functions, 'employeeAddMachine');
+  const response = await addMachine({ ownerId, storeId, ...payload });
+  return response.data as { machineId: string };
 };
