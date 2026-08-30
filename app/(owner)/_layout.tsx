@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
@@ -11,6 +11,14 @@ export default function OwnerLayout() {
   const styles = makeStyles(colors);
   const { user, role, loading, signOut } = useAuth();
   const router = useRouter();
+  const [fontKey, setFontKey] = useState(0);
+
+  useEffect(() => {
+    (Ionicons as any)
+      .loadFont()
+      .then(() => setFontKey(k => k + 1))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!loading && (!user || role !== 'owner')) router.replace('/owner');
@@ -25,6 +33,7 @@ export default function OwnerLayout() {
 
   return (
     <Tabs
+      key={fontKey}
       screenOptions={{
         headerStyle: styles.header,
         headerTitleStyle: styles.headerTitle,
@@ -39,6 +48,7 @@ export default function OwnerLayout() {
         tabBarHideOnKeyboard: true,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
+        tabBarIconStyle: styles.tabIcon,
       }}
     >
       <Tabs.Screen
@@ -108,14 +118,19 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: '600',
   },
   tabBar: {
-    minHeight: 64,
+    minHeight: 70,
     paddingTop: spacing.xs,
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
+    borderTopWidth: 1,
   },
   tabLabel: {
-    fontSize: fontSizes.caption,
+    fontSize: fontSizes.body,
     fontWeight: '600',
+    marginTop: 2,
+  },
+  tabIcon: {
+    marginTop: spacing.xs,
   },
 });
