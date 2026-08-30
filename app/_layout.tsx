@@ -1,20 +1,21 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
+import * as Font from 'expo-font';
 import { useEffect, useState } from 'react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthProvider } from '../contexts/AuthContext';
 import { DraftQueueProvider } from '../contexts/DraftQueueContext';
 
-// Load the Ionicons font on web and force a remount once it's available
-// so the glyph Text nodes re-render with the loaded font.
+const ioniconsFont = require('../assets/fonts/ionicons.ttf');
+
+// Load the Ionicons font explicitly from a bundled asset, then force a remount
+// of the root Stack so all glyph Text nodes render with the loaded font.
 export default function RootLayout() {
   const [fontKey, setFontKey] = useState(0);
 
   useEffect(() => {
-    (Ionicons as any)
-      .loadFont()
+    Font.loadAsync({ ionicons: ioniconsFont })
       .then(() => setFontKey(k => k + 1))
-      .catch(() => {});
+      .catch(() => setFontKey(k => k + 1));
   }, []);
 
   return (

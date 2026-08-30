@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
@@ -11,14 +11,6 @@ export default function OwnerLayout() {
   const styles = makeStyles(colors);
   const { user, role, loading, signOut } = useAuth();
   const router = useRouter();
-  const [fontKey, setFontKey] = useState(0);
-
-  useEffect(() => {
-    (Ionicons as any)
-      .loadFont()
-      .then(() => setFontKey(k => k + 1))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!loading && (!user || role !== 'owner')) router.replace('/owner');
@@ -33,7 +25,6 @@ export default function OwnerLayout() {
 
   return (
     <Tabs
-      key={fontKey}
       screenOptions={{
         headerStyle: styles.header,
         headerTitleStyle: styles.headerTitle,
@@ -55,42 +46,54 @@ export default function OwnerLayout() {
         name="dashboard"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" color={color} size={size} />,
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'grid' : 'grid-outline'} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="stores"
         options={{
           title: 'Stores',
-          tabBarIcon: ({ color, size }) => <Ionicons name="storefront-outline" color={color} size={size} />,
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'storefront' : 'storefront-outline'} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="machines"
         options={{
           title: 'Machines',
-          tabBarIcon: ({ color, size }) => <Ionicons name="hardware-chip-outline" color={color} size={size} />,
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'hardware-chip' : 'hardware-chip-outline'} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="employees"
         options={{
           title: 'Employees',
-          tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" color={color} size={size} />,
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" color={color} size={size} />,
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'time' : 'time-outline'} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
           title: 'Reports',
-          tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" color={color} size={size} />,
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'document-text' : 'document-text-outline'} color={color} size={size} />
+          ),
         }}
       />
     </Tabs>
@@ -121,12 +124,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     minHeight: 70,
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderTopColor: colors.border,
     borderTopWidth: 1,
   },
   tabLabel: {
-    fontSize: fontSizes.body,
+    fontSize: fontSizes.caption,
     fontWeight: '600',
     marginTop: 2,
   },
