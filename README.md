@@ -1,12 +1,23 @@
 # Skillrout
 
-A mobile and web app for tracking store visits, machine readings, and settlements.
-Built with **Expo**, **React Native**, and **Firebase**.
+A production machine-reading and settlement platform for businesses that operate machines across multiple stores. Built with **Expo 53**, **React Native**, and **Firebase**.
 
-- Owner onboarding and store management
-- Machine onboarding with last-settled IN/OUT baselines
-- Employee store selection, visit entry, and RUN/SUBMIT/PRINT flow
-- Earthy, minimal design system
+## What it does
+
+- Owner signup and sign-in with email verification.
+- Store and machine onboarding with cumulative IN/OUT baselines.
+- Employee onboarding, store assignment, and role-aware routing.
+- Employee store selection, machine readings, and the `RUN` / `PRINT` / `SUBMIT` flow.
+- Receipt and machine-photo capture, OCR, and review.
+- Fuzzy receipt machine-number matching and automatic visit-machine matching.
+- Historical visit corrections with optional baseline rewrite.
+- One-year OCR result caching and permanent visit history.
+- Clean, tokenized, Apple-like UI with bundled Ionicons on web and native.
+
+## Live app
+
+- **Web**: `https://skillrout.web.app`
+- **Firebase Console**: `https://console.firebase.google.com/project/skillrout/overview`
 
 ## Quick start (local)
 
@@ -35,13 +46,27 @@ Built with **Expo**, **React Native**, and **Firebase**.
    EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=...
    ```
 
-4. Start the web dev server
+4. Verify the build and tests
+
+   ```bash
+   npm run verify
+   npx tsc --noEmit
+   cd functions && npm run build
+   ```
+
+5. Start the web dev server
 
    ```bash
    npx expo start --web
    ```
 
    Then open `http://localhost:8081`.
+
+## Staging and data retention
+
+- All Firestore collections retain data indefinitely unless a lifecycle policy is configured.
+- OCR cache documents (`ocrCache`) expire after 365 days.
+- For staging, create a separate Firebase project, add it with `npx firebase use --add`, and use `npx firebase hosting:channel:deploy staging` for preview channels.
 
 ## Manual QA and UAT
 
