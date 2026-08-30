@@ -46,17 +46,21 @@ export const ReceiptView = ({ visit, lastCleared }: { visit: Visit; lastCleared?
         <ReceiptRow key={index} label={share.label} value={share.amount} />
       ))}
 
+      <View style={styles.divider} />
+      <Text style={styles.sectionTitle}>LAST CLEARED</Text>
       {lines.lastCleared ? (
         <>
-          <View style={styles.divider} />
-          <Text style={styles.sectionTitle}>LAST CLEARED</Text>
           <ReceiptRow
             label={`${lines.lastCleared.date} ${lines.lastCleared.time}`}
             value={lines.lastCleared.amount}
             strong
           />
+          <ReceiptRow label="Store" value={lines.lastCleared.storeAmount} />
+          <ReceiptRow label="Games" value={lines.lastCleared.vendorAmount} />
         </>
-      ) : null}
+      ) : (
+        <Text style={styles.na}>No prior positive visit on record.</Text>
+      )}
 
       <View style={styles.divider} />
       <Text style={styles.status}>{lines.status}</Text>
@@ -143,6 +147,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: '700',
   },
   disclaimer: {
+    marginTop: spacing.xs,
+    color: colors.textMuted,
+    fontFamily: monoFont,
+    fontSize: 10,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  na: {
     marginTop: spacing.xs,
     color: colors.textMuted,
     fontFamily: monoFont,

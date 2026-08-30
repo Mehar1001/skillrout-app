@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { type Colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
@@ -26,30 +26,42 @@ export default function OutcomeScreen() {
   const zero = visit.totalNet === 0;
   const result = positive ? 'positive' : zero ? 'zero' : 'negative';
 
+  const showError = (title: string, message: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const handlePrint = async () => {
     if (!user || !ownerId) return;
     setWorking(true);
     try {
       router.push(`/receipt?visitId=${visit.id}&storeId=${visit.storeId}` as any);
     } catch (e: any) {
-      Alert.alert('Print Error', e.message || 'Receipt preview could not be opened.');
+      showError('Print Error', e.message || 'Receipt preview could not be opened.');
     } finally {
       setWorking(false);
     }
   };
 
   const confirmAndSubmit = () => {
-    Alert.alert(
-      'Submit & Print',
-      'This will submit the settlement, advance the Last Settled readings, and open the receipt. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Submit & Print',
-          onPress: handleSubmit,
-        },
-      ]
-    );
+    const title = 'Submit & Print';
+    const message = 'This will submit the settlement, advance the Last Settled readings, and open the receipt. Continue?';
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm(`${title}\n\n${message}`)) {
+        handleSubmit();
+      }
+      return;
+    }
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Submit & Print',
+        onPress: handleSubmit,
+      },
+    ]);
   };
 
   const handleSubmit = async () => {
@@ -59,7 +71,7 @@ export default function OutcomeScreen() {
       await submitVisit(ownerId, visit.storeId, visit.id, visit.storePercent, visit.vendorPercent);
       router.replace(`/receipt?visitId=${visit.id}&storeId=${visit.storeId}` as any);
     } catch (e: any) {
-      Alert.alert('Submit Error', e.message || 'Settlement could not be submitted.');
+      showError('Submit Error', e.message || 'Settlement could not be submitted.');
     } finally {
       setWorking(false);
     }

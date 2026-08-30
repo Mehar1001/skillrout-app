@@ -21,6 +21,14 @@ export const receiptMoney = (value: number): string => {
 
 const receiptPercent = (value: number): string => `${value.toFixed(2)}%`;
 
+export interface LastClearedInfo {
+  date: string;
+  time: string;
+  amount: string;
+  storeAmount: string;
+  vendorAmount: string;
+}
+
 export interface ReceiptLines {
   title: string;
   storeName: string;
@@ -35,15 +43,9 @@ export interface ReceiptLines {
   moneyOut: string;
   net: string;
   sharing: { label: string; amount: string }[];
-  lastCleared?: { date: string; time: string; amount: string } | null;
+  lastCleared: LastClearedInfo | null;
   disclaimer: string;
   status: string;
-}
-
-export interface LastClearedInfo {
-  date: string;
-  time: string;
-  amount: string;
 }
 
 export const buildReceiptLines = (visit: Visit, lastCleared?: LastClearedInfo | null): ReceiptLines => {
@@ -77,7 +79,7 @@ export const buildReceiptLines = (visit: Visit, lastCleared?: LastClearedInfo | 
           { label: 'No split (0.00%)', amount: '$0.00' },
           { label: 'No split (0.00%)', amount: '$0.00' },
         ],
-    lastCleared,
+    lastCleared: lastCleared ?? null,
     disclaimer:
       visit.totalNet < 0
         ? '* This visit closed with a negative net. It is provided as proof only and does not require payment.'
@@ -104,8 +106,14 @@ export const generateReceiptHtml = (visit: Visit, lastCleared?: LastClearedInfo 
       <div class="divider"></div>
       <div class="section-title strong">LAST CLEARED</div>
       <div class="row"><span>${escapeHtml(lines.lastCleared.date)} ${lines.lastCleared.time}</span><span>${lines.lastCleared.amount}</span></div>
+      <div class="row"><span>Store</span><span>${lines.lastCleared.storeAmount}</span></div>
+      <div class="row"><span>Games</span><span>${lines.lastCleared.vendorAmount}</span></div>
     `
-    : '';
+    : `
+      <div class="divider"></div>
+      <div class="section-title strong">LAST CLEARED</div>
+      <div class="na" style="text-align:center">No prior positive visit on record.</div>
+    `;
 
   return `
     <!doctype html>
@@ -126,6 +134,7 @@ export const generateReceiptHtml = (visit: Visit, lastCleared?: LastClearedInfo 
           .strong { font-weight: 700; }
           .status { margin-top: 8px; text-align: center; font-weight: 700; letter-spacing: 1px; }
           .disclaimer { margin-top: 8px; text-align: center; font-size: 10px; font-style: italic; }
+          .na { color: #555; font-style: italic; }
         </style>
       </head>
       <body>

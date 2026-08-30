@@ -9,7 +9,7 @@ import { ReceiptView } from '../../components/ReceiptView';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatDate, formatTime } from '../../helpers/formatters';
+import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { generateReceiptHtml, type LastClearedInfo } from '../../helpers/receiptTemplate';
 import { useVisit } from '../../hooks/useVisit';
 import { listAssignedStoreVisits, markPrinted } from '../../services/visits';
@@ -36,7 +36,9 @@ export default function ReceiptScreen() {
         setLastCleared({
           date: formatDate(previous.businessDate),
           time: formatTime(ts),
-          amount: `$${previous.totalNet.toFixed(2)}`,
+          amount: formatCurrency(previous.totalNet),
+          storeAmount: formatCurrency(previous.storeAmount || 0),
+          vendorAmount: formatCurrency(previous.vendorAmount || 0),
         });
       } else {
         setLastCleared(null);
