@@ -11,16 +11,31 @@ export const listMachines = async (ownerId: string, storeId: string): Promise<Ma
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Machine));
 };
 
+export const getNextMachineNumber = async (
+  ownerId: string,
+  storeId: string
+): Promise<string> => {
+  const machines = await listMachines(ownerId, storeId);
+  const numbers = machines
+    .map(m => Number(m.machineNumber))
+    .filter(n => Number.isFinite(n) && n > 0);
+  const max = numbers.length > 0 ? Math.max(...numbers) : 1000;
+  return String(Math.max(1001, max + 1));
+};
+
 export const saveMachine = async (
   ownerId: string,
   storeId: string,
   machine: Partial<Machine>
 ): Promise<string> => {
+  const name = machine.name?.trim();
+  if (!name) throw new Error('Machine name is required.');
   const id = machine.id || doc(getMachinesRef(ownerId, storeId)).id;
   const ref = doc(db, `owners/${ownerId}/stores/${storeId}/machines`, id);
+  const machineNumber = machine.machineNumber?.trim() || (await getNextMachineNumber(ownerId, storeId));
   const data = {
-    machineNumber: machine.machineNumber?.trim() || '',
-    name: machine.name?.trim() || '',
+    machineNumber,
+    name,
     storeId,
     active: machine.active ?? true,
     updatedAt: serverTimestamp(),

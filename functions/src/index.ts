@@ -241,6 +241,21 @@ export const resetEmployeeTemporaryPassword = onCall(async (request: CallableReq
   return { success: true };
 });
 
+export const deleteEmployee = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to delete an employee.');
+  await requireActiveOwner(request.auth.uid, request.auth.token.email_verified === true);
+  const employeeId = typeof request.data?.employeeId === 'string' ? request.data.employeeId : '';
+  if (!employeeId) throw new HttpsError('invalid-argument', 'Employee ID is required.');
+  const employeeRef = db.doc(`employees/${employeeId}`);
+  const employee = await employeeRef.get();
+  if (!employee.exists || employee.data()?.ownerId !== request.auth.uid) {
+    throw new HttpsError('not-found', 'Employee not found.');
+  }
+  await auth.deleteUser(employeeId);
+  await employeeRef.delete();
+  return { success: true };
+});
+
 export const completeEmployeePasswordChange = onCall(async (request: CallableRequest) => {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to complete password setup.');
   const employeeRef = db.doc(`employees/${request.auth.uid}`);

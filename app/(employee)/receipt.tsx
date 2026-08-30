@@ -56,11 +56,11 @@ export default function ReceiptScreen() {
   if (!visit) return <Center text={error || 'Receipt not found.'} action={refresh} />;
 
   const handlePrint = async () => {
-    if (!user || !ownerId) return;
+    if (!user || !ownerId || !visit) return;
     setWorking(true);
     try {
-      await Print.printAsync({ html: generateReceiptHtml(visit, lastCleared) });
       await markPrinted(ownerId, visit.storeId, visit.id, user.uid);
+      await Print.printAsync({ html: generateReceiptHtml(visit, lastCleared) });
     } catch (e: any) {
       Alert.alert('Print Error', e.message || 'Receipt could not be printed.');
     } finally {
@@ -69,9 +69,10 @@ export default function ReceiptScreen() {
   };
 
   const handleShare = async () => {
-    if (!visit) return;
+    if (!visit || !user || !ownerId) return;
     setWorking(true);
     try {
+      await markPrinted(ownerId, visit.storeId, visit.id, user.uid);
       if (Platform.OS === 'web') {
         await Print.printAsync({ html: generateReceiptHtml(visit, lastCleared) });
         return;
@@ -95,9 +96,6 @@ export default function ReceiptScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.backRow}>
-        <Button title="Back" onPress={() => router.back()} variant="secondary" compact />
-      </View>
       <Text style={styles.eyebrow}>THERMAL RECEIPT PREVIEW</Text>
       <Text style={styles.title}>Review before printing</Text>
       <ReceiptView visit={visit} lastCleared={lastCleared} />
@@ -144,10 +142,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignSelf: 'center',
     gap: spacing.sm,
     marginTop: spacing.lg,
-  },
-  backRow: {
-    alignSelf: 'flex-start',
-    marginBottom: spacing.md,
   },
   center: {
     flex: 1,

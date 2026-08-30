@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores } from '../../services/stores';
-import { listMachines, saveMachine, setMachineActive } from '../../services/machines';
+import { getNextMachineNumber, listMachines, saveMachine, setMachineActive } from '../../services/machines';
 import { Store, Machine } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
@@ -20,6 +21,8 @@ export default function MachinesScreen() {
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [expandedStoreId, setExpandedStoreId] = useState<string | null>(null);
+  const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [form, setForm] = useState<Partial<Machine>>({
@@ -39,7 +42,12 @@ export default function MachinesScreen() {
   useEffect(() => {
     if (!user || !ownerId || !selectedStoreId) return;
     listMachines(ownerId, selectedStoreId).then(setMachines);
-  }, [user, ownerId, selectedStoreId]);
+    if (!form.id) {
+      getNextMachineNumber(ownerId, selectedStoreId).then(nextNumber =>
+        setForm(prev => ({ ...prev, machineNumber: nextNumber }))
+      );
+    }
+  }, [user, ownerId, selectedStoreId, form.id]);
 
   const resetForm = () => {
     setForm({
@@ -50,20 +58,29 @@ export default function MachinesScreen() {
       lastSettledOut: 0,
       active: true,
     });
+    if (ownerId && selectedStoreId) {
+      getNextMachineNumber(ownerId, selectedStoreId).then(nextNumber =>
+        setForm(prev => ({ ...prev, machineNumber: nextNumber }))
+      );
+    }
   };
 
   const handleEdit = (machine: Machine) => setForm({ ...machine });
 
   const handleSave = async () => {
     setMessage(null);
-    if (!user || !ownerId || !selectedStoreId || !form.machineNumber?.trim()) {
-      setMessage({ type: 'error', text: 'Select a store and enter a machine number.' });
+    if (!user || !ownerId || !selectedStoreId) {
+      setMessage({ type: 'error', text: 'Select a store first.' });
+      return;
+    }
+    if (!form.name?.trim()) {
+      setMessage({ type: 'error', text: 'Machine name is required.' });
       return;
     }
     setLoading(true);
     try {
       await saveMachine(ownerId, selectedStoreId, form);
-      setMessage({ type: 'success', text: `Machine ${form.machineNumber?.trim()} saved.` });
+      setMessage({ type: 'success', text: `Machine ${form.name?.trim()} saved.` });
       resetForm();
       listMachines(ownerId, selectedStoreId).then(setMachines);
     } catch (e: any) {
@@ -93,126 +110,186 @@ export default function MachinesScreen() {
     );
   };
 
+  const filteredStores = stores.filter(store =>
+    store.name.toLowerCase().includes(searchText.toLowerCase()) ||
+    (store.address || '').toLowerCase().includes(searchText.toLowerCase())
+  );
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Machines</Text>
 
-      <Text style={styles.sectionTitle}>Select a Store</Text>
-      {stores.map(store => (
-        <Card
-          key={store.id}
+      <View style={styles.searchRow}>
+        <TextInput
           style={[
-            styles.storeCard,
-            selectedStoreId === store.id && styles.storeCardSelected,
+            styles.searchInput,
+            {
+              borderColor: colors.border,
+              color: colors.textPrimary,
+              backgroundColor: colors.surface,
+            },
           ]}
-        >
-          <Text style={styles.storeName}>{store.name}</Text>
-          <Button
-            title={selectedStoreId === store.id ? 'Selected' : 'Select'}
-            onPress={() => {
-              setSelectedStoreId(store.id);
-              resetForm();
-            }}
-            variant={selectedStoreId === store.id ? 'primary' : 'secondary'}
-          />
-        </Card>
-      ))}
+          placeholder="Search stores…"
+          placeholderTextColor={colors.textMuted}
+          value={searchText}
+          onChangeText={setSearchText}
+          accessibilityLabel="Search stores"
+        />
+      </View>
 
-      {selectedStoreId && (
-        <>
-          <Card style={styles.formCard}>
-            <Text style={styles.sectionTitle}>
-              {form.id ? 'Edit Machine' : 'Add Machine'}
-            </Text>
-            <Input
-              label="Machine Number"
-              value={form.machineNumber}
-              onChangeText={text => setForm(prev => ({ ...prev, machineNumber: text }))}
-              placeholder="1"
-            />
-            <Input
-              label="Machine Name (optional)"
-              value={form.name || ''}
-              onChangeText={text => setForm(prev => ({ ...prev, name: text }))}
-              placeholder="Front left"
-            />
-            <View style={styles.row}>
-              <View style={styles.half}>
-                <CurrencyInput
-                  label="Initial / Last Settled IN"
-                  value={form.lastSettledIn ?? 0}
-                  onChangeValue={lastSettledIn =>
-                    setForm(prev => ({ ...prev, lastSettledIn: lastSettledIn ?? 0 }))
+      <Text style={styles.sectionTitle}>Select a Store</Text>
+      {filteredStores.length === 0 ? (
+        <Text style={styles.empty}>No stores found.</Text>
+      ) : (
+        filteredStores.map(store => {
+          const expanded = expandedStoreId === store.id;
+          const isSelected = selectedStoreId === store.id;
+          return (
+            <Card
+              key={store.id}
+              style={[
+                styles.storeCard,
+                isSelected && styles.storeCardSelected,
+              ]}
+            >
+              <Pressable
+                onPress={() => {
+                  setExpandedStoreId(expanded ? null : store.id);
+                  if (!isSelected) {
+                    setSelectedStoreId(store.id);
+                    resetForm();
                   }
-                  disabled={Boolean(form.id)}
-                  helperText={form.id ? 'Settled readings cannot be changed during a normal edit.' : undefined}
-                />
-              </View>
-              <View style={styles.half}>
-                <CurrencyInput
-                  label="Initial / Last Settled OUT"
-                  value={form.lastSettledOut ?? 0}
-                  onChangeValue={lastSettledOut =>
-                    setForm(prev => ({ ...prev, lastSettledOut: lastSettledOut ?? 0 }))
-                  }
-                  disabled={Boolean(form.id)}
-                  helperText={form.id ? 'Settled readings cannot be changed during a normal edit.' : undefined}
-                />
-              </View>
-            </View>
-            <View style={styles.actions}>
-              <Button
-                title={form.id ? 'Update Machine' : 'Add Machine'}
-                onPress={handleSave}
-                loading={loading}
-              />
-              {form.id ? (
-                <Button title="Cancel" onPress={resetForm} variant="secondary" />
-              ) : null}
-            </View>
-            {message ? (
-              <View
-                style={[
-                  styles.messageBox,
-                  { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
-                ]}
+                }}
+                style={styles.storeHeader}
+                accessibilityRole="button"
+                accessibilityState={{ expanded, selected: isSelected }}
               >
-                <Text
-                  style={[
-                    styles.messageText,
-                    { color: message.type === 'error' ? colors.error : colors.success },
-                  ]}
-                >
-                  {message.text}
-                </Text>
-              </View>
-            ) : null}
-          </Card>
-
-          <Text style={styles.sectionTitle}>Machines at this Store</Text>
-          {machines.length === 0 ? (
-            <Text style={styles.empty}>No machines yet.</Text>
-          ) : (
-            machines.map(machine => (
-              <Card key={machine.id} style={styles.machineCard}>
-                <Text style={styles.machineName}>
-                  {machine.machineNumber} {machine.name ? `— ${machine.name}` : ''}
-                </Text>
-                <Text style={styles.machineReadings}>
-                  Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)} · {machine.active ? 'Active' : 'Inactive'}
-                </Text>
-                <View style={styles.actions}>
-                  <Button title="Edit" onPress={() => handleEdit(machine)} variant="secondary" />
-                  <Button
-                    title={machine.active ? 'Deactivate' : 'Reactivate'}
-                    onPress={() => handleActiveChange(machine)}
-                    variant={machine.active ? 'danger' : 'accent'}
-                  />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.storeName}>{store.name}</Text>
+                  <Text style={styles.storeMeta}>
+                    {store.active ? 'Active' : 'Inactive'}
+                  </Text>
                 </View>
-              </Card>
-            ))
-          )}
-        </>
+                <Ionicons
+                  name={expanded ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </Pressable>
+
+              {expanded && (
+                <View style={styles.storeBody}>
+                  <Card style={styles.formCard}>
+                    <Text style={styles.sectionTitle}>
+                      {form.id ? 'Edit Machine' : 'Add Machine'}
+                    </Text>
+                    <Input
+                      label="Machine Number"
+                      value={form.machineNumber}
+                      onChangeText={text => setForm(prev => ({ ...prev, machineNumber: text }))}
+                      placeholder="Auto-generated"
+                      editable={!form.id}
+                    />
+                    <Input
+                      label="Machine Name *"
+                      value={form.name || ''}
+                      onChangeText={text => setForm(prev => ({ ...prev, name: text }))}
+                      placeholder="Front left"
+                    />
+                    <View style={styles.row}>
+                      <View style={styles.half}>
+                        <CurrencyInput
+                          label="Initial / Last Settled IN"
+                          value={form.lastSettledIn ?? 0}
+                          onChangeValue={lastSettledIn =>
+                            setForm(prev => ({ ...prev, lastSettledIn: lastSettledIn ?? 0 }))
+                          }
+                          disabled={Boolean(form.id)}
+                          helperText={
+                            form.id
+                              ? 'Settled readings cannot be changed during a normal edit.'
+                              : undefined
+                          }
+                        />
+                      </View>
+                      <View style={styles.half}>
+                        <CurrencyInput
+                          label="Initial / Last Settled OUT"
+                          value={form.lastSettledOut ?? 0}
+                          onChangeValue={lastSettledOut =>
+                            setForm(prev => ({ ...prev, lastSettledOut: lastSettledOut ?? 0 }))
+                          }
+                          disabled={Boolean(form.id)}
+                          helperText={
+                            form.id
+                              ? 'Settled readings cannot be changed during a normal edit.'
+                              : undefined
+                          }
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.actions}>
+                      <Button
+                        title={form.id ? 'Update Machine' : 'Add Machine'}
+                        onPress={handleSave}
+                        loading={loading}
+                      />
+                      {form.id ? (
+                        <Button title="Cancel" onPress={resetForm} variant="secondary" />
+                      ) : null}
+                    </View>
+                    {message ? (
+                      <View
+                        style={[
+                          styles.messageBox,
+                          { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.messageText,
+                            { color: message.type === 'error' ? colors.error : colors.success },
+                          ]}
+                        >
+                          {message.text}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </Card>
+
+                  <Text style={styles.sectionTitle}>Machines at this Store</Text>
+                  {machines.length === 0 ? (
+                    <Text style={styles.empty}>No machines yet. Add the first one above.</Text>
+                  ) : (
+                    machines.map(machine => (
+                      <Card key={machine.id} style={styles.machineCard}>
+                        <Text
+                          style={[
+                            styles.machineName,
+                            !machine.active && { color: colors.textMuted },
+                          ]}
+                        >
+                          {machine.machineNumber} {machine.name ? `— ${machine.name}` : ''}
+                        </Text>
+                        <Text style={styles.machineReadings}>
+                          Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)} · {machine.active ? 'Active' : 'Inactive'}
+                        </Text>
+                        <View style={styles.actions}>
+                          <Button title="Edit" onPress={() => handleEdit(machine)} variant="secondary" />
+                          <Button
+                            title={machine.active ? 'Deactivate' : 'Reactivate'}
+                            onPress={() => handleActiveChange(machine)}
+                            variant={machine.active ? 'danger' : 'accent'}
+                          />
+                        </View>
+                      </Card>
+                    ))
+                  )}
+                </View>
+              )}
+            </Card>
+          );
+        })
       )}
     </ScrollView>
   );
@@ -237,12 +314,35 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.md,
   },
+  searchRow: {
+    marginBottom: spacing.md,
+  },
+  searchInput: {
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    fontSize: fontSizes.body,
+  },
   storeCard: {
     marginBottom: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: spacing.md,
+  },
+  storeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+    gap: spacing.sm,
+  },
+  storeBody: {
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  storeMeta: {
+    fontSize: fontSizes.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   storeCardSelected: {
     borderWidth: 2,

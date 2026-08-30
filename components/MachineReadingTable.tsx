@@ -45,15 +45,15 @@ export const MachineReadingTable = ({
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.table}>
           <View style={styles.headerRow}>
-            <Text style={[styles.headerCell, styles.machineCol]}>MACHINE</Text>
-            <Text style={[styles.headerCell, styles.baselineCol, styles.headerRight]}>LAST IN</Text>
-            <Text style={[styles.headerCell, styles.baselineCol, styles.headerRight]}>LAST OUT</Text>
-            <Text style={[styles.headerCell, styles.inputCol, styles.headerRight]}>PRESENT IN</Text>
-            <Text style={[styles.headerCell, styles.inputCol, styles.headerRight]}>PRESENT OUT</Text>
-            <Text style={[styles.headerCell, styles.computedCol, styles.headerRight]}>TOTAL IN</Text>
-            <Text style={[styles.headerCell, styles.computedCol, styles.headerRight]}>TOTAL OUT</Text>
-            <Text style={[styles.headerCell, styles.computedCol, styles.headerRight]}>NET</Text>
-            <Text style={[styles.headerCell, styles.photoCol, styles.headerCenter]}>PIC</Text>
+            <Text style={[styles.headerCell, styles.machineCol]} numberOfLines={2}>MACHINE</Text>
+            <Text style={[styles.headerCell, styles.baselineCol, styles.headerRight]} numberOfLines={2}>LAST IN</Text>
+            <Text style={[styles.headerCell, styles.baselineCol, styles.headerRight]} numberOfLines={2}>LAST OUT</Text>
+            <Text style={[styles.headerCell, styles.inputCol, styles.headerRight]} numberOfLines={2}>PRESENT IN</Text>
+            <Text style={[styles.headerCell, styles.inputCol, styles.headerRight]} numberOfLines={2}>PRESENT OUT</Text>
+            <Text style={[styles.headerCell, styles.computedCol, styles.headerRight]} numberOfLines={2}>TOTAL IN</Text>
+            <Text style={[styles.headerCell, styles.computedCol, styles.headerRight]} numberOfLines={2}>TOTAL OUT</Text>
+            <Text style={[styles.headerCell, styles.computedCol, styles.headerRight]} numberOfLines={2}>NET</Text>
+            <Text style={[styles.headerCell, styles.photoCol, styles.headerCenter]} numberOfLines={2}>PIC</Text>
           </View>
 
           {machines.map(machine => {
@@ -408,16 +408,16 @@ const makeStyles = (colors: Colors) =>
       borderRadius: radii.sm,
     },
     machineCol: {
-      width: 80,
+      width: 90,
     },
     baselineCol: {
-      width: 70,
+      width: 85,
     },
     inputCol: {
-      width: 80,
+      width: 95,
     },
     computedCol: {
-      width: 72,
+      width: 90,
     },
     photoCol: {
       width: 44,

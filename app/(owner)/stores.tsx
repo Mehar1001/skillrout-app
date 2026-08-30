@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores, saveStore, setStoreActive } from '../../services/stores';
 import { Store } from '../../types';
@@ -16,6 +17,9 @@ export default function StoresScreen() {
   const styles = makeStyles(colors);
   const { user, ownerId } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
+  const [expandedStoreId, setExpandedStoreId] = useState<string | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [form, setForm] = useState<Partial<Store>>({
@@ -98,6 +102,15 @@ export default function StoresScreen() {
     );
   };
 
+  const filteredStores = stores.filter(store => {
+    const matchesSearch =
+      store.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      (store.address || '').toLowerCase().includes(searchText.toLowerCase());
+    const matchesFilter =
+      activeFilter === 'all' ? true : activeFilter === 'active' ? store.active : !store.active;
+    return matchesSearch && matchesFilter;
+  });
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Stores</Text>
@@ -167,28 +180,85 @@ export default function StoresScreen() {
         ) : null}
       </Card>
 
+      <View style={styles.searchRow}>
+        <TextInput
+          style={[styles.searchInput, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surface }]}
+          placeholder="Search stores…"
+          placeholderTextColor={colors.textMuted}
+          value={searchText}
+          onChangeText={setSearchText}
+          accessibilityLabel="Search stores"
+        />
+        <View style={styles.filterRow}>
+          {(['all', 'active', 'inactive'] as const).map(filter => (
+            <Pressable
+              key={filter}
+              onPress={() => setActiveFilter(filter)}
+              style={[
+                styles.filterChip,
+                activeFilter === filter && { backgroundColor: colors.primary },
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeFilter === filter }}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  activeFilter === filter && { color: colors.textOnPrimary },
+                ]}
+              >
+                {filter === 'all' ? 'All' : filter === 'active' ? 'Active' : 'Inactive'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
       <Text style={styles.sectionTitle}>Existing Stores</Text>
-      {stores.length === 0 && !loading ? (
-        <Text style={styles.empty}>No stores yet.</Text>
+      {filteredStores.length === 0 && !loading ? (
+        <Text style={styles.empty}>
+          {stores.length === 0 ? 'No stores yet.' : 'No stores match your search.'}
+        </Text>
       ) : (
-        stores.map(store => (
-          <Card key={store.id} style={styles.storeCard}>
-            <Text style={styles.storeName}>{store.name}</Text>
-            <Text style={styles.storeAddress}>{store.address}</Text>
-            {store.phone ? <Text style={styles.storePhone}>{store.phone}</Text> : null}
-            <Text style={styles.storeSplit}>
-              Store {store.defaultStorePercent}% · Games {store.defaultVendorPercent}% · {store.active ? 'Active' : 'Inactive'}
-            </Text>
-            <View style={styles.actions}>
-              <Button title="Edit" onPress={() => handleEdit(store)} variant="secondary" />
-              <Button
-                title={store.active ? 'Deactivate' : 'Reactivate'}
-                onPress={() => handleActiveChange(store)}
-                variant={store.active ? 'danger' : 'accent'}
-              />
-            </View>
-          </Card>
-        ))
+        filteredStores.map(store => {
+          const expanded = expandedStoreId === store.id;
+          return (
+            <Card key={store.id} style={styles.storeCard}>
+              <Pressable
+                onPress={() => setExpandedStoreId(expanded ? null : store.id)}
+                style={styles.storeHeader}
+                accessibilityRole="button"
+                accessibilityState={{ expanded }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.storeName}>{store.name}</Text>
+                  <Text style={styles.storeSplit}>
+                    Store {store.defaultStorePercent}% · Games {store.defaultVendorPercent}% · {store.active ? 'Active' : 'Inactive'}
+                  </Text>
+                </View>
+                <Ionicons
+                  name={expanded ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </Pressable>
+              {expanded ? (
+                <View style={styles.storeBody}>
+                  {store.address ? <Text style={styles.storeAddress}>{store.address}</Text> : null}
+                  {store.phone ? <Text style={styles.storePhone}>{store.phone}</Text> : null}
+                  <View style={styles.actions}>
+                    <Button title="Edit" onPress={() => handleEdit(store)} variant="secondary" />
+                    <Button
+                      title={store.active ? 'Deactivate' : 'Reactivate'}
+                      onPress={() => handleActiveChange(store)}
+                      variant={store.active ? 'danger' : 'accent'}
+                    />
+                  </View>
+                </View>
+              ) : null}
+            </Card>
+          );
+        })
       )}
     </ScrollView>
   );
@@ -248,9 +318,49 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   storeSplit: {
     fontSize: fontSizes.body,
-    color: colors.accent,
+    color: colors.textSecondary,
     marginTop: spacing.xs,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  searchRow: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  searchInput: {
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    fontSize: fontSizes.body,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  filterChip: {
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+  },
+  filterChipText: {
+    fontSize: fontSizes.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textTransform: 'capitalize',
+  },
+  storeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+    gap: spacing.sm,
+  },
+  storeBody: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
   },
   empty: {
     color: colors.textMuted,

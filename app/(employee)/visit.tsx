@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
+import { Card } from '../../components/Card';
 import { MachineReadingTable } from '../../components/MachineReadingTable';
 import { AppliedReceiptReading, ReceiptScanReview } from '../../components/ReceiptScanReview';
 import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../../constants/designTokens';
@@ -128,11 +129,6 @@ export default function VisitScreen() {
     } finally {
       setReadingReceipt(false);
     }
-  };
-
-  const handleReceiptImage = async (source: 'camera' | 'library') => {
-    const asset = await selectImage(source);
-    if (asset) await processReceiptImage(asset);
   };
 
   const handleMachineImage = async (machine: Machine, source: 'camera' | 'library') => {
@@ -303,12 +299,13 @@ export default function VisitScreen() {
           </View>
           <View style={styles.receiptActions}>
             <View style={styles.receiptActionHalf}>
-              <Button title="Scan" iconName="camera-outline" onPress={() => handleReceiptImage('camera')} variant="accent" disabled={readingReceipt} loading={readingReceipt} compact />
+              <Button title="Scan" iconName="camera-outline" onPress={() => {}} variant="accent" disabled={true} compact />
             </View>
             <View style={styles.receiptActionHalf}>
-              <Button title="Upload" iconName="cloud-upload-outline" onPress={() => handleReceiptImage('library')} variant="secondary" disabled={readingReceipt} compact />
+              <Button title="Upload" iconName="cloud-upload-outline" onPress={() => {}} variant="secondary" disabled={true} compact />
             </View>
           </View>
+          <Text style={styles.comingSoon}>Receipt scan & upload are coming soon.</Text>
           {receiptImageUri && !scanTargetMachineId && !receiptOcr ? (
             <View style={styles.receiptAttachmentRow}>
               <Text style={styles.receiptAttached}>Receipt image attached to this visit.</Text>
@@ -319,28 +316,44 @@ export default function VisitScreen() {
           ) : null}
         </View>
 
-        <MachineReadingTable
-          machines={machines}
-          readings={readings}
-          onChange={updateReading}
-          onTakePhoto={machine => handleMachineImage(machine, 'camera')}
-          onUploadPhoto={machine => handleMachineImage(machine, 'library')}
-          onReadPhoto={handleReadMachinePhoto}
-          onRemovePhoto={machine => updateReading(machine.id, { ...readings[machine.id], photoUri: undefined, ocr: undefined })}
-          readingPhotoMachineId={readingReceipt ? scanTargetMachineId : null}
-          showRequiredErrors={showRequiredErrors}
-        />
+        {machines.length === 0 ? (
+          <Card style={styles.emptyMachinesCard}>
+            <Text style={styles.emptyMachinesTitle}>No machines for this store</Text>
+            <Text style={styles.emptyMachinesBody}>
+              Add at least one machine before you can record a visit.
+            </Text>
+            <Button
+              title="Add Machine"
+              onPress={() => router.push(`/machines` as any)}
+              variant="primary"
+            />
+          </Card>
+        ) : (
+          <>
+            <MachineReadingTable
+              machines={machines}
+              readings={readings}
+              onChange={updateReading}
+              onTakePhoto={machine => handleMachineImage(machine, 'camera')}
+              onUploadPhoto={machine => handleMachineImage(machine, 'library')}
+              onReadPhoto={handleReadMachinePhoto}
+              onRemovePhoto={machine => updateReading(machine.id, { ...readings[machine.id], photoUri: undefined, ocr: undefined })}
+              readingPhotoMachineId={readingReceipt ? scanTargetMachineId : null}
+              showRequiredErrors={showRequiredErrors}
+            />
 
-        <View style={styles.runArea}>
-          <View style={styles.runButtonWrapper}>
-            <Button title={isOnline ? 'RUN' : 'Save Offline Draft'} onPress={handleRun} loading={saving} disabled={saving} variant="primary" />
-          </View>
-          <Text style={styles.runHelp}>
-            {isOnline
-              ? 'RUN saves this visit permanently and does not update settled readings.'
-              : 'You appear offline. Save a draft and it will be submitted automatically when you reconnect.'}
-          </Text>
-        </View>
+            <View style={styles.runArea}>
+              <View style={styles.runButtonWrapper}>
+                <Button title={isOnline ? 'RUN' : 'Save Offline Draft'} onPress={handleRun} loading={saving} disabled={saving} variant="primary" />
+              </View>
+              <Text style={styles.runHelp}>
+                {isOnline
+                  ? 'RUN saves this visit permanently and does not update settled readings.'
+                  : 'You appear offline. Save a draft and it will be submitted automatically when you reconnect.'}
+              </Text>
+            </View>
+          </>
+        )}
       </ScrollView>
 
       <Modal visible={Boolean(completedVisitId)} transparent animationType="fade" onRequestClose={() => {}}>
@@ -473,6 +486,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   receiptActionHalf: {
     width: 120,
   },
+  comingSoon: {
+    color: colors.textMuted,
+    fontSize: fontSizes.caption,
+    fontStyle: 'italic',
+  },
   receiptAttachmentRow: {
     minHeight: 44,
     flexDirection: 'row',
@@ -532,6 +550,23 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   runHelp: {
     color: colors.textMuted,
     fontSize: fontSizes.caption,
+    textAlign: 'center',
+  },
+  emptyMachinesCard: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+    alignItems: 'center',
+  },
+  emptyMachinesTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.h2,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  emptyMachinesBody: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
     textAlign: 'center',
   },
   modalBackdrop: {

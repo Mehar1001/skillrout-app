@@ -23,7 +23,7 @@ export default function SelectStoreScreen() {
     const request = role === 'owner'
       ? listStores(ownerId)
       : listAssignedStores(ownerId, assignedStoreIds);
-    request.then(data => setStores(data.filter(store => store.active)));
+    request.then(data => setStores(data));
   }, [user, ownerId, role, assignedStoreIds]);
 
   return (
@@ -38,36 +38,58 @@ export default function SelectStoreScreen() {
           )}
         </View>
       </View>
-      {stores.length === 0 ? (
-        <Text style={styles.empty}>No active stores. Ask your owner to add one.</Text>
-      ) : (
-        stores.map(store => (
-          <Card key={store.id} style={styles.storeCard}>
+      {stores.every(store => !store.active) ? (
+        <Text style={styles.empty}>
+          All assigned stores are currently deactivated. Contact your admin to reactivate a store.
+        </Text>
+      ) : null}
+      {stores.map(store => {
+        const active = store.active;
+        return (
+          <Card
+            key={store.id}
+            style={[styles.storeCard, !active && { backgroundColor: colors.surfaceSecondary, opacity: 0.75 }]}
+          >
             <View style={styles.storeRow}>
               <View style={styles.storeInfo}>
-                <Text style={styles.storeName}>{store.name}</Text>
-                <Text style={styles.storeAddress}>{store.address}</Text>
-                <Text style={styles.split}>
-                  Default split: {store.defaultStorePercent}% / {store.defaultVendorPercent}%
+                <Text style={[styles.storeName, !active && { color: colors.textMuted }]}>
+                  {store.name}
                 </Text>
+                {store.address ? (
+                  <Text style={[styles.storeAddress, !active && { color: colors.textMuted }]}>
+                    {store.address}
+                  </Text>
+                ) : null}
+                {active ? (
+                  <Text style={styles.split}>
+                    Default split: {store.defaultStorePercent}% / {store.defaultVendorPercent}%
+                  </Text>
+                ) : (
+                  <Text style={styles.inactiveHelp}>
+                    This store has been deactivated. Contact admin to reactivate.
+                  </Text>
+                )}
               </View>
               <View style={styles.storeAction}>
                 <Button
                   title="Start"
                   onPress={() => router.push(`/visit?storeId=${store.id}` as any)}
                   variant="primary"
+                  disabled={!active}
                 />
-                <Button
-                  title="Manage"
-                  onPress={() => router.push(`/store-detail?storeId=${store.id}` as any)}
-                  variant="secondary"
-                  compact
-                />
+                {active ? (
+                  <Button
+                    title="Manage"
+                    onPress={() => router.push(`/store-detail?storeId=${store.id}` as any)}
+                    variant="secondary"
+                    compact
+                  />
+                ) : null}
               </View>
             </View>
           </Card>
-        ))
-      )}
+        );
+      })}
     </ScrollView>
   );
 }
@@ -127,6 +149,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.caption,
     color: colors.primary,
     fontWeight: '600',
+  },
+  inactiveHelp: {
+    fontSize: fontSizes.caption,
+    color: colors.warning,
+    fontWeight: '600',
+    marginTop: spacing.xs,
   },
   storeAction: {
     gap: spacing.sm,

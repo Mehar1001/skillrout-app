@@ -1,3 +1,4 @@
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
@@ -6,7 +7,7 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { type Colors, fontSizes, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
-import { db, functions } from '../../firebaseConfig';
+import { auth, db, functions } from '../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores } from '../../services/stores';
 import { Employee, Store } from '../../types';
@@ -15,6 +16,7 @@ const createEmployeeFn = httpsCallable(functions, 'createEmployee');
 const updateEmployeeAssignmentsFn = httpsCallable(functions, 'updateEmployeeAssignments');
 const setEmployeeActiveFn = httpsCallable(functions, 'setEmployeeActive');
 const resetEmployeeTemporaryPasswordFn = httpsCallable(functions, 'resetEmployeeTemporaryPassword');
+const deleteEmployeeFn = httpsCallable(functions, 'deleteEmployee');
 
 const passwordComplexity = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,128}$/;
 
@@ -32,6 +34,7 @@ export default function EmployeesScreen() {
   const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>([]);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [confirming, setConfirming] = useState<{ employee: Employee; nextActive: boolean } | null>(null);
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
 
   const fetchEmployees = useCallback(async () => {
     if (!ownerId) return;
@@ -136,6 +139,30 @@ export default function EmployeesScreen() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deletingEmployee || !ownerId) return;
+    const employee = deletingEmployee;
+    setDeletingEmployee(null);
+    setMessage(null);
+    try {
+      await deleteEmployeeFn({ employeeId: employee.id });
+      setMessage({ type: 'success', text: `${employee.name} deleted.` });
+      fetchEmployees();
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Failed to delete employee.' });
+    }
+  };
+
+  const handlePasswordLink = async (employee: Employee) => {
+    setMessage(null);
+    try {
+      await sendPasswordResetEmail(auth, employee.email);
+      setMessage({ type: 'success', text: `Password setup link sent to ${employee.email}.` });
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Failed to send password link.' });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Employees</Text>
@@ -163,6 +190,9 @@ export default function EmployeesScreen() {
           secureTextEntry
         />
         <Text style={styles.fieldLabel}>Assigned stores</Text>
+        <Text style={styles.fieldHint}>
+          Only active stores can be assigned. Reactivate a store in Stores to assign it.
+        </Text>
         <View style={styles.storeChoices}>
           {stores.map(store => {
             const selected = assignedStoreIds.includes(store.id);
@@ -231,6 +261,18 @@ export default function EmployeesScreen() {
         </View>
       ) : null}
 
+      {deletingEmployee ? (
+        <View style={[styles.confirmBox, { backgroundColor: colors.glowError }]}>
+          <Text style={styles.confirmText}>
+            Delete {deletingEmployee.name}? This cannot be undone.
+          </Text>
+          <View style={styles.confirmActions}>
+            <Button title="Cancel" onPress={() => setDeletingEmployee(null)} variant="secondary" />
+            <Button title="Delete" onPress={handleDelete} variant="danger" />
+          </View>
+        </View>
+      ) : null}
+
       <Text style={styles.subtitle}>Existing employees</Text>
       <FlatList
         data={employees}
@@ -243,13 +285,16 @@ export default function EmployeesScreen() {
               <Text style={styles.rowEmail}>{item.email}</Text>
               <Text style={styles.rowEmail}>{item.assignedStoreIds?.length || 0} store(s) assigned · {item.active ? 'Active' : 'Inactive'}</Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              <Button title="Edit" onPress={() => startEdit(item)} variant="secondary" />
+            <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
+              <Button title="Edit" onPress={() => startEdit(item)} variant="secondary" compact />
               <Button
                 title={item.active ? 'Deactivate' : 'Reactivate'}
                 onPress={() => handleActiveChange(item)}
                 variant={item.active ? 'danger' : 'accent'}
+                compact
               />
+              <Button title="Link" onPress={() => handlePasswordLink(item)} variant="secondary" compact />
+              <Button title="Delete" onPress={() => setDeletingEmployee(item)} variant="danger" compact />
             </View>
           </View>
         )}
@@ -278,6 +323,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.body,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  fieldHint: {
+    fontSize: fontSizes.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.xs,
   },
   storeChoices: {
     flexDirection: 'row',

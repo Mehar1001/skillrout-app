@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,7 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function EmployeeLayout() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { user, role, mustChangePassword, loading, signOut } = useAuth();
+  const { user, role, employeeName, mustChangePassword, loading, signOut } = useAuth();
   const router = useRouter();
   const segments = useSegments();
 
@@ -69,10 +69,17 @@ export default function EmployeeLayout() {
           );
         },
         headerRight: () => (
-          <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.logout}>
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={styles.logoutText}>Log out</Text>
-          </Pressable>
+          <View style={styles.headerRight}>
+            {employeeName ? (
+              <View style={styles.profile}>
+                <Text style={styles.profileName}>{employeeName}</Text>
+              </View>
+            ) : null}
+            <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.logout}>
+              <Ionicons name="log-out-outline" size={20} color={colors.error} />
+              <Text style={styles.logoutText}>Log out</Text>
+            </Pressable>
+          </View>
         ),
       }}
     >
@@ -104,6 +111,19 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  profile: {
+    paddingHorizontal: spacing.sm,
+  },
+  profileName: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.caption,
+    fontWeight: '600',
   },
   logout: {
     minHeight: 44,
