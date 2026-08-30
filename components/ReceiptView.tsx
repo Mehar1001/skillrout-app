@@ -1,15 +1,15 @@
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { type Colors, fontSizes, spacing } from '../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
-import { buildReceiptLines } from '../helpers/receiptTemplate';
+import { buildReceiptLines, type LastClearedInfo } from '../helpers/receiptTemplate';
 import { Visit } from '../types';
 
 const monoFont = Platform.select({ ios: 'Courier New', android: 'monospace', default: 'Courier New' });
 
-export const ReceiptView = ({ visit }: { visit: Visit }) => {
+export const ReceiptView = ({ visit, lastCleared }: { visit: Visit; lastCleared?: LastClearedInfo | null }) => {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const lines = buildReceiptLines(visit);
+  const lines = buildReceiptLines(visit, lastCleared);
   return (
     <View style={styles.receipt}>
       <Text style={styles.brand}>{lines.title}</Text>
@@ -38,6 +38,7 @@ export const ReceiptView = ({ visit }: { visit: Visit }) => {
       <ReceiptRow label="Money In" value={lines.moneyIn} strong />
       <ReceiptRow label="Money Out" value={lines.moneyOut} strong />
       <ReceiptRow label="Net" value={lines.net} strong />
+      {lines.disclaimer ? <Text style={styles.disclaimer}>{lines.disclaimer}</Text> : null}
 
       <View style={styles.divider} />
       <Text style={styles.sectionTitle}>NET SHARING</Text>
@@ -45,8 +46,19 @@ export const ReceiptView = ({ visit }: { visit: Visit }) => {
         <ReceiptRow key={index} label={share.label} value={share.amount} />
       ))}
 
+      {lines.lastCleared ? (
+        <>
+          <View style={styles.divider} />
+          <Text style={styles.sectionTitle}>LAST CLEARED</Text>
+          <ReceiptRow
+            label={`${lines.lastCleared.date} ${lines.lastCleared.time}`}
+            value={lines.lastCleared.amount}
+            strong
+          />
+        </>
+      ) : null}
+
       <View style={styles.divider} />
-      <ReceiptRow label="Cash Due Location" value={lines.cashDue} strong />
       <Text style={styles.status}>{lines.status}</Text>
     </View>
   );
@@ -129,6 +141,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   strong: {
     fontWeight: '700',
+  },
+  disclaimer: {
+    marginTop: spacing.xs,
+    color: colors.textMuted,
+    fontFamily: monoFont,
+    fontSize: 10,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
   status: {
     marginTop: spacing.md,

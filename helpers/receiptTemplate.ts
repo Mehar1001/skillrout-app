@@ -35,11 +35,18 @@ export interface ReceiptLines {
   moneyOut: string;
   net: string;
   sharing: { label: string; amount: string }[];
-  cashDue: string;
+  lastCleared?: { date: string; time: string; amount: string } | null;
+  disclaimer: string;
   status: string;
 }
 
-export const buildReceiptLines = (visit: Visit): ReceiptLines => {
+export interface LastClearedInfo {
+  date: string;
+  time: string;
+  amount: string;
+}
+
+export const buildReceiptLines = (visit: Visit, lastCleared?: LastClearedInfo | null): ReceiptLines => {
   const timestamp = visit.timestamp?.toDate?.();
   const positive = visit.totalNet > 0;
   return {
@@ -70,13 +77,17 @@ export const buildReceiptLines = (visit: Visit): ReceiptLines => {
           { label: 'No split (0.00%)', amount: '$0.00' },
           { label: 'No split (0.00%)', amount: '$0.00' },
         ],
-    cashDue: receiptMoney(visit.cashDueLocation),
+    lastCleared,
+    disclaimer:
+      visit.totalNet < 0
+        ? '* This visit closed with a negative net. It is provided as proof only and does not require payment.'
+        : '',
     status: visit.settlementStatus === 'submitted' ? 'SUBMITTED' : 'NOT SUBMITTED',
   };
 };
 
-export const generateReceiptHtml = (visit: Visit): string => {
-  const lines = buildReceiptLines(visit);
+export const generateReceiptHtml = (visit: Visit, lastCleared?: LastClearedInfo | null): string => {
+  const lines = buildReceiptLines(visit, lastCleared);
   const machineRows = lines.machines
     .map(
       machine => `
@@ -88,6 +99,13 @@ export const generateReceiptHtml = (visit: Visit): string => {
   const sharingRows = lines.sharing
     .map(share => `<div class="row"><span>${escapeHtml(share.label)}</span><span>${share.amount}</span></div>`)
     .join('');
+  const lastClearedHtml = lines.lastCleared
+    ? `
+      <div class="divider"></div>
+      <div class="section-title strong">LAST CLEARED</div>
+      <div class="row"><span>${escapeHtml(lines.lastCleared.date)} ${lines.lastCleared.time}</span><span>${lines.lastCleared.amount}</span></div>
+    `
+    : '';
 
   return `
     <!doctype html>
@@ -107,6 +125,7 @@ export const generateReceiptHtml = (visit: Visit): string => {
           .big { text-align: center; font-size: 24px; font-weight: 700; letter-spacing: 2px; margin: 4px 0; }
           .strong { font-weight: 700; }
           .status { margin-top: 8px; text-align: center; font-weight: 700; letter-spacing: 1px; }
+          .disclaimer { margin-top: 8px; text-align: center; font-size: 10px; font-style: italic; }
         </style>
       </head>
       <body>
@@ -127,11 +146,12 @@ export const generateReceiptHtml = (visit: Visit): string => {
         <div class="row strong"><span>Money In</span><span>${lines.moneyIn}</span></div>
         <div class="row strong"><span>Money Out</span><span>${lines.moneyOut}</span></div>
         <div class="row strong"><span>Net</span><span>${lines.net}</span></div>
+        ${lines.disclaimer ? `<div class="disclaimer">${escapeHtml(lines.disclaimer)}</div>` : ''}
         <div class="divider"></div>
         <div class="section-title strong">NET SHARING</div>
         ${sharingRows}
+        ${lastClearedHtml}
         <div class="divider"></div>
-        <div class="row strong"><span>Cash Due Location</span><span>${lines.cashDue}</span></div>
         <div class="status">${escapeHtml(lines.status)}</div>
       </body>
     </html>

@@ -1,15 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthProvider } from '../contexts/AuthContext';
 import { DraftQueueProvider } from '../contexts/DraftQueueContext';
+import { useColors } from '../hooks/useColors';
 
-// Load the Ionicons icon font on web so glyphs render instead of blank boxes.
 export default function RootLayout() {
-  useEffect(() => {
-    (Ionicons as any).loadFont().catch(() => {});
-  }, []);
+  const [loaded] = useFonts({ ionicons: (Ionicons as any).font });
+  const colors = useColors();
+
+  if (!loaded) {
+    return (
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.textPrimary }]}>Skillrout</Text>
+        <ActivityIndicator color={colors.primary} style={styles.spinner} />
+      </View>
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -26,3 +35,19 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 34,
+    fontWeight: '700',
+  },
+  spinner: {
+    marginTop: 8,
+  },
+});
