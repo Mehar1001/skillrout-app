@@ -31,6 +31,7 @@ export interface Store {
   id: string;
   name: string;
   address: string;
+  phone?: string;
   active: boolean;
   defaultStorePercent: number;
   defaultVendorPercent: number;

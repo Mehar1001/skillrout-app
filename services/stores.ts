@@ -43,6 +43,7 @@ export const saveStore = async (
   const data = {
     name: store.name || '',
     address: store.address || '',
+    phone: store.phone?.trim() || null,
     active: store.active ?? true,
     defaultStorePercent: store.defaultStorePercent ?? 50,
     defaultVendorPercent: store.defaultVendorPercent ?? 50,

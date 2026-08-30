@@ -22,6 +22,7 @@ export default function StoresScreen() {
     id: '',
     name: '',
     address: '',
+    phone: '',
     active: true,
     defaultStorePercent: 50,
     defaultVendorPercent: 50,
@@ -44,6 +45,7 @@ export default function StoresScreen() {
       id: '',
       name: '',
       address: '',
+      phone: '',
       active: true,
       defaultStorePercent: 50,
       defaultVendorPercent: 50,
@@ -113,6 +115,13 @@ export default function StoresScreen() {
           onChangeText={text => setForm(prev => ({ ...prev, address: text }))}
           placeholder="123 Main Street"
         />
+        <Input
+          label="Phone (optional)"
+          value={form.phone}
+          onChangeText={text => setForm(prev => ({ ...prev, phone: text }))}
+          placeholder="(555) 123-4567"
+          keyboardType="phone-pad"
+        />
         <View style={styles.row}>
           <View style={styles.half}>
             <Input
@@ -166,6 +175,7 @@ export default function StoresScreen() {
           <Card key={store.id} style={styles.storeCard}>
             <Text style={styles.storeName}>{store.name}</Text>
             <Text style={styles.storeAddress}>{store.address}</Text>
+            {store.phone ? <Text style={styles.storePhone}>{store.phone}</Text> : null}
             <Text style={styles.storeSplit}>
               Store {store.defaultStorePercent}% · Games {store.defaultVendorPercent}% · {store.active ? 'Active' : 'Inactive'}
             </Text>
@@ -228,6 +238,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   storeAddress: {
     fontSize: fontSizes.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  storePhone: {
+    fontSize: fontSizes.caption,
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
