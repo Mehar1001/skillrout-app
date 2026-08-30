@@ -1,30 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthProvider } from '../contexts/AuthContext';
 import { DraftQueueProvider } from '../contexts/DraftQueueContext';
-import { useColors } from '../hooks/useColors';
 
+// Load the Ionicons font on web and force a remount once it's available
+// so the glyph Text nodes re-render with the loaded font.
 export default function RootLayout() {
-  const [loaded] = useFonts({ ionicons: (Ionicons as any).font });
-  const colors = useColors();
+  const [fontKey, setFontKey] = useState(0);
 
-  if (!loaded) {
-    return (
-      <View style={[styles.loading, { backgroundColor: colors.background }]}>
-        <Text style={[styles.loadingText, { color: colors.textPrimary }]}>Skillrout</Text>
-        <ActivityIndicator color={colors.primary} style={styles.spinner} />
-      </View>
-    );
-  }
+  useEffect(() => {
+    (Ionicons as any)
+      .loadFont()
+      .then(() => setFontKey(k => k + 1))
+      .catch(() => {});
+  }, []);
 
   return (
     <ErrorBoundary>
       <AuthProvider>
         <DraftQueueProvider>
-          <Stack screenOptions={{ headerShown: false }}>
+          <Stack key={fontKey} screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" options={{ title: 'Skillrout' }} />
             <Stack.Screen name="owner" options={{ title: 'Skillrout Sign In' }} />
             <Stack.Screen name="(owner)" />
@@ -35,19 +32,3 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 34,
-    fontWeight: '700',
-  },
-  spinner: {
-    marginTop: 8,
-  },
-});

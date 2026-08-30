@@ -37,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;
+    let loadingTimeout: ReturnType<typeof setTimeout> | undefined;
     const clearProfile = () => {
       setRole(null);
       setOwnerId(null);
@@ -44,11 +45,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAssignedStoreIds([]);
       setMustChangePassword(false);
     };
+    loadingTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+
     const unsubscribeAuth = onAuthStateChanged(auth, async u => {
       unsubscribeProfile?.();
       unsubscribeProfile = undefined;
       setUser(u);
       setLoading(true);
+      clearTimeout(loadingTimeout);
       if (!u) {
         clearProfile();
         setLoading(false);
@@ -109,10 +115,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {
         clearProfile();
       } finally {
+        clearTimeout(loadingTimeout);
         setLoading(false);
       }
     });
     return () => {
+      clearTimeout(loadingTimeout);
       unsubscribeProfile?.();
       unsubscribeAuth();
     };
