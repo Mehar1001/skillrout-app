@@ -119,7 +119,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   split: {
     fontSize: fontSizes.caption,
-    color: colors.accent,
+    color: colors.primary,
     fontWeight: '600',
   },
   storeAction: {

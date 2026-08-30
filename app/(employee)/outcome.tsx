@@ -74,7 +74,6 @@ export default function OutcomeScreen() {
       <Card style={styles.summary}>
         <Summary label={`Store ${visit.storePercent}%`} value={visit.storeAmount} />
         <Summary label={`Games ${visit.vendorPercent}%`} value={visit.vendorAmount} />
-        <Summary label="Cash Due Location" value={visit.cashDueLocation} emphasis />
       </Card>
 
       {result === 'positive' ? (

@@ -47,13 +47,13 @@ export const MachineReadingTable = ({
           <View style={styles.headerRow}>
             <Text style={[styles.headerCell, styles.machineCol]}>MACHINE</Text>
             <Text style={[styles.headerCell, styles.baselineCol, styles.headerRight]}>LAST IN</Text>
-            <Text style={[styles.headerCell, styles.baselineCol, styles.headerRight]}>LAST PAID</Text>
-            <Text style={[styles.headerCell, styles.inputCol, styles.headerRight]}>CREDITS IN</Text>
-            <Text style={[styles.headerCell, styles.inputCol, styles.headerRight]}>TOTAL PAID</Text>
+            <Text style={[styles.headerCell, styles.baselineCol, styles.headerRight]}>LAST OUT</Text>
+            <Text style={[styles.headerCell, styles.inputCol, styles.headerRight]}>PRESENT IN</Text>
+            <Text style={[styles.headerCell, styles.inputCol, styles.headerRight]}>PRESENT OUT</Text>
             <Text style={[styles.headerCell, styles.computedCol, styles.headerRight]}>TOTAL IN</Text>
             <Text style={[styles.headerCell, styles.computedCol, styles.headerRight]}>TOTAL OUT</Text>
             <Text style={[styles.headerCell, styles.computedCol, styles.headerRight]}>NET</Text>
-            <Text style={[styles.headerCell, styles.photoCol, styles.headerCenter]}>📷</Text>
+            <Text style={[styles.headerCell, styles.photoCol, styles.headerCenter]}>PIC</Text>
           </View>
 
           {machines.map(machine => {
@@ -408,19 +408,19 @@ const makeStyles = (colors: Colors) =>
       borderRadius: radii.sm,
     },
     machineCol: {
-      width: 100,
+      width: 80,
     },
     baselineCol: {
-      width: 84,
+      width: 70,
     },
     inputCol: {
-      width: 100,
+      width: 80,
     },
     computedCol: {
-      width: 84,
+      width: 72,
     },
     photoCol: {
-      width: 44,
+      width: 36,
       alignItems: 'center',
       justifyContent: 'center',
     },

@@ -1,16 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import { useEffect } from 'react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthProvider } from '../contexts/AuthContext';
 import { DraftQueueProvider } from '../contexts/DraftQueueContext';
 
+// Load the Ionicons icon font on web so glyphs render instead of blank boxes.
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts(Ionicons.font);
-
-  if (!fontsLoaded) {
-    return null;
-  }
+  useEffect(() => {
+    (Ionicons as any).loadFont().catch(() => {});
+  }, []);
 
   return (
     <ErrorBoundary>

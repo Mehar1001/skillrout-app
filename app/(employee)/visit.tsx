@@ -6,7 +6,6 @@ import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text,
 import { Button } from '../../components/Button';
 import { MachineReadingTable } from '../../components/MachineReadingTable';
 import { AppliedReceiptReading, ReceiptScanReview } from '../../components/ReceiptScanReview';
-import { VisitDatePicker } from '../../components/VisitDatePicker';
 import { type Colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,7 +31,7 @@ export default function VisitScreen() {
   const [store, setStore] = useState<Store | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [readings, setReadings] = useState<Record<string, MachineReadingDraft>>({});
-  const [businessDate, setBusinessDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const businessDate = dayjs().format('YYYY-MM-DD');
   const [saving, setSaving] = useState(false);
   const [showRequiredErrors, setShowRequiredErrors] = useState(false);
   const [completedVisitId, setCompletedVisitId] = useState<string | null>(null);
@@ -279,11 +278,15 @@ export default function VisitScreen() {
           <Text style={styles.title}>{store.name}</Text>
           <Text style={styles.address}>{store.address}</Text>
           <Text style={styles.subtitle}>
-            Enter every cumulative Credits In and Total Paid reading. Values below the last settlement are not accepted.
+            Enter every cumulative Present In and Present Out reading. Values below the last settlement are not accepted.
           </Text>
         </View>
 
-        <VisitDatePicker value={businessDate} onChange={setBusinessDate} error={dateError} />
+        <View style={styles.dateField}>
+          <Text style={styles.dateLabel}>Business date</Text>
+          <Text style={styles.dateValue}>{dayjs(businessDate).format('MMMM D, YYYY')}</Text>
+          <Text style={styles.dateHelper}>Visits are recorded for today.</Text>
+        </View>
 
         <View style={styles.sectionHeader}>
           <View>
@@ -492,6 +495,29 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.error,
     fontSize: fontSizes.caption,
     fontWeight: '700',
+  },
+  dateField: {
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    gap: spacing.xs,
+  },
+  dateLabel: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.caption,
+    fontWeight: '600',
+  },
+  dateValue: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  dateHelper: {
+    color: colors.textMuted,
+    fontSize: fontSizes.caption,
   },
   runArea: {
     gap: spacing.sm,

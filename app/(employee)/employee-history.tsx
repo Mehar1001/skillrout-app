@@ -43,7 +43,7 @@ export default function EmployeeHistoryScreen() {
           <Text style={styles.title}>History</Text>
           <Text style={styles.subtitle}>All recorded RUNs for your assigned stores.</Text>
         </View>
-        <Button title="Refresh" onPress={fetchVisits} variant="secondary" disabled={loading} />
+        <Button title="Refresh" onPress={fetchVisits} variant="secondary" disabled={loading} compact />
       </View>
 
       {loading ? (
@@ -83,7 +83,9 @@ export default function EmployeeHistoryScreen() {
                 <Text style={styles.status}>Settlement: {visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
                 <Text style={styles.status}>Receipt: {visit.printStatus === 'printed' ? 'Printed' : 'Not printed'}</Text>
               </View>
-              <Button title="View Receipt" onPress={() => router.push(`/receipt?visitId=${visit.id}&storeId=${visit.storeId}` as any)} variant="secondary" />
+              <View style={styles.receiptButton}>
+                <Button title="View Receipt" onPress={() => router.push(`/receipt?visitId=${visit.id}&storeId=${visit.storeId}` as any)} variant="secondary" compact />
+              </View>
             </Card>
           );
         })
@@ -184,5 +186,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSizes.caption,
     textTransform: 'capitalize',
+  },
+  receiptButton: {
+    alignSelf: 'flex-start',
   },
 });

@@ -38,6 +38,9 @@ export default function ReceiptScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.backRow}>
+        <Button title="Back" onPress={() => router.back()} variant="secondary" compact />
+      </View>
       <Text style={styles.eyebrow}>THERMAL RECEIPT PREVIEW</Text>
       <Text style={styles.title}>Review before printing</Text>
       <ReceiptView visit={visit} />
@@ -83,6 +86,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignSelf: 'center',
     gap: spacing.sm,
     marginTop: spacing.lg,
+  },
+  backRow: {
+    alignSelf: 'flex-start',
+    marginBottom: spacing.md,
   },
   center: {
     flex: 1,

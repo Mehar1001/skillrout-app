@@ -41,7 +41,7 @@ export default function HistoryScreen() {
           <Text style={styles.title}>Visit history</Text>
           <Text style={styles.subtitle}>Review recorded runs, print status, and settlements.</Text>
         </View>
-        <Button title="Refresh" onPress={fetchVisits} variant="secondary" disabled={loading} />
+        <Button title="Refresh" onPress={fetchVisits} variant="secondary" disabled={loading} compact />
       </View>
 
       {loading ? (
