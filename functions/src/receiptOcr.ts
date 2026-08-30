@@ -24,44 +24,114 @@ export interface ReceiptOcrResult {
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
+const ocrDigitChars = (value: string) =>
+  value
+    .replace(/[Oo]/g, '0')
+    .replace(/[lI|]/g, '1')
+    .replace(/[Ss]/g, '5')
+    .replace(/[Zz]/g, '2')
+    .replace(/[B]/g, '8')
+    .replace(/[G]/g, '6')
+    .replace(/[q]/g, '9')
+    .replace(/[T]/g, '1');
+
 export const normalizeMachineNumber = (value: string) => {
-  const normalized = value.replace(/[<>\[\](){}\s]/g, '').replace(/^0+(?=\d)/, '');
+  const fixed = ocrDigitChars(value);
+  const normalized = fixed.replace(/[<>\[\](){}\s]/g, '').replace(/^0+(?=\d)/, '');
   return normalized || '0';
 };
 
 const parseAmount = (value: string): number | null => {
-  const normalized = value
-    .replace(/[Oo](?=\d|[.,])/g, '0')
-    .replace(/(?<=\d)[Oo]/g, '0')
-    .replace(/\s/g, '')
-    .replace(/,/g, '')
-    .replace(/[^\d.]/g, '');
-  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? round2(amount) : null;
+  let s = ocrDigitChars(value)
+    .replace(/[$\s]/g, '')
+    .replace(/[^\d.,]/g, '');
+  if (!s) return null;
+
+  // Try to find a decimal at the end: the last . or , followed by 1-2 digits
+  const decimalMatch = s.match(/^([\d.,]*)([.,])(\d{1,2})$/);
+  if (decimalMatch) {
+    const int = decimalMatch[1].replace(/[.,]/g, '');
+    const dec = decimalMatch[3].padEnd(2, '0');
+    const amount = Number(`${int}.${dec}`);
+    return Number.isFinite(amount) ? round2(amount) : null;
+  }
+
+  // No decimal: treat all delimiters as thousands separators
+  if (/^[\d.,]+$/.test(s)) {
+    const int = s.replace(/[.,]/g, '');
+    const amount = Number(int);
+    return Number.isFinite(amount) ? round2(amount) : null;
+  }
+
+  return null;
 };
 
+// Allow common OCR misreads (O->0, l->1, etc.) inside the amount token.
+const AMOUNT_PATTERN = /(?:\$\s*)?\d[\d,.\sOoIlSsZzBgqT]*(?:[.,]\d{1,2})?/g;
+
 const amountFromLabel = (lines: string[], startIndex: number, label: RegExp) => {
-  for (let index = startIndex; index < Math.min(lines.length, startIndex + 3); index += 1) {
+  const end = Math.min(lines.length, startIndex + 8);
+  for (let index = startIndex; index < end; index += 1) {
     const line = lines[index];
     const searchable = index === startIndex ? line.replace(label, '') : line;
-    const matches = searchable.match(/(?:\$\s*)?\d[\d,\s]*(?:[.]\d{1,2})/g);
-    if (!matches?.length) continue;
-    const amount = parseAmount(matches[matches.length - 1]);
+    const matches = Array.from(searchable.matchAll(AMOUNT_PATTERN));
+    if (!matches.length) continue;
+    // On the label line prefer the last amount (most likely the value after the label);
+    // on nearby lines prefer the first amount found.
+    const candidates = index === startIndex ? matches.slice().reverse() : matches;
+    for (const match of candidates) {
+      const amount = parseAmount(match[0]);
+      if (amount !== null) return amount;
+    }
+  }
+  return null;
+};
+
+const findAmount = (lines: string[], labels: RegExp[]) => {
+  for (const label of labels) {
+    const index = lines.findIndex(line => label.test(line));
+    if (index < 0) continue;
+    const amount = amountFromLabel(lines, index, label);
     if (amount !== null) return amount;
   }
   return null;
 };
 
-const sectionHeader = (line: string) => {
-  const match = line.match(/^\s*[<\[({]?\s*(\d{1,8})\s*[>\])}]?\s*$/);
-  return match?.[1] ?? null;
-};
+const IN_LABELS = [
+  /credits?\s+(?:in|ln)/i,
+  /money\s+in/i,
+  /total\s+in/i,
+  /cash\s+in/i,
+  /paid\s+in/i,
+  /(?:^|\s)in(?:\s+total)?(?:\s|$)/i,
+  /credits?/i,
+];
 
-const findAmount = (lines: string[], label: RegExp) => {
-  const index = lines.findIndex(line => label.test(line));
-  if (index < 0) return null;
-  return amountFromLabel(lines, index, label);
+const OUT_LABELS = [
+  /total\s+paid/i,
+  /money\s+out/i,
+  /total\s+out/i,
+  /cash\s+out/i,
+  /paid\s+out/i,
+  /payout/i,
+  /(?:^|\s)out(?:\s+total)?(?:\s|$)/i,
+  /(?:^|\s)paid(?!\s*in)(?:\s+out)?(?:\s|$)/i,
+];
+
+// Match a totals header, but not labels like 'Total Paid', 'Total In', 'Total Out'.
+const TOTALS_HEADER_PATTERN = /(?:machine\s+)?(?:totals?|summary)(?!\s+(?:paid|in|out))/i;
+
+const sectionHeader = (line: string) => {
+  const patterns = [
+    /^\s*(?:machine\s*)?#?\s*(\d{1,8})\s*(?:[:.\-])?\s*$/i,
+    /^\s*#?\s*(\d{1,8})\s*(?:[:.\-])?\s*$/,
+    /^\s*machine\s+#?\s*(\d{1,8})\b/i,
+  ];
+  for (const pattern of patterns) {
+    const match = line.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
 };
 
 export const parseReceiptText = (text: string, confidence = 0, fallbackMachineNumber?: string): ReceiptOcrResult => {
@@ -78,13 +148,13 @@ export const parseReceiptText = (text: string, confidence = 0, fallbackMachineNu
 
   headers.forEach((header, position) => {
     const nextHeader = headers[position + 1]?.index ?? lines.length;
-    const totalsIndex = lines.findIndex((line, index) => index > header.index && /machine\s+totals/i.test(line));
+    const totalsIndex = lines.findIndex((line, index) => index > header.index && TOTALS_HEADER_PATTERN.test(line));
     const end = totalsIndex >= 0 ? Math.min(nextHeader, totalsIndex) : nextHeader;
     const section = lines.slice(header.index + 1, end);
     const machineNumber = normalizeMachineNumber(header.number);
     const candidateWarnings: string[] = [];
-    const presentIn = findAmount(section, /credits\s+(?:in|ln)/i);
-    const presentOut = findAmount(section, /total\s+paid/i);
+    const presentIn = findAmount(section, IN_LABELS);
+    const presentOut = findAmount(section, OUT_LABELS);
     if (seen.has(machineNumber)) candidateWarnings.push('Duplicate machine section found.');
     if (presentIn === null) candidateWarnings.push('Credits In was not found.');
     if (presentOut === null) candidateWarnings.push('Total Paid was not found.');
@@ -99,28 +169,30 @@ export const parseReceiptText = (text: string, confidence = 0, fallbackMachineNu
     });
   });
 
-  if (candidates.length === 0 && fallbackMachineNumber) {
-    const totalsIndex = lines.findIndex(line => /machine\s+totals/i.test(line));
+  if (candidates.length === 0) {
+    const totalsIndex = lines.findIndex(line => TOTALS_HEADER_PATTERN.test(line));
     const section = totalsIndex >= 0 ? lines.slice(0, totalsIndex) : lines;
-    const presentIn = findAmount(section, /credits\s+(?:in|ln)/i);
-    const presentOut = findAmount(section, /total\s+paid/i);
+    const presentIn = findAmount(section, IN_LABELS);
+    const presentOut = findAmount(section, OUT_LABELS);
     const candidateWarnings: string[] = [];
     if (presentIn === null) candidateWarnings.push('Credits In was not found.');
     if (presentOut === null) candidateWarnings.push('Total Paid was not found.');
     if (confidence > 0 && confidence < 0.65) candidateWarnings.push('Low OCR confidence — verify both values carefully.');
     candidates.push({
-      receiptMachineNumber: normalizeMachineNumber(fallbackMachineNumber),
+      receiptMachineNumber: normalizeMachineNumber(fallbackMachineNumber ?? 'UNKNOWN'),
       presentIn,
       presentOut,
       confidence,
       warnings: candidateWarnings,
     });
   }
+
   if (candidates.length === 0) warnings.push('No numbered machine sections were found.');
-  const totalsStart = lines.findIndex(line => /machine\s+totals/i.test(line));
+
+  const totalsStart = lines.findIndex(line => TOTALS_HEADER_PATTERN.test(line));
   const totalsLines = totalsStart >= 0 ? lines.slice(totalsStart + 1) : [];
-  const moneyOut = findAmount(totalsLines, /money\s+out/i);
-  const moneyIn = findAmount(totalsLines, /money\s+in/i);
+  const moneyOut = findAmount(totalsLines, OUT_LABELS);
+  const moneyIn = findAmount(totalsLines, IN_LABELS);
   const extractedIn = round2(candidates.reduce((sum, candidate) => sum + (candidate.presentIn ?? 0), 0));
   const extractedOut = round2(candidates.reduce((sum, candidate) => sum + (candidate.presentOut ?? 0), 0));
   const inMatches = moneyIn === null ? null : Math.abs(moneyIn - extractedIn) < 0.01;

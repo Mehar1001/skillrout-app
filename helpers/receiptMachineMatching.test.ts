@@ -8,13 +8,15 @@ const baseMachine = {
   active: true,
   lastSettledIn: 0,
   lastSettledOut: 0,
+  lastSubmittedVisitId: null,
+  lastSubmittedAt: null,
   baselineVersion: 1,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
 
 const makeMachine = (id: string, machineNumber: string, name: string): Machine =>
-  ({ ...baseMachine, id, machineNumber, name }) as Machine;
+  ({ ...baseMachine, id, machineNumber, name }) as unknown as Machine;
 
 const candidate = (receiptMachineNumber: string) => ({
   receiptMachineNumber,
@@ -28,6 +30,10 @@ describe('receipt machine matching', () => {
   describe('normalizeReceiptMachineNumber', () => {
     it('strips brackets and whitespace and leading zeros', () => {
       assert.equal(normalizeReceiptMachineNumber('  [0101]  '), '101');
+    });
+
+    it('fixes common OCR misreads', () => {
+      assert.equal(normalizeReceiptMachineNumber('  [O1O]  '), '10');
     });
 
     it('falls back to 0 for empty input', () => {
@@ -57,6 +63,13 @@ describe('receipt machine matching', () => {
       const rows = matchReceiptCandidates(machines, [candidate('101')]);
       assert.equal(rows[0].machineId, null);
       assert.ok(rows[0].warnings.some(w => w.includes('more than one')));
+    });
+
+    it('fuzzy matches one-character OCR errors', () => {
+      const machines = [makeMachine('m1', '101', 'Red Corner'), makeMachine('m2', '1022', 'Blue Corner')];
+      const rows = matchReceiptCandidates(machines, [candidate('100')]);
+      assert.equal(rows[0].machineId, 'm1');
+      assert.ok(rows[0].warnings.some(w => w.includes('Fuzzy match')));
     });
   });
 });
