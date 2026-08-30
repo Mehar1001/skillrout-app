@@ -10,7 +10,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:client",
-    "test:client": "node --require tsx/cjs --test helpers/calculations.test.ts helpers/validators.test.ts",
+    "test:client": "node --require tsx/cjs --test helpers/*.test.ts",
     "test:calculations": "node --require tsx/cjs --test helpers/calculations.test.ts",
     "test:validators": "node --require tsx/cjs --test helpers/validators.test.ts",
     "test:rules": "firebase emulators:exec --only firestore,storage 'node --require tsx/cjs --test tests/securityRules.test.ts'",
