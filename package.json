@@ -4,15 +4,17 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:client",
     "test:client": "node --require tsx/cjs --test helpers/calculations.test.ts helpers/validators.test.ts",
     "test:calculations": "node --require tsx/cjs --test helpers/calculations.test.ts",
     "test:validators": "node --require tsx/cjs --test helpers/validators.test.ts",
-    "test:rules": "node --require tsx/cjs --test tests/securityRules.test.ts"
+    "test:rules": "firebase emulators:exec --only firestore,storage 'node --require tsx/cjs --test tests/securityRules.test.ts'",
+    "verify": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",

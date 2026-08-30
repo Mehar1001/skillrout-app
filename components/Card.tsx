@@ -1,10 +1,13 @@
 import React from 'react';
 import { View, StyleSheet, ViewProps } from 'react-native';
-import { radii, spacing } from '@/constants/designTokens';
+import { darkShadows, lightShadows, radii, spacing } from '@/constants/designTokens';
 import { useColors } from '@/hooks/useColors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 export const Card: React.FC<ViewProps> = ({ children, style, ...props }) => {
   const colors = useColors();
+  const scheme = useColorScheme() ?? 'light';
+  const shadows = scheme === 'dark' ? darkShadows.card : lightShadows.card;
 
   return (
     <View
@@ -13,11 +16,7 @@ export const Card: React.FC<ViewProps> = ({ children, style, ...props }) => {
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.05,
-          shadowRadius: 6,
-          elevation: 2,
+          ...shadows,
         },
         style,
       ]}

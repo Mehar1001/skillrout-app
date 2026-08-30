@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { fontSizes, radii, spacing } from '@/constants/designTokens';
+import { darkShadows, fontSizes, lightShadows, radii, spacing } from '@/constants/designTokens';
 import { useColors } from '@/hooks/useColors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'danger';
 
@@ -26,33 +27,31 @@ export const Button: React.FC<ButtonProps> = ({
   compact,
 }) => {
   const colors = useColors();
+  const scheme = useColorScheme() ?? 'light';
+  const buttonShadows = scheme === 'dark' ? darkShadows.button : lightShadows.button;
 
   const palette = {
     primary: {
       bg: colors.primary,
       fg: colors.textOnPrimary,
-      glow: colors.glowPrimary,
       pressedBg: colors.primaryHover,
       border: 'transparent',
     },
     secondary: {
       bg: 'transparent',
       fg: colors.primary,
-      glow: colors.glowPrimary,
       pressedBg: colors.primarySubtle,
       border: colors.primary,
     },
     accent: {
       bg: colors.accent,
       fg: colors.textOnAccent,
-      glow: colors.glowAccent,
       pressedBg: colors.accentHover,
       border: colors.border,
     },
     danger: {
       bg: colors.error,
       fg: colors.textOnPrimary,
-      glow: colors.glowError,
       pressedBg: colors.error,
       border: 'transparent',
     },
@@ -60,6 +59,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={onPress}
       disabled={disabled || loading}
       style={({ pressed }) => [
@@ -67,19 +67,16 @@ export const Button: React.FC<ButtonProps> = ({
         compact && styles.compact,
         {
           backgroundColor: pressed ? palette.pressedBg : palette.bg,
-          borderWidth: variant === 'secondary' ? 1.5 : 1,
           borderColor: palette.border,
-          shadowColor: palette.glow,
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: disabled ? 0 : 0.12,
-          shadowRadius: 4,
-          elevation: disabled ? 0 : 2,
+          ...buttonShadows,
+          shadowColor: disabled ? 'transparent' : buttonShadows.shadowColor,
+          elevation: disabled ? 0 : buttonShadows.elevation,
           transform: [{ scale: pressed ? 0.98 : 1 }],
           opacity: disabled ? 0.45 : 1,
         },
       ]}
     >
-      {iconName ? <Ionicons name={iconName} size={compact ? 16 : 18} color={palette.fg} /> : null}
+      {iconName ? <Ionicons name={iconName} size={compact ? 18 : 20} color={palette.fg} /> : null}
       <Text style={[styles.text, { color: palette.fg }]}>{loading ? 'Loading…' : title}</Text>
     </Pressable>
   );
@@ -87,10 +84,11 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 48,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -98,8 +96,8 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   compact: {
-    minHeight: 40,
-    paddingVertical: 6,
+    minHeight: 44,
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
   },
   text: {

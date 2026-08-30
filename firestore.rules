@@ -30,10 +30,12 @@ service cloud.firestore {
     }
 
     function validStoreData(data) {
-      return data.keys().hasOnly(['name', 'address', 'active', 'defaultStorePercent', 'defaultVendorPercent', 'schemaVersion', 'updatedAt', 'createdAt', 'deactivatedAt', 'reactivatedAt'])
+      return data.keys().hasOnly(['name', 'address', 'phone', 'active', 'defaultStorePercent', 'defaultVendorPercent', 'schemaVersion', 'updatedAt', 'createdAt', 'deactivatedAt', 'reactivatedAt'])
              && data.name is string
              && data.name.size() >= 1
              && data.name.size() <= 200
+             && (data.phone == null || (data.phone is string && data.phone.size() <= 30))
+             && data.active is bool
              && data.defaultStorePercent is number
              && data.defaultVendorPercent is number
              && data.defaultStorePercent >= 0
@@ -80,7 +82,7 @@ service cloud.firestore {
         allow create: if isOwner(ownerId) && validStoreData(request.resource.data);
         allow update: if isOwner(ownerId)
                        && validStoreData(request.resource.data)
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'address', 'active', 'defaultStorePercent', 'defaultVendorPercent', 'updatedAt', 'deactivatedAt', 'reactivatedAt']);
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'address', 'phone', 'active', 'defaultStorePercent', 'defaultVendorPercent', 'updatedAt', 'deactivatedAt', 'reactivatedAt']);
         allow delete: if false;
 
         match /machines/{machineId} {
