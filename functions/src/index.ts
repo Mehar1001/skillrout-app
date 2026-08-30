@@ -648,7 +648,7 @@ export const employeeOnboardStore = onCall(async (request: CallableRequest) => {
     address: string;
     defaultStorePercent: number;
     defaultVendorPercent: number;
-    machines: Array<{ machineNumber: string; name: string }>;
+    machines: Array<{ machineNumber: string; name: string; lastSettledIn: number; lastSettledOut: number }>;
   };
 
   if (typeof name !== 'string' || name.trim().length === 0 || name.trim().length > 200) {
@@ -677,6 +677,10 @@ export const employeeOnboardStore = onCall(async (request: CallableRequest) => {
         typeof machine?.name !== 'string' || !machine.name.trim()) {
       throw new HttpsError('invalid-argument', 'Each machine needs a number and a name.');
     }
+    if (typeof machine?.lastSettledIn !== 'number' || typeof machine?.lastSettledOut !== 'number' ||
+        machine.lastSettledIn <= 0 || machine.lastSettledOut <= 0) {
+      throw new HttpsError('invalid-argument', 'Each machine needs a Last IN and Last OUT greater than 0.');
+    }
     const machineRef = db.collection(`owners/${ownerId}/stores/${storeId}/machines`).doc();
     return {
       id: machineRef.id,
@@ -686,8 +690,8 @@ export const employeeOnboardStore = onCall(async (request: CallableRequest) => {
         name: machine.name.trim(),
         storeId,
         active: true,
-        lastSettledIn: 0,
-        lastSettledOut: 0,
+        lastSettledIn: machine.lastSettledIn,
+        lastSettledOut: machine.lastSettledOut,
         baselineVersion: 0,
         schemaVersion: 1,
         createdAt: FieldValue.serverTimestamp(),

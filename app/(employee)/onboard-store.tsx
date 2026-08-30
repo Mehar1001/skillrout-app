@@ -16,6 +16,8 @@ interface MachineRow {
   id: string;
   machineNumber: string;
   name: string;
+  lastSettledIn: string;
+  lastSettledOut: string;
 }
 
 const employeeOnboardStore = httpsCallable(functions, 'employeeOnboardStore');
@@ -31,7 +33,7 @@ export default function OnboardStoreScreen() {
   const [storePercent, setStorePercent] = useState('50');
   const [gamesPercent, setGamesPercent] = useState('50');
   const [machines, setMachines] = useState<MachineRow[]>([
-    { id: '1', machineNumber: '', name: '' },
+    { id: '1', machineNumber: '', name: '', lastSettledIn: '', lastSettledOut: '' },
   ]);
   const [nextId, setNextId] = useState(2);
   const [submitted, setSubmitted] = useState(false);
@@ -57,6 +59,14 @@ export default function OnboardStoreScreen() {
       if (!machine.name.trim()) {
         next[`machineName_${index}`] = 'Machine name is required.';
       }
+      const lastIn = Number(machine.lastSettledIn);
+      const lastOut = Number(machine.lastSettledOut);
+      if (machine.lastSettledIn.trim() === '' || isNaN(lastIn) || lastIn <= 0) {
+        next[`lastSettledIn_${index}`] = 'Last IN must be greater than 0.';
+      }
+      if (machine.lastSettledOut.trim() === '' || isNaN(lastOut) || lastOut <= 0) {
+        next[`lastSettledOut_${index}`] = 'Last OUT must be greater than 0.';
+      }
     });
 
     return next;
@@ -69,7 +79,20 @@ export default function OnboardStoreScreen() {
       !storeName.trim() ||
       !address.trim() ||
       !!validatePercentages(store, games) ||
-      machines.some(m => !m.machineNumber.trim() || !m.name.trim())
+      machines.some(m => {
+        const lastIn = Number(m.lastSettledIn);
+        const lastOut = Number(m.lastSettledOut);
+        return (
+          !m.machineNumber.trim() ||
+          !m.name.trim() ||
+          m.lastSettledIn.trim() === '' ||
+          isNaN(lastIn) ||
+          lastIn <= 0 ||
+          m.lastSettledOut.trim() === '' ||
+          isNaN(lastOut) ||
+          lastOut <= 0
+        );
+      })
     );
   };
 
@@ -80,7 +103,10 @@ export default function OnboardStoreScreen() {
   };
 
   const addMachine = () => {
-    setMachines(prev => [...prev, { id: String(nextId), machineNumber: '', name: '' }]);
+    setMachines(prev => [
+      ...prev,
+      { id: String(nextId), machineNumber: '', name: '', lastSettledIn: '', lastSettledOut: '' },
+    ]);
     setNextId(n => n + 1);
   };
 
@@ -104,6 +130,8 @@ export default function OnboardStoreScreen() {
         machines: machines.map(m => ({
           machineNumber: m.machineNumber.trim(),
           name: m.name.trim(),
+          lastSettledIn: Number(m.lastSettledIn),
+          lastSettledOut: Number(m.lastSettledOut),
         })),
       });
       router.replace('/select-store' as any);
@@ -173,6 +201,24 @@ export default function OnboardStoreScreen() {
                 value={machine.name}
                 onChangeText={text => updateMachine(machine.id, 'name', text)}
                 error={errors[`machineName_${index}`]}
+              />
+              <Input
+                style={styles.machineInput}
+                label={index === 0 ? 'Last IN' : undefined}
+                placeholder="Last IN"
+                value={machine.lastSettledIn}
+                onChangeText={text => updateMachine(machine.id, 'lastSettledIn', text)}
+                keyboardType="decimal-pad"
+                error={errors[`lastSettledIn_${index}`]}
+              />
+              <Input
+                style={styles.machineInput}
+                label={index === 0 ? 'Last OUT' : undefined}
+                placeholder="Last OUT"
+                value={machine.lastSettledOut}
+                onChangeText={text => updateMachine(machine.id, 'lastSettledOut', text)}
+                keyboardType="decimal-pad"
+                error={errors[`lastSettledOut_${index}`]}
               />
             </View>
             <Pressable
@@ -268,10 +314,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   machineInputs: {
     flex: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
   machineInput: {
     flex: 1,
+    minWidth: 120,
   },
   removeButton: {
     minWidth: 44,
