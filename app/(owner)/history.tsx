@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
@@ -64,7 +65,7 @@ export default function HistoryScreen() {
         visits.map(visit => {
           const timestamp = visit.timestamp?.toDate?.();
           const resultLabel = visit.result === 'positive' ? 'Positive' : visit.result === 'negative' ? 'Negative' : 'Zero';
-          const resultColor = visit.result === 'positive' ? colors.success : visit.result === 'negative' ? colors.error : colors.textMuted;
+          const resultVariant = visit.result === 'positive' ? 'success' : visit.result === 'negative' ? 'error' : 'muted';
 
           return (
             <Card key={visit.id} style={styles.visitCard}>
@@ -76,9 +77,7 @@ export default function HistoryScreen() {
                   </Text>
                   <Text style={styles.meta}>Employee: {visit.employeeName}</Text>
                 </View>
-                <View style={[styles.resultBadge, { borderColor: resultColor }]}>
-                  <Text style={[styles.resultText, { color: resultColor }]}>{resultLabel}</Text>
-                </View>
+                <Badge title={resultLabel} variant={resultVariant} />
               </View>
 
               <View style={styles.metrics}>
@@ -89,12 +88,14 @@ export default function HistoryScreen() {
               </View>
 
               <View style={styles.statusRow}>
-                <Text style={styles.statusLabel}>
-                  Settlement: <Text style={styles.statusValue}>{visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
-                </Text>
-                <Text style={styles.statusLabel}>
-                  Receipt: <Text style={styles.statusValue}>{visit.printStatus === 'printed' ? 'Printed' : 'Not printed'}</Text>
-                </Text>
+                <Badge
+                  title={visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}
+                  variant={visit.settlementStatus === 'submitted' ? 'success' : 'warning'}
+                />
+                <Badge
+                  title={visit.printStatus === 'printed' ? 'Printed' : 'Not printed'}
+                  variant={visit.printStatus === 'printed' ? 'info' : 'muted'}
+                />
               </View>
 
               <Text style={styles.splitText}>
@@ -190,16 +191,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.caption,
     color: colors.textSecondary,
   },
-  resultBadge: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  resultText: {
-    fontSize: fontSizes.caption,
-    fontWeight: '700',
-  },
   metrics: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -230,19 +221,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.md,
     marginTop: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-  },
-  statusLabel: {
-    fontSize: fontSizes.body,
-    color: colors.textSecondary,
-  },
-  statusValue: {
-    color: colors.textPrimary,
-    fontWeight: '700',
   },
   splitText: {
     marginTop: spacing.md,

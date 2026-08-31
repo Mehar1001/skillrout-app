@@ -3,6 +3,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
@@ -262,7 +263,12 @@ export default function ReportsScreen() {
                   </View>
                   <View style={[styles.summaryRight, { flex: 1, minWidth: 140 }]}>
                     <Text style={styles.summaryNet}>{formatCurrency(visit.totalNet)}</Text>
-                    <Text style={styles.summaryMeta}>{visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
+                    <View style={styles.statusBadges}>
+                      <Badge
+                        title={visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}
+                        variant={visit.settlementStatus === 'submitted' ? 'success' : 'warning'}
+                      />
+                    </View>
                     <View style={styles.rowActions}>
                       <Button
                         title={expanded ? 'Hide' : 'View'}
@@ -562,6 +568,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   summaryRight: {
     alignItems: 'flex-end',
+  },
+  statusBadges: {
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
   },
   summaryName: {
     fontSize: fontSizes.body,

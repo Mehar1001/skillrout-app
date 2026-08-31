@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { listStores } from '../../services/stores';
 import { getNextMachineNumber, listMachines, saveMachine, setMachineActive } from '../../services/machines';
 import { Store, Machine } from '../../types';
+import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { CurrencyInput } from '../../components/CurrencyInput';
@@ -283,9 +284,12 @@ export default function MachinesScreen() {
                           >
                             {machine.machineNumber} {machine.name ? `— ${machine.name}` : ''}
                           </Text>
-                          <Text style={styles.machineReadings}>
-                            Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)} · {machine.active ? 'Active' : 'Inactive'}
-                          </Text>
+                          <View style={styles.machineReadings}>
+                            <Text style={styles.readingsText}>
+                              Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)}
+                            </Text>
+                            <Badge title={machine.active ? 'Active' : 'Inactive'} variant={machine.active ? 'success' : 'muted'} />
+                          </View>
                           <View style={styles.actions}>
                             <Button title="Edit" onPress={() => handleEdit(machine)} variant="secondary" />
                             <Button
@@ -395,9 +399,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: '600',
   },
   machineReadings: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  readingsText: {
     fontSize: fontSizes.body,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
   },
   empty: {
     color: colors.textMuted,

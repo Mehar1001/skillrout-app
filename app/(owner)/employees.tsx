@@ -3,6 +3,7 @@ import { httpsCallable } from 'firebase/functions';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
@@ -298,7 +299,12 @@ export default function EmployeesScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowName}>{item.name}</Text>
                   <Text style={styles.rowEmail}>{item.email}</Text>
-                  <Text style={styles.rowMeta}>{item.assignedStoreIds?.length || 0} store(s) assigned · {item.active ? 'Active' : 'Inactive'}</Text>
+                  <View style={styles.rowMeta}>
+                    <Text style={styles.assignedStores}>
+                      {item.assignedStoreIds?.length || 0} store(s) assigned
+                    </Text>
+                    <Badge title={item.active ? 'Active' : 'Inactive'} variant={item.active ? 'success' : 'muted'} />
+                  </View>
                 </View>
                 <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
                   <Button title={editing ? 'Close' : 'Edit'} onPress={() => startEdit(item)} variant="secondary" compact />
@@ -407,9 +413,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.xs,
   },
   rowMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  assignedStores: {
     fontSize: fontSizes.caption,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
   },
   employeeCard: {
     marginBottom: spacing.sm,

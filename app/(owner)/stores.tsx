@@ -4,6 +4,7 @@ import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores, saveStore, setStoreActive } from '../../services/stores';
 import { Store } from '../../types';
+import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Card } from '../../components/Card';
@@ -255,9 +256,12 @@ export default function StoresScreen() {
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.storeName}>{store.name}</Text>
-                    <Text style={styles.storeSplit}>
-                      Store {store.defaultStorePercent}% · Games {store.defaultVendorPercent}% · {store.active ? 'Active' : 'Inactive'}
-                    </Text>
+                    <View style={styles.storeSplit}>
+                      <Text style={styles.splitText}>
+                        Store {store.defaultStorePercent}% · Games {store.defaultVendorPercent}%
+                      </Text>
+                      <Badge title={store.active ? 'Active' : 'Inactive'} variant={store.active ? 'success' : 'muted'} />
+                    </View>
                   </View>
                   <Ionicons
                     name={expanded ? 'chevron-up' : 'chevron-down'}
@@ -346,9 +350,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.xs,
   },
   storeSplit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  splitText: {
     fontSize: fontSizes.body,
     color: colors.textPrimary,
-    marginTop: spacing.xs,
     fontWeight: '700',
   },
   searchRow: {

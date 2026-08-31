@@ -5,12 +5,12 @@ import { EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
+import { PasswordRequirements } from '../../components/PasswordRequirements';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+import { isPasswordValid } from '../../helpers/passwordValidation';
 import { auth } from '../../firebaseConfig';
-
-const passwordComplexityRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,128}$/;
 
 export default function EmployeeSettingsScreen() {
   const colors = useColors();
@@ -30,7 +30,7 @@ export default function EmployeeSettingsScreen() {
       setMessage({ type: 'error', text: 'All fields are required and passwords must match.' });
       return;
     }
-    if (!passwordComplexityRegex.test(newPassword)) {
+    if (!isPasswordValid(newPassword)) {
       setMessage({
         type: 'error',
         text: 'Password must be 10–128 characters with at least one letter, one number, and one special character.',
@@ -104,6 +104,7 @@ export default function EmployeeSettingsScreen() {
           onChangeText={setNewPassword}
           placeholder="At least 10 characters with letter, number, special"
         />
+        <PasswordRequirements password={newPassword} />
         <Input
           label="Confirm new password"
           secureTextEntry
