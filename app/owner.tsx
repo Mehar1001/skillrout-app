@@ -11,6 +11,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import {
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -20,7 +21,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../constants/designTokens';
@@ -206,9 +206,11 @@ export default function OwnerScreen() {
           keyboardDismissMode="interactive"
         >
           <View style={styles.header}>
-            <View style={styles.logo}>
-              <Ionicons name="storefront-outline" size={40} color={colors.primary} />
-            </View>
+            <Image
+              source={require('../assets/images/skillrout-icon-blue.png')}
+              style={styles.logo}
+              accessibilityLabel="Skillrout"
+            />
             <Text style={styles.tagline}>Bookkeeping by</Text>
             <Text style={styles.title}>Skillrout</Text>
             <Text style={styles.subtitle}>
