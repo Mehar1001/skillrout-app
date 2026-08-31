@@ -70,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       try {
         await u.reload();
+        await u.getIdToken(true);
         if (!u.emailVerified) {
           clearProfile();
           return;

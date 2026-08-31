@@ -111,6 +111,7 @@ export default function OwnerScreen() {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
       await user.reload();
+      await user.getIdToken(true);
 
       if (!user.emailVerified) {
         await sendEmailVerification(user);
