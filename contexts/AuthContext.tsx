@@ -1,5 +1,5 @@
 import { onAuthStateChanged, signOut as firebaseSignOut, User } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebaseConfig';
 import { UserRole } from '../types';
@@ -10,6 +10,7 @@ interface AuthContextValue {
   ownerId: string | null;
   businessName: string | null;
   employeeName: string | null;
+  email: string | null;
   assignedStoreIds: string[];
   mustChangePassword: boolean;
   loading: boolean;
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextValue>({
   ownerId: null,
   businessName: null,
   employeeName: null,
+  email: null,
   assignedStoreIds: [],
   mustChangePassword: false,
   loading: true,
@@ -34,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [employeeName, setEmployeeName] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>([]);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setOwnerId(null);
       setBusinessName(null);
       setEmployeeName(null);
+      setEmail(null);
       setAssignedStoreIds([]);
       setMustChangePassword(false);
     };
@@ -78,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setRole('owner');
           setOwnerId(u.uid);
           setBusinessName(owner.businessName || null);
+          setEmail(u.email);
           setAssignedStoreIds([]);
           unsubscribeProfile = onSnapshot(ownerRef, snapshot => {
             const data = snapshot.data();
@@ -87,7 +92,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               return;
             }
             setBusinessName(data.businessName || null);
+            setEmail(u.email);
           });
+          return;
+        }
+
+        const pendingRef = doc(db, 'pendingOwners', u.uid);
+        const pendingSnap = await getDoc(pendingRef);
+        if (pendingSnap.exists()) {
+          clearProfile();
+          await firebaseSignOut(auth);
           return;
         }
 
@@ -103,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setOwnerId(employee.ownerId);
         setBusinessName(employee.businessName || null);
         setEmployeeName(employee.name || null);
+        setEmail(u.email);
         setAssignedStoreIds(employee.assignedStoreIds || []);
         setMustChangePassword(employee.mustChangePassword === true);
         unsubscribeProfile = onSnapshot(employeeRef, snapshot => {
@@ -115,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setOwnerId(data.ownerId);
           setBusinessName(data.businessName || null);
           setEmployeeName(data.name || null);
+          setEmail(u.email);
           setAssignedStoreIds(data.assignedStoreIds || []);
           setMustChangePassword(data.mustChangePassword === true);
         });
@@ -145,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider
-      value={{ user, role, ownerId, businessName, employeeName, assignedStoreIds, mustChangePassword, loading, signOut: handleSignOut }}
+      value={{ user, role, ownerId, businessName, employeeName, email, assignedStoreIds, mustChangePassword, loading, signOut: handleSignOut }}
     >
       {children}
     </AuthContext.Provider>

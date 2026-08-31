@@ -2,13 +2,13 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatCurrency, formatDate } from '../../helpers/formatters';
+import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { buildReportSummary, generateReportHtml, type ReportSummary } from '../../helpers/reportTemplate';
 import { listVisits } from '../../services/visits';
 import { Visit } from '../../types';
@@ -35,6 +35,7 @@ export default function ReportsScreen() {
   const [endDate, setEndDate] = useState(todayIso());
   const [generating, setGenerating] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
 
   const fetchVisits = useCallback(async () => {
     if (!ownerId) return;
@@ -248,24 +249,58 @@ export default function ReportsScreen() {
 
           <Card style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Recent Visits</Text>
-            {filteredVisits.slice(0, 15).map(visit => (
-              <View key={visit.id} style={styles.summaryRow}>
-                <View style={styles.summaryLeft}>
-                  <Text style={styles.summaryName}>{visit.storeName}</Text>
-                  <Text style={styles.summaryMeta}>{visit.businessDate} · {visit.employeeName}</Text>
+            {filteredVisits.map(visit => {
+              const expanded = expandedVisitId === visit.id;
+              const ts = visit.timestamp?.toDate?.();
+              return (
+                <View key={visit.id} style={[styles.summaryRow, { flexWrap: 'wrap' }]}>
+                  <Pressable
+                    onPress={() => setExpandedVisitId(expanded ? null : visit.id)}
+                    style={{ flex: 1 }}
+                    accessibilityRole="button"
+                  >
+                    <View style={styles.summaryLeft}>
+                      <Text style={styles.summaryName}>{visit.storeName}</Text>
+                      <Text style={styles.summaryMeta}>
+                        {visit.businessDate} {ts ? `at ${formatTime(ts)}` : ''} · {visit.employeeName}
+                      </Text>
+                    </View>
+                  </Pressable>
+                  <View style={styles.summaryRight}>
+                    <Text style={[styles.summaryNet, { color: visit.result === 'positive' ? colors.success : visit.result === 'negative' ? colors.error : colors.textMuted }]}>
+                      {formatCurrency(visit.totalNet)}
+                    </Text>
+                    <Text style={styles.summaryMeta}>{visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
+                    <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+                      <Button title="View" onPress={() => setExpandedVisitId(expanded ? null : visit.id)} variant={expanded ? 'primary' : 'secondary'} compact />
+                      <Button title="Adjust" onPress={() => setSelectedVisit(visit)} variant="secondary" compact />
+                    </View>
+                  </View>
+                  {expanded ? (
+                    <View style={styles.transactionDetails}>
+                      {visit.machines.map((m, i) => (
+                        <View key={m.machineId} style={styles.detailRow}>
+                          <Text style={styles.detailText}>
+                            {i + 1}. #{m.machineNumber} {m.name}
+                          </Text>
+                          <Text style={styles.detailText}>
+                            IN {formatCurrency(m.presentIn)} · OUT {formatCurrency(m.presentOut)} · Net {formatCurrency(m.machineNet)}
+                          </Text>
+                        </View>
+                      ))}
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailText}>
+                          Store {visit.storePercent}% · Games {visit.vendorPercent}%
+                        </Text>
+                        <Text style={styles.detailText}>
+                          Store {formatCurrency(visit.storeAmount)} · Games {formatCurrency(visit.vendorAmount)}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : null}
                 </View>
-                <View style={styles.summaryRight}>
-                  <Text style={[styles.summaryNet, { color: visit.result === 'positive' ? colors.success : visit.result === 'negative' ? colors.error : colors.textMuted }]}>
-                    {formatCurrency(visit.totalNet)}
-                  </Text>
-                  <Text style={styles.summaryMeta}>{visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
-                  <Button title="Adjust" onPress={() => setSelectedVisit(visit)} variant="secondary" compact />
-                </View>
-              </View>
-            ))}
-            {filteredVisits.length > 15 && (
-              <Text style={styles.moreText}>+{filteredVisits.length - 15} more visits in the PDF.</Text>
-            )}
+              );
+            })}
           </Card>
         </>
       )}
@@ -552,6 +587,24 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.caption,
     color: colors.textSecondary,
     fontStyle: 'italic',
+  },
+  transactionDetails: {
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: 13,
+    backgroundColor: colors.surfaceSecondary,
+    gap: spacing.sm,
+    width: '100%',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  detailText: {
+    fontSize: fontSizes.caption,
+    color: colors.textPrimary,
   },
   actions: {
     gap: spacing.sm,

@@ -70,6 +70,14 @@ export default function EmployeeLayout() {
         },
         headerRight: () => (
           <View style={styles.headerRight}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/settings' as any)}
+              style={styles.navIcon}
+              accessibilityLabel="Settings"
+            >
+              <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+            </Pressable>
             {employeeName ? (
               <View style={styles.profile}>
                 <Text style={styles.profileName}>{employeeName}</Text>
@@ -94,6 +102,7 @@ export default function EmployeeLayout() {
       <Stack.Screen name="outcome" options={{ title: 'Outcome' }} />
       <Stack.Screen name="receipt" options={{ title: 'Receipt Preview' }} />
       <Stack.Screen name="employee-history" options={{ title: 'History' }} />
+      <Stack.Screen name="settings" options={{ title: 'Profile & Settings' }} />
     </Stack>
   );
 }
@@ -115,7 +124,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   profile: {
     paddingHorizontal: spacing.sm,

@@ -70,21 +70,23 @@ export const registerOwnerProfile = onCall(async (request: CallableRequest) => {
   if (!businessName || businessName.length > 120) {
     throw new HttpsError('invalid-argument', 'Business name is required and must be 120 characters or fewer.');
   }
+  const pendingRef = db.doc(`pendingOwners/${request.auth.uid}`);
   const ownerRef = db.doc(`owners/${request.auth.uid}`);
   await db.runTransaction(async transaction => {
     const existing = await transaction.get(ownerRef);
+    const pending = await transaction.get(pendingRef);
     if (existing.exists) return;
-    transaction.create(ownerRef, {
+    if (pending.exists) return;
+    transaction.create(pendingRef, {
       email: String(request.auth!.token.email).trim().toLowerCase(),
       businessName,
-      subscriptionStatus: 'active',
-      status: 'pending_verification',
+      status: 'pending',
       schemaVersion: 1,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
   });
-  return { success: true };
+  return { success: true, status: 'pending' };
 });
 
 export const provisionOwner = onCall(async (request: CallableRequest) => {
@@ -191,8 +193,8 @@ export const updateEmployeeAssignments = onCall(async (request: CallableRequest)
   if (!employee.exists || employee.data()?.ownerId !== request.auth.uid) {
     throw new HttpsError('not-found', 'Employee not found.');
   }
-  if (stores.some(store => !store.exists || store.data()?.active !== true)) {
-    throw new HttpsError('invalid-argument', 'One or more assigned stores are missing or inactive.');
+  if (stores.some(store => !store.exists)) {
+    throw new HttpsError('invalid-argument', 'One or more assigned stores were not found.');
   }
   await employeeRef.update({ name, assignedStoreIds: uniqueStoreIds, updatedAt: FieldValue.serverTimestamp() });
   await auth.updateUser(employeeId, { displayName: name });

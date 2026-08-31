@@ -69,7 +69,7 @@ export default function MachinesScreen() {
     setForm({ ...machine });
   };
 
-  const MachineForm = () => (
+  const machineForm = (
     <Card style={styles.formCard}>
       <Text style={styles.sectionTitle}>
         {form.id ? 'Edit Machine' : 'Add Machine'}
@@ -150,7 +150,7 @@ export default function MachinesScreen() {
     </Card>
   );
 
-  const handleSave = async () => {
+  async function handleSave() {
     setMessage(null);
     if (!user || !ownerId || !selectedStoreId) {
       setMessage({ type: 'error', text: 'Select a store first.' });
@@ -175,7 +175,7 @@ export default function MachinesScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleActiveChange = (machine: Machine) => {
     if (!user || !ownerId || !selectedStoreId) return;
@@ -266,7 +266,7 @@ export default function MachinesScreen() {
 
               {expanded && (
                 <View style={styles.storeBody}>
-                  {!form.id ? <MachineForm /> : null}
+                  {!form.id ? machineForm : null}
 
                   <Text style={styles.sectionTitle}>Machines at this Store</Text>
                   {machines.length === 0 ? (
@@ -295,7 +295,7 @@ export default function MachinesScreen() {
                             />
                           </View>
                         </Card>
-                        {form.id === machine.id ? <MachineForm /> : null}
+                        {form.id === machine.id ? machineForm : null}
                       </View>
                     ))
                   )}

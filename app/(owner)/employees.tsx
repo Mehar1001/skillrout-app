@@ -171,7 +171,7 @@ export default function EmployeesScreen() {
     }
   };
 
-  const EmployeeForm = ({ isEditing }: { isEditing: boolean }) => (
+  const employeeForm = (isEditing: boolean) => (
     <Card style={styles.formCard}>
       <Input
         label="Name *"
@@ -197,7 +197,7 @@ export default function EmployeesScreen() {
       />
       <Text style={styles.fieldLabel}>Assigned stores</Text>
       <Text style={styles.fieldHint}>
-        Only active stores can be assigned. Reactivate a store in Stores to assign it.
+        Inactive stores already assigned remain assigned. To remove one, deselect it.
       </Text>
       <View style={styles.storeChoices}>
         {stores.map(store => {
@@ -254,7 +254,7 @@ export default function EmployeesScreen() {
       {!addOpen && !editingEmployee ? (
         <Button title="Add New Employee" onPress={() => { resetForm(); setAddOpen(true); }} variant="primary" />
       ) : null}
-      {addOpen ? <EmployeeForm isEditing={false} /> : null}
+      {addOpen ? employeeForm(false) : null}
 
       {confirming ? (
         <View style={[styles.confirmBox, { backgroundColor: colors.glowAccent }]}>
@@ -312,7 +312,7 @@ export default function EmployeesScreen() {
                   <Button title="Delete" onPress={() => setDeletingEmployee(item)} variant="danger" compact />
                 </View>
               </View>
-              {editing ? <EmployeeForm isEditing={true} /> : null}
+              {editing ? employeeForm(true) : null}
             </View>
           );
         })

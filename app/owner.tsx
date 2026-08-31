@@ -76,14 +76,13 @@ export default function OwnerScreen() {
       const user = userCredential.user;
       try {
         await registerOwnerProfile({ businessName: ownerName.trim() });
-        await sendEmailVerification(user);
       } catch (profileError) {
         await user.delete().catch(() => undefined);
         throw profileError;
       }
       setMessage({
         type: 'success',
-        text: 'Account created. Check your email and click the verification link before signing in.',
+        text: 'Your owner access request has been submitted. It must be approved before you can sign in.',
       });
       setEmail('');
       setPassword('');
@@ -130,6 +129,16 @@ export default function OwnerScreen() {
         ownerSnap = await getDoc(doc(db, 'owners', user.uid));
       }
       if (!ownerSnap.exists()) {
+        const pendingSnap = await getDoc(doc(db, 'pendingOwners', user.uid));
+        if (pendingSnap.exists()) {
+          setMessage({
+            type: 'error',
+            text: 'Your owner access request is still pending approval. You will be able to sign in once an admin approves it.',
+          });
+          await authSignOut();
+          setIsLoading(false);
+          return;
+        }
         const employeeSnap = await getDoc(doc(db, 'employees', user.uid));
         if (!employeeSnap.exists() || employeeSnap.data().active !== true) {
           setMessage({ type: 'error', text: 'Your account is not active in Skillrout.' });
@@ -207,27 +216,8 @@ export default function OwnerScreen() {
             />
             <Text style={styles.title}>Skillrout</Text>
             <Text style={styles.subtitle}>
-              {isRegistering ? 'Create your admin account' : 'Sign in to manage stores and visits'}
+              {isRegistering ? 'Request owner access' : 'Sign in to manage stores and visits'}
             </Text>
-          </View>
-
-          <View style={styles.tabs}>
-            <Pressable
-              onPress={() => setIsRegistering(false)}
-              style={[styles.tab, !isRegistering && styles.tabActive]}
-              accessibilityRole="button"
-              accessibilityLabel="Sign in"
-            >
-              <Text style={[styles.tabText, !isRegistering && styles.tabTextActive]}>Sign In</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setIsRegistering(true)}
-              style={[styles.tab, isRegistering && styles.tabActive]}
-              accessibilityRole="button"
-              accessibilityLabel="Create account"
-            >
-              <Text style={[styles.tabText, isRegistering && styles.tabTextActive]}>Create Account</Text>
-            </Pressable>
           </View>
 
           <View style={styles.form}>
@@ -284,7 +274,7 @@ export default function OwnerScreen() {
 
             <View style={styles.action}>
               <Button
-                title={isRegistering ? 'Create Account' : 'Sign In'}
+                title={isRegistering ? 'Submit Request' : 'Sign In'}
                 onPress={isRegistering ? handleRegistration : handleLogin}
                 loading={isLoading}
                 variant="primary"
@@ -301,6 +291,16 @@ export default function OwnerScreen() {
               </View>
             )}
           </View>
+
+          <Pressable
+            onPress={() => { setIsRegistering(v => !v); setMessage(null); }}
+            style={styles.requestAccess}
+            accessibilityRole="button"
+          >
+            <Text style={styles.requestAccessText}>
+              {isRegistering ? 'Already have an account? Sign in' : 'Need an owner account? Request access'}
+            </Text>
+          </Pressable>
 
           <Text style={styles.footer}>Secure admin access — Skillrout</Text>
         </ScrollView>
@@ -417,6 +417,18 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.caption,
     color: colors.textSecondary,
     lineHeight: lineHeights.caption,
+  },
+  requestAccess: {
+    alignSelf: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  requestAccessText: {
+    fontSize: fontSizes.body,
+    color: colors.primary,
+    fontWeight: '600',
   },
   footer: {
     textAlign: 'center',

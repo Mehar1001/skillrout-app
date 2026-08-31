@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { CurrencyInput } from '../../components/CurrencyInput';
 import { Input } from '../../components/Input';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
@@ -21,8 +22,8 @@ export default function AddMachineScreen() {
   const [storeLoading, setStoreLoading] = useState(true);
   const [machineNumber, setMachineNumber] = useState('');
   const [name, setName] = useState('');
-  const [lastSettledIn, setLastSettledIn] = useState('');
-  const [lastSettledOut, setLastSettledOut] = useState('');
+  const [lastSettledIn, setLastSettledIn] = useState<number | null>(null);
+  const [lastSettledOut, setLastSettledOut] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -40,12 +41,10 @@ export default function AddMachineScreen() {
   const validate = () => {
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = 'Machine name is required.';
-    const lastIn = Number(lastSettledIn);
-    const lastOut = Number(lastSettledOut);
-    if (lastSettledIn.trim() === '' || isNaN(lastIn) || lastIn <= 0) {
+    if (lastSettledIn === null || lastSettledIn <= 0) {
       next.lastSettledIn = 'Initial IN must be greater than $0.00.';
     }
-    if (lastSettledOut.trim() === '' || isNaN(lastOut) || lastOut <= 0) {
+    if (lastSettledOut === null || lastSettledOut <= 0) {
       next.lastSettledOut = 'Initial OUT must be greater than $0.00.';
     }
     setErrors(next);
@@ -59,8 +58,8 @@ export default function AddMachineScreen() {
       await employeeAddMachine(ownerId, storeId, {
         machineNumber: machineNumber.trim(),
         name: name.trim(),
-        lastSettledIn: Number(lastSettledIn),
-        lastSettledOut: Number(lastSettledOut),
+        lastSettledIn: lastSettledIn ?? 0,
+        lastSettledOut: lastSettledOut ?? 0,
       });
       router.replace(`/store-detail?storeId=${storeId}` as any);
     } catch (e: any) {
@@ -107,21 +106,19 @@ export default function AddMachineScreen() {
         />
         <View style={styles.baselineRow}>
           <View style={styles.baselineField}>
-            <Input
+            <CurrencyInput
               label="Initial IN *"
               value={lastSettledIn}
-              onChangeText={setLastSettledIn}
-              keyboardType="decimal-pad"
+              onChangeValue={setLastSettledIn}
               error={errors.lastSettledIn}
               placeholder="0.00"
             />
           </View>
           <View style={styles.baselineField}>
-            <Input
+            <CurrencyInput
               label="Initial OUT *"
               value={lastSettledOut}
-              onChangeText={setLastSettledOut}
-              keyboardType="decimal-pad"
+              onChangeValue={setLastSettledOut}
               error={errors.lastSettledOut}
               placeholder="0.00"
             />

@@ -79,7 +79,12 @@ export default function StoresScreen() {
       return;
     }
     try {
-      await saveStore(ownerId, form);
+      const payload = {
+        ...form,
+        defaultStorePercent: Number(form.defaultStorePercent) || 0,
+        defaultVendorPercent: Number(form.defaultVendorPercent) || 0,
+      };
+      await saveStore(ownerId, payload);
       setMessage({ type: 'success', text: `Store ${form.name?.trim()} saved.` });
       resetForm();
       fetchStores();
@@ -117,7 +122,7 @@ export default function StoresScreen() {
     return matchesSearch && matchesFilter;
   });
 
-  const StoreForm = () => (
+  const storeForm = (
     <Card style={styles.formCard}>
       <Input
         label="Store Name *"
@@ -142,9 +147,9 @@ export default function StoresScreen() {
         <View style={styles.half}>
           <Input
             label="Store %"
-            value={String(form.defaultStorePercent ?? 50)}
+            value={String(form.defaultStorePercent ?? '')}
             onChangeText={text =>
-              setForm(prev => ({ ...prev, defaultStorePercent: Number(text) }))
+              setForm(prev => ({ ...prev, defaultStorePercent: text as any }))
             }
             keyboardType="numeric"
           />
@@ -152,9 +157,9 @@ export default function StoresScreen() {
         <View style={styles.half}>
           <Input
             label="Games %"
-            value={String(form.defaultVendorPercent ?? 50)}
+            value={String(form.defaultVendorPercent ?? '')}
             onChangeText={text =>
-              setForm(prev => ({ ...prev, defaultVendorPercent: Number(text) }))
+              setForm(prev => ({ ...prev, defaultVendorPercent: text as any }))
             }
             keyboardType="numeric"
           />
@@ -188,7 +193,7 @@ export default function StoresScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Stores</Text>
 
-      {addOpen ? <StoreForm /> : (
+      {addOpen ? storeForm : (
         <Button
           title="Add New Store"
           onPress={() => { resetForm(); setAddOpen(true); }}
@@ -275,7 +280,7 @@ export default function StoresScreen() {
                   </View>
                 ) : null}
               </Card>
-              {editing ? <StoreForm /> : null}
+              {editing ? storeForm : null}
             </View>
           );
         })
