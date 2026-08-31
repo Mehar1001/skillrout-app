@@ -8,7 +8,7 @@ import { Card } from '../../components/Card';
 import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatCurrency, formatDate } from '../../helpers/formatters';
+import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { buildReportSummary, generateReportHtml, type ReportSummary } from '../../helpers/reportTemplate';
 import { listVisits } from '../../services/visits';
 import { Visit } from '../../types';
@@ -35,6 +35,7 @@ export default function ReportsScreen() {
   const [endDate, setEndDate] = useState(todayIso());
   const [generating, setGenerating] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
 
   const fetchVisits = useCallback(async () => {
     if (!ownerId) return;
@@ -248,22 +249,55 @@ export default function ReportsScreen() {
 
           <Card style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Recent Visits</Text>
-            {filteredVisits.slice(0, 15).map(visit => (
-              <View key={visit.id} style={styles.summaryRow}>
-                <View style={styles.summaryLeft}>
-                  <Text style={styles.summaryName}>{visit.storeName}</Text>
-                  <Text style={styles.summaryMeta}>{visit.businessDate} · {visit.employeeName}</Text>
+            {filteredVisits.map(visit => {
+              const expanded = expandedVisitId === visit.id;
+              const ts = visit.timestamp?.toDate?.();
+              return (
+                <View key={visit.id} style={[styles.summaryRow, { flexWrap: 'wrap' }]}>
+                  <View style={{ flex: 1, minWidth: 180 }}>
+                    <Text style={styles.summaryName}>{visit.storeName}</Text>
+                    <Text style={styles.summaryMeta}>
+                      {visit.businessDate} {ts ? `at ${formatTime(ts)}` : ''} · {visit.employeeName}
+                    </Text>
+                  </View>
+                  <View style={[styles.summaryRight, { flex: 1, minWidth: 140 }]}>
+                    <Text style={styles.summaryNet}>{formatCurrency(visit.totalNet)}</Text>
+                    <Text style={styles.summaryMeta}>{visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
+                    <View style={styles.rowActions}>
+                      <Button
+                        title={expanded ? 'Hide' : 'View'}
+                        onPress={() => setExpandedVisitId(expanded ? null : visit.id)}
+                        variant={expanded ? 'primary' : 'secondary'}
+                        compact
+                      />
+                      <Button title="Adjust" onPress={() => setSelectedVisit(visit)} variant="secondary" compact />
+                    </View>
+                  </View>
+                  {expanded ? (
+                    <View style={styles.visitDetails}>
+                      {visit.machines.map((m, i) => (
+                        <View key={m.machineId} style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>{i + 1}. #{m.machineNumber} {m.name}</Text>
+                          <Text style={styles.detailValue}>
+                            IN {formatCurrency(m.presentIn)} · OUT {formatCurrency(m.presentOut)} · Net {formatCurrency(m.machineNet)}
+                          </Text>
+                        </View>
+                      ))}
+                      <View style={[styles.detailRow, styles.detailSection]}>
+                        <Text style={styles.detailLabel}>Split</Text>
+                        <Text style={styles.detailValue}>Store {visit.storePercent}% · Games {visit.vendorPercent}%</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Payouts</Text>
+                        <Text style={styles.detailValue}>
+                          Store {formatCurrency(visit.storeAmount)} · Games {formatCurrency(visit.vendorAmount)}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : null}
                 </View>
-                <View style={styles.summaryRight}>
-                  <Text style={styles.summaryNet}>{formatCurrency(visit.totalNet)}</Text>
-                  <Text style={styles.summaryMeta}>{visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
-                  <Button title="Adjust" onPress={() => setSelectedVisit(visit)} variant="secondary" compact />
-                </View>
-              </View>
-            ))}
-            {filteredVisits.length > 15 && (
-              <Text style={styles.moreText}>+{filteredVisits.length - 15} more visits in the PDF.</Text>
-            )}
+              );
+            })}
           </Card>
         </>
       )}
@@ -550,6 +584,42 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.caption,
     color: colors.textSecondary,
     fontStyle: 'italic',
+  },
+  rowActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  visitDetails: {
+    width: '100%',
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: 13,
+    backgroundColor: colors.surfaceSecondary,
+    gap: spacing.sm,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  detailSection: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
+  },
+  detailLabel: {
+    fontSize: fontSizes.caption,
+    color: colors.textSecondary,
+    flexShrink: 0,
+  },
+  detailValue: {
+    fontSize: fontSizes.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    textAlign: 'right',
   },
 
   actions: {
