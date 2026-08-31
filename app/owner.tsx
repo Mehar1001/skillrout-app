@@ -112,17 +112,6 @@ export default function OwnerScreen() {
       const user = userCredential.user;
       await user.reload();
 
-      if (!user.emailVerified) {
-        await sendEmailVerification(user);
-        setMessage({
-          type: 'error',
-          text: 'Email not verified. A new verification link has been sent — check your inbox and click it before signing in.',
-        });
-        await authSignOut();
-        setIsLoading(false);
-        return;
-      }
-
       let ownerSnap = await getDoc(doc(db, 'owners', user.uid));
       if (ownerSnap.exists()) {
         await provisionOwner();
@@ -152,8 +141,16 @@ export default function OwnerScreen() {
 
       const ownerData = ownerSnap.data();
 
-      if (ownerData.subscriptionStatus !== 'active') {
-        setMessage({ type: 'error', text: 'Your account is not active. Please contact support.' });
+      if (!user.emailVerified || ownerData.subscriptionStatus !== 'active') {
+        if (!user.emailVerified) {
+          await sendEmailVerification(user);
+        }
+        setMessage({
+          type: 'error',
+          text: !user.emailVerified
+            ? 'Email not verified. A new verification link has been sent — check your inbox and click it before signing in.'
+            : 'Your account is not active. Please contact support.',
+        });
         await authSignOut();
         setIsLoading(false);
         return;

@@ -256,7 +256,7 @@ export default function ReportsScreen() {
                 <View key={visit.id} style={[styles.summaryRow, { flexWrap: 'wrap' }]}>
                   <Pressable
                     onPress={() => setExpandedVisitId(expanded ? null : visit.id)}
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, minWidth: 180 }}
                     accessibilityRole="button"
                   >
                     <View style={styles.summaryLeft}>
@@ -266,12 +266,12 @@ export default function ReportsScreen() {
                       </Text>
                     </View>
                   </Pressable>
-                  <View style={styles.summaryRight}>
-                    <Text style={[styles.summaryNet, { color: visit.result === 'positive' ? colors.success : visit.result === 'negative' ? colors.error : colors.textMuted }]}>
-                      {formatCurrency(visit.totalNet)}
-                    </Text>
-                    <Text style={styles.summaryMeta}>{visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
-                    <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+                  <View style={[styles.summaryRight, { flex: 1, alignItems: 'flex-start' }]}>
+                    <View style={styles.visitTopRight}>
+                      <Text style={styles.summaryNet}>{formatCurrency(visit.totalNet)}</Text>
+                      <Text style={styles.summaryMeta}>{visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
+                    </View>
+                    <View style={styles.visitActions}>
                       <Button title="View" onPress={() => setExpandedVisitId(expanded ? null : visit.id)} variant={expanded ? 'primary' : 'secondary'} compact />
                       <Button title="Adjust" onPress={() => setSelectedVisit(visit)} variant="secondary" compact />
                     </View>
@@ -605,6 +605,17 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   detailText: {
     fontSize: fontSizes.caption,
     color: colors.textPrimary,
+  },
+  visitTopRight: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  visitActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   actions: {
     gap: spacing.sm,
