@@ -105,15 +105,6 @@ export default function OwnerLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="pending-owners"
-        options={{
-          title: 'Approvals',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'person-add' : 'person-add-outline'} color={color} size={size} />
-          ),
-        }}
-      />
     </Tabs>
   );
 }
