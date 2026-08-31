@@ -60,7 +60,19 @@ export default function ReceiptScreen() {
     setWorking(true);
     try {
       await markPrinted(ownerId, visit.storeId, visit.id, user.uid);
-      await Print.printAsync({ html: generateReceiptHtml(visit, lastCleared) });
+      const html = generateReceiptHtml(visit, lastCleared);
+      if (Platform.OS === 'web') {
+        if (typeof window === 'undefined') return;
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) throw new Error('Allow popups to print receipts.');
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 100);
+        return;
+      }
+      await Print.printAsync({ html });
     } catch (e: any) {
       Alert.alert('Print Error', e.message || 'Receipt could not be printed.');
     } finally {
@@ -73,13 +85,19 @@ export default function ReceiptScreen() {
     setWorking(true);
     try {
       await markPrinted(ownerId, visit.storeId, visit.id, user.uid);
+      const html = generateReceiptHtml(visit, lastCleared);
       if (Platform.OS === 'web') {
-        await Print.printAsync({ html: generateReceiptHtml(visit, lastCleared) });
+        if (typeof document === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined') return;
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `skillrout-receipt-${visit.id}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
         return;
       }
-      const { uri } = await Print.printToFileAsync({
-        html: generateReceiptHtml(visit, lastCleared),
-      });
+      const { uri } = await Print.printToFileAsync({ html });
       const pdfUri = `${FileSystem.cacheDirectory}skillrout-receipt-${visit.id}.pdf`;
       await FileSystem.moveAsync({ from: uri, to: pdfUri });
       if (await Sharing.isAvailableAsync()) {
