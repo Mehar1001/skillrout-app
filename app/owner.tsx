@@ -321,6 +321,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   header: {
     alignItems: 'center',
+    alignSelf: 'stretch',
     marginBottom: spacing.xl,
   },
   logo: {
@@ -330,6 +331,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
   },
   tagline: {
     fontSize: fontSizes.caption,
@@ -337,14 +339,19 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: letterSpacings.wide,
+    alignSelf: 'flex-start',
+    textAlign: 'left',
     marginTop: spacing.xs,
-    marginBottom: -spacing.xs,
+    marginBottom: spacing.xs,
   },
   title: {
     fontSize: fontSizes.h1,
     color: colors.textPrimary,
-    fontWeight: '700',
+    fontWeight: '800',
+    alignSelf: 'flex-start',
+    textAlign: 'left',
     marginBottom: spacing.xs,
+    letterSpacing: letterSpacings.wide,
   },
   subtitle: {
     fontSize: fontSizes.body,
