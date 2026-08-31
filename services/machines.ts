@@ -30,6 +30,9 @@ export const saveMachine = async (
 ): Promise<string> => {
   const name = machine.name?.trim();
   if (!name) throw new Error('Machine name is required.');
+  if (!machine.id && (Number(machine.lastSettledIn) <= 0 || Number(machine.lastSettledOut) <= 0)) {
+    throw new Error('Initial IN and OUT must be greater than 0.');
+  }
   const id = machine.id || doc(getMachinesRef(ownerId, storeId)).id;
   const ref = doc(db, `owners/${ownerId}/stores/${storeId}/machines`, id);
   const machineNumber = machine.machineNumber?.trim() || (await getNextMachineNumber(ownerId, storeId));

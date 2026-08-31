@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../helpers/formatters';
@@ -91,15 +91,19 @@ export default function StoreDetailScreen() {
         machines.map(machine => (
           <Card key={machine.id} style={styles.machineCard}>
             <View style={styles.machineRow}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.machineNumber}>#{machine.machineNumber}</Text>
                 <Text style={styles.machineName}>{machine.name}</Text>
               </View>
-              <View style={styles.baseline}>
-                <Text style={styles.baselineLabel}>Last IN</Text>
-                <Text style={styles.baselineValue}>{formatCurrency(machine.lastSettledIn)}</Text>
-                <Text style={styles.baselineLabel}>Last OUT</Text>
-                <Text style={styles.baselineValue}>{formatCurrency(machine.lastSettledOut)}</Text>
+              <View style={styles.baselineGroup}>
+                <View style={styles.baselineBox}>
+                  <Text style={styles.baselineLabel}>Last IN</Text>
+                  <Text style={styles.baselineValue}>{formatCurrency(machine.lastSettledIn)}</Text>
+                </View>
+                <View style={styles.baselineBox}>
+                  <Text style={styles.baselineLabel}>Last OUT</Text>
+                  <Text style={styles.baselineValue}>{formatCurrency(machine.lastSettledOut)}</Text>
+                </View>
               </View>
             </View>
           </Card>
@@ -189,16 +193,28 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.body,
     marginTop: spacing.xs,
   },
-  baseline: {
+  baselineGroup: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  baselineBox: {
+    minWidth: 120,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
     alignItems: 'flex-end',
   },
   baselineLabel: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontSize: fontSizes.caption,
+    fontWeight: '600',
   },
   baselineValue: {
     color: colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: '700',
+    marginTop: spacing.xs,
   },
 });

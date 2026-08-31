@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Text, TextInput, View, StyleSheet, TextInputProps } from 'react-native';
+import { Pressable, Text, TextInput, View, StyleSheet, TextInputProps } from 'react-native';
 import { fontSizes, radii, spacing } from '@/constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 
@@ -13,6 +14,8 @@ interface InputProps extends TextInputProps {
 export const Input: React.FC<InputProps> = ({ label, error, style, onFocus, onBlur, prefix, suffix, ...props }) => {
   const colors = useColors();
   const [focused, setFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = Boolean(props.secureTextEntry);
   const a11yLabel = props.accessibilityLabel ?? label;
 
   const textStyle = [
@@ -27,6 +30,7 @@ export const Input: React.FC<InputProps> = ({ label, error, style, onFocus, onBl
       shadowOpacity: focused ? 0.15 : 0.06,
       shadowRadius: focused ? 4 : 2,
       elevation: focused ? 3 : 1,
+      paddingRight: isPassword ? 44 : spacing.md,
     },
     style as any,
   ];
@@ -43,6 +47,7 @@ export const Input: React.FC<InputProps> = ({ label, error, style, onFocus, onBl
       onBlur?.(e);
     },
     ...props,
+    secureTextEntry: isPassword ? !showPassword : props.secureTextEntry,
   };
 
   const inner = prefix || suffix ? (
@@ -76,7 +81,23 @@ export const Input: React.FC<InputProps> = ({ label, error, style, onFocus, onBl
   return (
     <View style={styles.wrapper}>
       {label && <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>}
-      {inner}
+      <View style={styles.inputOuter}>
+        {inner}
+        {isPassword ? (
+          <Pressable
+            onPress={() => setShowPassword(v => !v)}
+            style={styles.eye}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </Pressable>
+        ) : null}
+      </View>
       {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
     </View>
   );
@@ -85,6 +106,19 @@ export const Input: React.FC<InputProps> = ({ label, error, style, onFocus, onBl
 const styles = StyleSheet.create({
   wrapper: {
     marginBottom: spacing.md,
+  },
+  inputOuter: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  eye: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
     fontSize: fontSizes.caption,

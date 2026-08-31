@@ -8,7 +8,7 @@ import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStore } from '../../services/stores';
-import { employeeAddMachine } from '../../services/machines';
+import { employeeAddMachine, getNextMachineNumber } from '../../services/machines';
 import { Store } from '../../types';
 
 export default function AddMachineScreen() {
@@ -32,19 +32,21 @@ export default function AddMachineScreen() {
       .then(setStore)
       .catch(() => Alert.alert('Error', 'Store could not be loaded.'))
       .finally(() => setStoreLoading(false));
+    getNextMachineNumber(ownerId, storeId)
+      .then(setMachineNumber)
+      .catch(() => {});
   }, [ownerId, storeId]);
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!machineNumber.trim()) next.machineNumber = 'Machine # is required.';
     if (!name.trim()) next.name = 'Machine name is required.';
     const lastIn = Number(lastSettledIn);
     const lastOut = Number(lastSettledOut);
     if (lastSettledIn.trim() === '' || isNaN(lastIn) || lastIn <= 0) {
-      next.lastSettledIn = 'Last IN must be greater than 0.';
+      next.lastSettledIn = 'Initial IN must be greater than $0.00.';
     }
     if (lastSettledOut.trim() === '' || isNaN(lastOut) || lastOut <= 0) {
-      next.lastSettledOut = 'Last OUT must be greater than 0.';
+      next.lastSettledOut = 'Initial OUT must be greater than $0.00.';
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -84,7 +86,7 @@ export default function AddMachineScreen() {
       <Text style={styles.eyebrow}>ADD MACHINE</Text>
       <Text style={styles.title}>{store ? store.name : 'Store'}</Text>
       <Text style={styles.subtitle}>
-        Enter the new machine number, name, and starting baseline values.
+        The machine number is generated automatically. Enter a name and the starting initial IN/OUT values.
       </Text>
 
       <Card style={styles.form}>
@@ -93,10 +95,11 @@ export default function AddMachineScreen() {
           value={machineNumber}
           onChangeText={setMachineNumber}
           error={errors.machineNumber}
-          placeholder="e.g. 3"
+          placeholder="Auto-generated"
+          editable={false}
         />
         <Input
-          label="Machine name"
+          label="Machine name *"
           value={name}
           onChangeText={setName}
           error={errors.name}
@@ -105,7 +108,7 @@ export default function AddMachineScreen() {
         <View style={styles.baselineRow}>
           <View style={styles.baselineField}>
             <Input
-              label="Last IN"
+              label="Initial IN *"
               value={lastSettledIn}
               onChangeText={setLastSettledIn}
               keyboardType="decimal-pad"
@@ -115,7 +118,7 @@ export default function AddMachineScreen() {
           </View>
           <View style={styles.baselineField}>
             <Input
-              label="Last OUT"
+              label="Initial OUT *"
               value={lastSettledOut}
               onChangeText={setLastSettledOut}
               keyboardType="decimal-pad"

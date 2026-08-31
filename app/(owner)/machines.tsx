@@ -65,7 +65,90 @@ export default function MachinesScreen() {
     }
   };
 
-  const handleEdit = (machine: Machine) => setForm({ ...machine });
+  const handleEdit = (machine: Machine) => {
+    setForm({ ...machine });
+  };
+
+  const MachineForm = () => (
+    <Card style={styles.formCard}>
+      <Text style={styles.sectionTitle}>
+        {form.id ? 'Edit Machine' : 'Add Machine'}
+      </Text>
+      <Input
+        label="Machine Number"
+        value={form.machineNumber}
+        onChangeText={text => setForm(prev => ({ ...prev, machineNumber: text }))}
+        placeholder="Auto-generated"
+        editable={!form.id}
+      />
+      <Input
+        label="Machine Name *"
+        value={form.name || ''}
+        onChangeText={text => setForm(prev => ({ ...prev, name: text }))}
+        placeholder="Front left"
+      />
+      <View style={styles.row}>
+        <View style={styles.half}>
+          <CurrencyInput
+            label={form.id ? 'Last Settled IN' : 'Initial IN *'}
+            value={form.lastSettledIn ?? 0}
+            onChangeValue={lastSettledIn =>
+              setForm(prev => ({ ...prev, lastSettledIn: lastSettledIn ?? 0 }))
+            }
+            disabled={Boolean(form.id)}
+            helperText={
+              form.id
+                ? 'Settled readings cannot be changed during a normal edit.'
+                : undefined
+            }
+          />
+        </View>
+        <View style={styles.half}>
+          <CurrencyInput
+            label={form.id ? 'Last Settled OUT' : 'Initial OUT *'}
+            value={form.lastSettledOut ?? 0}
+            onChangeValue={lastSettledOut =>
+              setForm(prev => ({ ...prev, lastSettledOut: lastSettledOut ?? 0 }))
+            }
+            disabled={Boolean(form.id)}
+            helperText={
+              form.id
+                ? 'Settled readings cannot be changed during a normal edit.'
+                : undefined
+            }
+          />
+        </View>
+      </View>
+      <View style={styles.actions}>
+        <Button
+          title={form.id ? 'Update Machine' : 'Add Machine'}
+          onPress={handleSave}
+          loading={loading}
+          disabled={!form.name?.trim() || (!form.id && (Number(form.lastSettledIn) <= 0 || Number(form.lastSettledOut) <= 0))}
+        />
+        {form.id ? (
+          <Button title="Cancel" onPress={resetForm} variant="secondary" />
+        ) : null}
+      </View>
+      {message ? (
+        <View
+          style={[
+            styles.messageBox,
+            { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
+          ]}
+        >
+          <Text
+            style={[
+              styles.messageText,
+              { color: message.type === 'error' ? colors.error : colors.success },
+            ]}
+          >
+            {message.text}
+          </Text>
+        </View>
+      ) : null}
+    </Card>
+  );
 
   const handleSave = async () => {
     setMessage(null);
@@ -75,6 +158,10 @@ export default function MachinesScreen() {
     }
     if (!form.name?.trim()) {
       setMessage({ type: 'error', text: 'Machine name is required.' });
+      return;
+    }
+    if (!form.id && (Number(form.lastSettledIn) <= 0 || Number(form.lastSettledOut) <= 0)) {
+      setMessage({ type: 'error', text: 'Initial IN and OUT must be greater than $0.00.' });
       return;
     }
     setLoading(true);
@@ -179,110 +266,37 @@ export default function MachinesScreen() {
 
               {expanded && (
                 <View style={styles.storeBody}>
-                  <Card style={styles.formCard}>
-                    <Text style={styles.sectionTitle}>
-                      {form.id ? 'Edit Machine' : 'Add Machine'}
-                    </Text>
-                    <Input
-                      label="Machine Number"
-                      value={form.machineNumber}
-                      onChangeText={text => setForm(prev => ({ ...prev, machineNumber: text }))}
-                      placeholder="Auto-generated"
-                      editable={!form.id}
-                    />
-                    <Input
-                      label="Machine Name *"
-                      value={form.name || ''}
-                      onChangeText={text => setForm(prev => ({ ...prev, name: text }))}
-                      placeholder="Front left"
-                    />
-                    <View style={styles.row}>
-                      <View style={styles.half}>
-                        <CurrencyInput
-                          label="Initial / Last Settled IN"
-                          value={form.lastSettledIn ?? 0}
-                          onChangeValue={lastSettledIn =>
-                            setForm(prev => ({ ...prev, lastSettledIn: lastSettledIn ?? 0 }))
-                          }
-                          disabled={Boolean(form.id)}
-                          helperText={
-                            form.id
-                              ? 'Settled readings cannot be changed during a normal edit.'
-                              : undefined
-                          }
-                        />
-                      </View>
-                      <View style={styles.half}>
-                        <CurrencyInput
-                          label="Initial / Last Settled OUT"
-                          value={form.lastSettledOut ?? 0}
-                          onChangeValue={lastSettledOut =>
-                            setForm(prev => ({ ...prev, lastSettledOut: lastSettledOut ?? 0 }))
-                          }
-                          disabled={Boolean(form.id)}
-                          helperText={
-                            form.id
-                              ? 'Settled readings cannot be changed during a normal edit.'
-                              : undefined
-                          }
-                        />
-                      </View>
-                    </View>
-                    <View style={styles.actions}>
-                      <Button
-                        title={form.id ? 'Update Machine' : 'Add Machine'}
-                        onPress={handleSave}
-                        loading={loading}
-                      />
-                      {form.id ? (
-                        <Button title="Cancel" onPress={resetForm} variant="secondary" />
-                      ) : null}
-                    </View>
-                    {message ? (
-                      <View
-                        style={[
-                          styles.messageBox,
-                          { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.messageText,
-                            { color: message.type === 'error' ? colors.error : colors.success },
-                          ]}
-                        >
-                          {message.text}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </Card>
+                  {!form.id ? <MachineForm /> : null}
 
                   <Text style={styles.sectionTitle}>Machines at this Store</Text>
                   {machines.length === 0 ? (
                     <Text style={styles.empty}>No machines yet. Add the first one above.</Text>
                   ) : (
                     machines.map(machine => (
-                      <Card key={machine.id} style={styles.machineCard}>
-                        <Text
-                          style={[
-                            styles.machineName,
-                            !machine.active && { color: colors.textMuted },
-                          ]}
-                        >
-                          {machine.machineNumber} {machine.name ? `— ${machine.name}` : ''}
-                        </Text>
-                        <Text style={styles.machineReadings}>
-                          Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)} · {machine.active ? 'Active' : 'Inactive'}
-                        </Text>
-                        <View style={styles.actions}>
-                          <Button title="Edit" onPress={() => handleEdit(machine)} variant="secondary" />
-                          <Button
-                            title={machine.active ? 'Deactivate' : 'Reactivate'}
-                            onPress={() => handleActiveChange(machine)}
-                            variant={machine.active ? 'danger' : 'accent'}
-                          />
-                        </View>
-                      </Card>
+                      <View key={machine.id} style={styles.machineCard}>
+                        <Card style={styles.machineCardInner}>
+                          <Text
+                            style={[
+                              styles.machineName,
+                              !machine.active && { color: colors.textMuted },
+                            ]}
+                          >
+                            {machine.machineNumber} {machine.name ? `— ${machine.name}` : ''}
+                          </Text>
+                          <Text style={styles.machineReadings}>
+                            Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)} · {machine.active ? 'Active' : 'Inactive'}
+                          </Text>
+                          <View style={styles.actions}>
+                            <Button title="Edit" onPress={() => handleEdit(machine)} variant="secondary" />
+                            <Button
+                              title={machine.active ? 'Deactivate' : 'Reactivate'}
+                              onPress={() => handleActiveChange(machine)}
+                              variant={machine.active ? 'danger' : 'accent'}
+                            />
+                          </View>
+                        </Card>
+                        {form.id === machine.id ? <MachineForm /> : null}
+                      </View>
                     ))
                   )}
                 </View>
@@ -370,6 +384,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   machineCard: {
     marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  machineCardInner: {
+    padding: spacing.md,
   },
   machineName: {
     fontSize: fontSizes.h2,

@@ -22,6 +22,7 @@ export default function StoresScreen() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState<Partial<Store>>({
     id: '',
     name: '',
@@ -54,9 +55,14 @@ export default function StoresScreen() {
       defaultStorePercent: 50,
       defaultVendorPercent: 50,
     });
+    setAddOpen(false);
   };
 
-  const handleEdit = (store: Store) => setForm({ ...store });
+  const handleEdit = (store: Store) => {
+    setAddOpen(false);
+    setExpandedStoreId(store.id);
+    setForm({ ...store });
+  };
 
   const handleSave = async () => {
     setMessage(null);
@@ -111,74 +117,84 @@ export default function StoresScreen() {
     return matchesSearch && matchesFilter;
   });
 
+  const StoreForm = () => (
+    <Card style={styles.formCard}>
+      <Input
+        label="Store Name *"
+        value={form.name}
+        onChangeText={text => setForm(prev => ({ ...prev, name: text }))}
+        placeholder="Store XYZ"
+      />
+      <Input
+        label="Address"
+        value={form.address}
+        onChangeText={text => setForm(prev => ({ ...prev, address: text }))}
+        placeholder="123 Main Street"
+      />
+      <Input
+        label="Phone (optional)"
+        value={form.phone}
+        onChangeText={text => setForm(prev => ({ ...prev, phone: text }))}
+        placeholder="(555) 123-4567"
+        keyboardType="phone-pad"
+      />
+      <View style={styles.row}>
+        <View style={styles.half}>
+          <Input
+            label="Store %"
+            value={String(form.defaultStorePercent ?? 50)}
+            onChangeText={text =>
+              setForm(prev => ({ ...prev, defaultStorePercent: Number(text) }))
+            }
+            keyboardType="numeric"
+          />
+        </View>
+        <View style={styles.half}>
+          <Input
+            label="Games %"
+            value={String(form.defaultVendorPercent ?? 50)}
+            onChangeText={text =>
+              setForm(prev => ({ ...prev, defaultVendorPercent: Number(text) }))
+            }
+            keyboardType="numeric"
+          />
+        </View>
+      </View>
+      <View style={styles.actions}>
+        <Button title={form.id ? 'Update Store' : 'Add Store'} onPress={handleSave} loading={loading} />
+        <Button title="Cancel" onPress={resetForm} variant="secondary" />
+      </View>
+      {message ? (
+        <View
+          style={[
+            styles.messageBox,
+            { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
+          ]}
+        >
+          <Text
+            style={[
+              styles.messageText,
+              { color: message.type === 'error' ? colors.error : colors.success },
+            ]}
+          >
+            {message.text}
+          </Text>
+        </View>
+      ) : null}
+    </Card>
+  );
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Stores</Text>
 
-      <Card style={styles.formCard}>
-        <Input
-          label="Store Name"
-          value={form.name}
-          onChangeText={text => setForm(prev => ({ ...prev, name: text }))}
-          placeholder="Store XYZ"
+      {addOpen ? <StoreForm /> : (
+        <Button
+          title="Add New Store"
+          onPress={() => { resetForm(); setAddOpen(true); }}
+          variant="primary"
         />
-        <Input
-          label="Address"
-          value={form.address}
-          onChangeText={text => setForm(prev => ({ ...prev, address: text }))}
-          placeholder="123 Main Street"
-        />
-        <Input
-          label="Phone (optional)"
-          value={form.phone}
-          onChangeText={text => setForm(prev => ({ ...prev, phone: text }))}
-          placeholder="(555) 123-4567"
-          keyboardType="phone-pad"
-        />
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <Input
-              label="Store %"
-              value={String(form.defaultStorePercent ?? 50)}
-              onChangeText={text =>
-                setForm(prev => ({ ...prev, defaultStorePercent: Number(text) }))
-              }
-              keyboardType="numeric"
-            />
-          </View>
-          <View style={styles.half}>
-            <Input
-              label="Games %"
-              value={String(form.defaultVendorPercent ?? 50)}
-              onChangeText={text =>
-                setForm(prev => ({ ...prev, defaultVendorPercent: Number(text) }))
-              }
-              keyboardType="numeric"
-            />
-          </View>
-        </View>
-        <View style={styles.actions}>
-          <Button title={form.id ? 'Update Store' : 'Add Store'} onPress={handleSave} loading={loading} />
-          {form.id ? <Button title="Cancel" onPress={resetForm} variant="secondary" /> : null}
-        </View>
-        {message ? (
-          <View
-            style={[
-              styles.messageBox,
-              { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
-            ]}
-          >
-            <Text
-              style={[
-                styles.messageText,
-                { color: message.type === 'error' ? colors.error : colors.success },
-              ]}
-            >
-              {message.text}
-            </Text>
-          </View>
-        ) : null}
-      </Card>
+      )}
 
       <View style={styles.searchRow}>
         <TextInput
@@ -221,42 +237,46 @@ export default function StoresScreen() {
         </Text>
       ) : (
         filteredStores.map(store => {
-          const expanded = expandedStoreId === store.id;
+          const editing = form.id === store.id;
+          const expanded = editing || expandedStoreId === store.id;
           return (
-            <Card key={store.id} style={styles.storeCard}>
-              <Pressable
-                onPress={() => setExpandedStoreId(expanded ? null : store.id)}
-                style={styles.storeHeader}
-                accessibilityRole="button"
-                accessibilityState={{ expanded }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.storeName}>{store.name}</Text>
-                  <Text style={styles.storeSplit}>
-                    Store {store.defaultStorePercent}% · Games {store.defaultVendorPercent}% · {store.active ? 'Active' : 'Inactive'}
-                  </Text>
-                </View>
-                <Ionicons
-                  name={expanded ? 'chevron-up' : 'chevron-down'}
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              </Pressable>
-              {expanded ? (
-                <View style={styles.storeBody}>
-                  {store.address ? <Text style={styles.storeAddress}>{store.address}</Text> : null}
-                  {store.phone ? <Text style={styles.storePhone}>{store.phone}</Text> : null}
-                  <View style={styles.actions}>
-                    <Button title="Edit" onPress={() => handleEdit(store)} variant="secondary" />
-                    <Button
-                      title={store.active ? 'Deactivate' : 'Reactivate'}
-                      onPress={() => handleActiveChange(store)}
-                      variant={store.active ? 'danger' : 'accent'}
-                    />
+            <View key={store.id} style={styles.storeCard}>
+              <Card style={styles.storeCardInner}>
+                <Pressable
+                  onPress={() => setExpandedStoreId(editing || expanded ? null : store.id)}
+                  style={styles.storeHeader}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.storeName}>{store.name}</Text>
+                    <Text style={styles.storeSplit}>
+                      Store {store.defaultStorePercent}% · Games {store.defaultVendorPercent}% · {store.active ? 'Active' : 'Inactive'}
+                    </Text>
                   </View>
-                </View>
-              ) : null}
-            </Card>
+                  <Ionicons
+                    name={expanded ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </Pressable>
+                {expanded ? (
+                  <View style={styles.storeBody}>
+                    {store.address ? <Text style={styles.storeAddress}>{store.address}</Text> : null}
+                    {store.phone ? <Text style={styles.storePhone}>{store.phone}</Text> : null}
+                    <View style={styles.actions}>
+                      <Button title={editing ? 'Close' : 'Edit'} onPress={() => handleEdit(store)} variant="secondary" />
+                      <Button
+                        title={store.active ? 'Deactivate' : 'Reactivate'}
+                        onPress={() => handleActiveChange(store)}
+                        variant={store.active ? 'danger' : 'accent'}
+                      />
+                    </View>
+                  </View>
+                ) : null}
+              </Card>
+              {editing ? <StoreForm /> : null}
+            </View>
           );
         })
       )}
@@ -300,6 +320,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   storeCard: {
     marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  storeCardInner: {
+    padding: spacing.md,
   },
   storeName: {
     fontSize: fontSizes.h2,
@@ -318,9 +342,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   storeSplit: {
     fontSize: fontSizes.body,
-    color: colors.textSecondary,
+    color: colors.textPrimary,
     marginTop: spacing.xs,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   searchRow: {
     gap: spacing.sm,

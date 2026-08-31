@@ -488,7 +488,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   sectionTitle: {
     fontSize: fontSizes.h2,
-    color: colors.accent,
+    color: colors.textPrimary,
     fontWeight: '700',
   },
   breakdownRow: {
@@ -539,7 +539,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   summaryMeta: {
     marginTop: 2,
     fontSize: fontSizes.caption,
-    color: colors.textMuted,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
   summaryNet: {
     fontSize: fontSizes.h3,
@@ -549,7 +550,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   moreText: {
     marginTop: spacing.sm,
     fontSize: fontSizes.caption,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontStyle: 'italic',
   },
   actions: {

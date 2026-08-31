@@ -1,11 +1,73 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as Font from 'expo-font';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Platform } from 'react-native';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { AuthProvider } from '../contexts/AuthContext';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { DraftQueueProvider } from '../contexts/DraftQueueContext';
 
 const ioniconsFont = require('../assets/fonts/ionicons.ttf');
+
+const INACTIVITY_LIMIT_MS = 15 * 60 * 1000; // 15 minutes
+
+function SessionManager() {
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+  const lastActivity = useRef(Date.now());
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetTimer = useCallback(() => {
+    lastActivity.current = Date.now();
+  }, []);
+
+  const checkInactivity = useCallback(async () => {
+    if (!user) return;
+    if (Date.now() - lastActivity.current >= INACTIVITY_LIMIT_MS) {
+      await signOut();
+      router.replace('/owner' as any);
+    }
+  }, [user, signOut, router]);
+
+  useEffect(() => {
+    resetTimer();
+    const interval = setInterval(checkInactivity, 60000);
+    return () => clearInterval(interval);
+  }, [checkInactivity, resetTimer]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'];
+      const handler = () => resetTimer();
+      events.forEach(event => window.addEventListener(event, handler));
+      return () => events.forEach(event => window.removeEventListener(event, handler));
+    }
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        resetTimer();
+      }
+    });
+    const id = setInterval(checkInactivity, 60000);
+    return () => {
+      subscription.remove();
+      clearInterval(id);
+    };
+  }, [resetTimer, checkInactivity]);
+
+  useEffect(() => {
+    if (timer.current) clearTimeout(timer.current);
+    if (!user) return;
+    lastActivity.current = Date.now();
+    timer.current = setTimeout(async () => {
+      await signOut();
+      router.replace('/owner' as any);
+    }, INACTIVITY_LIMIT_MS);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [user, signOut, router]);
+
+  return null;
+}
 
 // Load the Ionicons font explicitly from a bundled asset, then force a remount
 // of the root Stack so all glyph Text nodes render with the loaded font.
@@ -21,6 +83,7 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        <SessionManager />
         <DraftQueueProvider>
           <Stack key={fontKey} screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" options={{ title: 'Skillrout' }} />

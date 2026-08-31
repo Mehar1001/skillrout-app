@@ -2,8 +2,9 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
+import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
 import { type Colors, fontSizes, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
@@ -33,6 +34,7 @@ export default function EmployeesScreen() {
   const [stores, setStores] = useState<Store[]>([]);
   const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>([]);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [confirming, setConfirming] = useState<{ employee: Employee; nextActive: boolean } | null>(null);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
 
@@ -60,9 +62,15 @@ export default function EmployeesScreen() {
     setPassword('');
     setAssignedStoreIds([]);
     setEditingEmployee(null);
+    setAddOpen(false);
   };
 
   const startEdit = (employee: Employee) => {
+    if (editingEmployee?.id === employee.id) {
+      resetForm();
+      return;
+    }
+    setAddOpen(false);
     setEditingEmployee(employee);
     setName(employee.name || '');
     setEmail(employee.email || '');
@@ -163,85 +171,90 @@ export default function EmployeesScreen() {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Employees</Text>
-      <View style={styles.form}>
-        <Input
-          label="Name"
-          value={name}
-          onChangeText={setName}
-          placeholder="Employee name"
-        />
-        <Input
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="employee@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          editable={!editingEmployee}
-        />
-        <Input
-          label={editingEmployee ? 'New temporary password (optional)' : 'Temporary password'}
-          value={password}
-          onChangeText={setPassword}
-          placeholder={editingEmployee ? 'Only when resetting' : 'At least 10 characters with letter, number, and special'}
-          secureTextEntry
-        />
-        <Text style={styles.fieldLabel}>Assigned stores</Text>
-        <Text style={styles.fieldHint}>
-          Only active stores can be assigned. Reactivate a store in Stores to assign it.
-        </Text>
-        <View style={styles.storeChoices}>
-          {stores.map(store => {
-            const selected = assignedStoreIds.includes(store.id);
-            return (
-              <Pressable
-                key={store.id}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: selected }}
-                onPress={() =>
-                  setAssignedStoreIds(current =>
-                    selected ? current.filter(id => id !== store.id) : [...current, store.id]
-                  )
-                }
-                style={[styles.storeChoice, selected && styles.storeChoiceSelected]}
-              >
-                <Text style={[styles.storeChoiceText, selected && styles.storeChoiceTextSelected]}>
-                  {selected ? 'Selected: ' : ''}{store.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Button
-          title={editingEmployee ? 'Update Employee' : 'Create Employee'}
-          onPress={handleSave}
-          disabled={saving}
-          loading={saving}
-        />
-        {editingEmployee ? (
-          <Button title="Cancel" onPress={resetForm} variant="secondary" disabled={saving} />
-        ) : null}
-        {message ? (
-          <View
+  const EmployeeForm = ({ isEditing }: { isEditing: boolean }) => (
+    <Card style={styles.formCard}>
+      <Input
+        label="Name *"
+        value={name}
+        onChangeText={setName}
+        placeholder="Employee name"
+      />
+      <Input
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        placeholder="employee@example.com"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        editable={!isEditing}
+      />
+      <Input
+        label={isEditing ? 'New temporary password (optional)' : 'Temporary password *'}
+        value={password}
+        onChangeText={setPassword}
+        placeholder={isEditing ? 'Only when resetting' : 'At least 10 characters with letter, number, and special'}
+        secureTextEntry
+      />
+      <Text style={styles.fieldLabel}>Assigned stores</Text>
+      <Text style={styles.fieldHint}>
+        Only active stores can be assigned. Reactivate a store in Stores to assign it.
+      </Text>
+      <View style={styles.storeChoices}>
+        {stores.map(store => {
+          const selected = assignedStoreIds.includes(store.id);
+          return (
+            <Pressable
+              key={store.id}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: selected }}
+              onPress={() =>
+                setAssignedStoreIds(current =>
+                  selected ? current.filter(id => id !== store.id) : [...current, store.id]
+                )
+              }
+              style={[styles.storeChoice, selected && styles.storeChoiceSelected]}
+            >
+              <Text style={[styles.storeChoiceText, selected && styles.storeChoiceTextSelected]}>
+                {selected ? 'Selected: ' : ''}{store.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Button
+        title={isEditing ? 'Update Employee' : 'Create Employee'}
+        onPress={handleSave}
+        disabled={saving}
+        loading={saving}
+      />
+      <Button title="Cancel" onPress={resetForm} variant="secondary" disabled={saving} />
+      {message ? (
+        <View
+          style={[
+            styles.messageBox,
+            { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
+          ]}
+        >
+          <Text
             style={[
-              styles.messageBox,
-              { backgroundColor: message.type === 'error' ? colors.glowError : colors.glowSuccess },
+              styles.messageText,
+              { color: message.type === 'error' ? colors.error : colors.success },
             ]}
           >
-            <Text
-              style={[
-                styles.messageText,
-                { color: message.type === 'error' ? colors.error : colors.success },
-              ]}
-            >
-              {message.text}
-            </Text>
-          </View>
-        ) : null}
-      </View>
+            {message.text}
+          </Text>
+        </View>
+      ) : null}
+    </Card>
+  );
+
+  return (
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Employees</Text>
+      {!addOpen && !editingEmployee ? (
+        <Button title="Add New Employee" onPress={() => { resetForm(); setAddOpen(true); }} variant="primary" />
+      ) : null}
+      {addOpen ? <EmployeeForm isEditing={false} /> : null}
 
       {confirming ? (
         <View style={[styles.confirmBox, { backgroundColor: colors.glowAccent }]}>
@@ -274,39 +287,48 @@ export default function EmployeesScreen() {
       ) : null}
 
       <Text style={styles.subtitle}>Existing employees</Text>
-      <FlatList
-        data={employees}
-        keyExtractor={item => item.id}
-        ListEmptyComponent={<Text style={styles.empty}>No employees yet.</Text>}
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowName}>{item.name}</Text>
-              <Text style={styles.rowEmail}>{item.email}</Text>
-              <Text style={styles.rowEmail}>{item.assignedStoreIds?.length || 0} store(s) assigned · {item.active ? 'Active' : 'Inactive'}</Text>
+      {employees.length === 0 ? (
+        <Text style={styles.empty}>No employees yet.</Text>
+      ) : (
+        employees.map(item => {
+          const editing = editingEmployee?.id === item.id;
+          return (
+            <View key={item.id} style={styles.employeeCard}>
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowName}>{item.name}</Text>
+                  <Text style={styles.rowEmail}>{item.email}</Text>
+                  <Text style={styles.rowMeta}>{item.assignedStoreIds?.length || 0} store(s) assigned · {item.active ? 'Active' : 'Inactive'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
+                  <Button title={editing ? 'Close' : 'Edit'} onPress={() => startEdit(item)} variant="secondary" compact />
+                  <Button
+                    title={item.active ? 'Deactivate' : 'Reactivate'}
+                    onPress={() => handleActiveChange(item)}
+                    variant={item.active ? 'danger' : 'accent'}
+                    compact
+                  />
+                  <Button title="Link" onPress={() => handlePasswordLink(item)} variant="secondary" compact />
+                  <Button title="Delete" onPress={() => setDeletingEmployee(item)} variant="danger" compact />
+                </View>
+              </View>
+              {editing ? <EmployeeForm isEditing={true} /> : null}
             </View>
-            <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
-              <Button title="Edit" onPress={() => startEdit(item)} variant="secondary" compact />
-              <Button
-                title={item.active ? 'Deactivate' : 'Reactivate'}
-                onPress={() => handleActiveChange(item)}
-                variant={item.active ? 'danger' : 'accent'}
-                compact
-              />
-              <Button title="Link" onPress={() => handlePasswordLink(item)} variant="secondary" compact />
-              <Button title="Delete" onPress={() => setDeletingEmployee(item)} variant="danger" compact />
-            </View>
-          </View>
-        )}
-      />
-    </View>
+          );
+        })
+      )}
+    </ScrollView>
   );
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
-  container: {
+  scroll: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  container: {
     padding: spacing.lg,
+    paddingBottom: spacing.xxl,
     backgroundColor: colors.background,
   },
   title: {
@@ -315,9 +337,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
-  form: {
-    gap: spacing.sm,
+  formCard: {
+    marginTop: spacing.md,
     marginBottom: spacing.lg,
+    gap: spacing.sm,
+    padding: spacing.md,
   },
   fieldLabel: {
     fontSize: fontSizes.body,
@@ -381,6 +405,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.caption,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  rowMeta: {
+    fontSize: fontSizes.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  employeeCard: {
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   empty: {
     color: colors.textMuted,
