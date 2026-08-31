@@ -20,7 +20,7 @@ const requireActiveOwner = async (uid: string, emailVerified: boolean) => {
   if (!emailVerified) throw new HttpsError('failed-precondition', 'Verify your email before managing employees.');
   const ownerDoc = await db.doc(`owners/${uid}`).get();
   const owner = ownerDoc.data();
-  if (!ownerDoc.exists || owner?.subscriptionStatus !== 'active' || owner?.status === 'inactive') {
+  if (!ownerDoc.exists || owner?.subscriptionStatus === 'inactive' || owner?.status === 'inactive') {
     throw new HttpsError('permission-denied', 'Only an active owner can perform this action.');
   }
   return owner;
@@ -97,13 +97,65 @@ export const provisionOwner = onCall(async (request: CallableRequest) => {
   const ownerRef = db.doc(`owners/${request.auth.uid}`);
   const owner = await ownerRef.get();
   if (!owner.exists) throw new HttpsError('failed-precondition', 'Owner profile setup is incomplete. Register again.');
-  const subscriptionStatus = owner.data()?.subscriptionStatus;
+  const subscriptionStatus = owner.data()?.subscriptionStatus ?? 'active';
   await ownerRef.update({
     status: subscriptionStatus === 'active' ? 'active' : 'inactive',
     schemaVersion: 1,
     updatedAt: FieldValue.serverTimestamp(),
   });
   return { success: true };
+});
+
+export const approveOwner = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to approve an owner.');
+
+  const callerRef = db.doc(`owners/${request.auth.uid}`);
+  const caller = await callerRef.get();
+  if (!caller.exists || caller.data()?.isAdmin !== true) {
+    throw new HttpsError('permission-denied', 'Only an admin can approve owner accounts.');
+  }
+
+  const pendingOwnerId = typeof request.data?.pendingOwnerId === 'string' ? request.data.pendingOwnerId : '';
+  if (!pendingOwnerId) throw new HttpsError('invalid-argument', 'Pending owner ID is required.');
+
+  const pendingRef = db.doc(`pendingOwners/${pendingOwnerId}`);
+  const newOwnerRef = db.doc(`owners/${pendingOwnerId}`);
+
+  const [pending, existing] = await Promise.all([pendingRef.get(), newOwnerRef.get()]);
+  if (!pending.exists) throw new HttpsError('not-found', 'Pending owner request not found.');
+  if (existing.exists) throw new HttpsError('already-exists', 'This owner is already approved.');
+
+  const { businessName, email } = pending.data() as { businessName?: string; email?: string };
+  await newOwnerRef.set({
+    businessName: businessName || '',
+    email: String(email || '').toLowerCase(),
+    subscriptionStatus: 'active',
+    status: 'active',
+    isAdmin: false,
+    schemaVersion: 1,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  await pendingRef.delete();
+  return { success: true, ownerId: pendingOwnerId };
+});
+
+export const getPendingOwners = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to view pending owners.');
+
+  const callerRef = db.doc(`owners/${request.auth.uid}`);
+  const caller = await callerRef.get();
+  if (!caller.exists || caller.data()?.isAdmin !== true) {
+    throw new HttpsError('permission-denied', 'Only an admin can view pending owners.');
+  }
+
+  const pendingSnap = await db.collection('pendingOwners').orderBy('createdAt', 'desc').get();
+  return {
+    pendingOwners: pendingSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })),
+  };
 });
 
 export const createEmployee = onCall(async (request: CallableRequest) => {
@@ -155,7 +207,7 @@ export const createEmployee = onCall(async (request: CallableRequest) => {
       name: normalizedName,
       role: 'employee',
       ownerId,
-      businessName: owner.businessName || '',
+      businessName: owner?.businessName || '',
       assignedStoreIds: uniqueStoreIds,
       active: true,
       mustChangePassword: true,

@@ -141,16 +141,17 @@ export default function OwnerScreen() {
 
       const ownerData = ownerSnap.data();
 
-      if (!user.emailVerified || ownerData.subscriptionStatus !== 'active') {
+      if (!user.emailVerified || ownerData.subscriptionStatus === 'inactive' || ownerData.status === 'inactive') {
         if (!user.emailVerified) {
           await sendEmailVerification(user);
         }
-        setMessage({
-          type: 'error',
-          text: !user.emailVerified
-            ? 'Email not verified. A new verification link has been sent — check your inbox and click it before signing in.'
-            : 'Your account is not active. Please contact support.',
-        });
+        let errorText = 'Your account is not active. Please contact support.';
+        if (!user.emailVerified) {
+          errorText = 'Email not verified. A new verification link has been sent — check your inbox and click it before signing in.';
+        } else if (ownerData.status === 'inactive') {
+          errorText = 'Your account has been deactivated. Please contact support.';
+        }
+        setMessage({ type: 'error', text: errorText });
         await authSignOut();
         setIsLoading(false);
         return;
