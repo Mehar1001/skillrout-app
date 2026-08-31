@@ -107,7 +107,8 @@ service cloud.firestore {
 
     match /employees/{employeeId} {
       allow read: if signedIn()
-                  && (request.auth.uid == employeeId || request.auth.uid == resource.data.ownerId);
+                  && (request.auth.uid == employeeId
+                      || (resource.data != null && request.auth.uid == resource.data.ownerId));
       allow create, update, delete: if false;
     }
   }
