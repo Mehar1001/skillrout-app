@@ -13,7 +13,6 @@ interface AuthContextValue {
   email: string | null;
   assignedStoreIds: string[];
   mustChangePassword: boolean;
-  isAdmin: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -27,7 +26,6 @@ const AuthContext = createContext<AuthContextValue>({
   email: null,
   assignedStoreIds: [],
   mustChangePassword: false,
-  isAdmin: false,
   loading: true,
   signOut: async () => {},
 });
@@ -41,7 +39,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [email, setEmail] = useState<string | null>(null);
   const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>([]);
   const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,7 +52,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setEmail(null);
       setAssignedStoreIds([]);
       setMustChangePassword(false);
-      setIsAdmin(false);
     };
     loadingTimeout = setTimeout(() => {
       setLoading(false);
@@ -87,7 +83,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setOwnerId(u.uid);
           setBusinessName(owner?.businessName || null);
           setEmail(u.email);
-          setIsAdmin(owner?.isAdmin === true);
           setAssignedStoreIds([]);
           unsubscribeProfile = onSnapshot(ownerRef, snapshot => {
             const data = snapshot.data();
@@ -98,7 +93,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             setBusinessName(data?.businessName || null);
             setEmail(u.email);
-            setIsAdmin(data?.isAdmin === true);
           });
           return;
         }
@@ -163,12 +157,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setEmployeeName(null);
     setAssignedStoreIds([]);
     setMustChangePassword(false);
-    setIsAdmin(false);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, role, ownerId, businessName, employeeName, email, assignedStoreIds, mustChangePassword, isAdmin, loading, signOut: handleSignOut }}
+      value={{ user, role, ownerId, businessName, employeeName, email, assignedStoreIds, mustChangePassword, loading, signOut: handleSignOut }}
     >
       {children}
     </AuthContext.Provider>

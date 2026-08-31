@@ -108,12 +108,7 @@ export const provisionOwner = onCall(async (request: CallableRequest) => {
 
 export const approveOwner = onCall(async (request: CallableRequest) => {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to approve an owner.');
-
-  const callerRef = db.doc(`owners/${request.auth.uid}`);
-  const caller = await callerRef.get();
-  if (!caller.exists || caller.data()?.isAdmin !== true) {
-    throw new HttpsError('permission-denied', 'Only an admin can approve owner accounts.');
-  }
+  await requireActiveOwner(request.auth.uid, request.auth.token.email_verified === true);
 
   const pendingOwnerId = typeof request.data?.pendingOwnerId === 'string' ? request.data.pendingOwnerId : '';
   if (!pendingOwnerId) throw new HttpsError('invalid-argument', 'Pending owner ID is required.');
@@ -131,7 +126,6 @@ export const approveOwner = onCall(async (request: CallableRequest) => {
     email: String(email || '').toLowerCase(),
     subscriptionStatus: 'active',
     status: 'active',
-    isAdmin: false,
     schemaVersion: 1,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
@@ -142,12 +136,7 @@ export const approveOwner = onCall(async (request: CallableRequest) => {
 
 export const getPendingOwners = onCall(async (request: CallableRequest) => {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to view pending owners.');
-
-  const callerRef = db.doc(`owners/${request.auth.uid}`);
-  const caller = await callerRef.get();
-  if (!caller.exists || caller.data()?.isAdmin !== true) {
-    throw new HttpsError('permission-denied', 'Only an admin can view pending owners.');
-  }
+  await requireActiveOwner(request.auth.uid, request.auth.token.email_verified === true);
 
   const pendingSnap = await db.collection('pendingOwners').orderBy('createdAt', 'desc').get();
   return {

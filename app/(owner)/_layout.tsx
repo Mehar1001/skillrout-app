@@ -9,7 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function OwnerLayout() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { user, role, isAdmin, loading, signOut } = useAuth();
+  const { user, role, loading, signOut } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -105,17 +105,15 @@ export default function OwnerLayout() {
           ),
         }}
       />
-      {isAdmin ? (
-        <Tabs.Screen
-          name="pending-owners"
-          options={{
-            title: 'Approvals',
-            tabBarIcon: ({ focused, color, size }) => (
-              <Ionicons name={focused ? 'person-add' : 'person-add-outline'} color={color} size={size} />
-            ),
-          }}
-        />
-      ) : null}
+      <Tabs.Screen
+        name="pending-owners"
+        options={{
+          title: 'Approvals',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'person-add' : 'person-add-outline'} color={color} size={size} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
