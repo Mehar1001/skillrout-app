@@ -1,5 +1,5 @@
 import { onAuthStateChanged, signOut as firebaseSignOut, User } from 'firebase/auth';
-import { doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { doc, getDoc, getDocs, onSnapshot, query, where, type DocumentSnapshot } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebaseConfig';
 import { UserRole } from '../types';
@@ -68,6 +68,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         return;
       }
+      const getDocOrNull = async (collection: string, id: string): Promise<DocumentSnapshot | null> => {
+        try {
+          return await getDoc(doc(db, collection, id));
+        } catch (error: any) {
+          if (error.code === 'permission-denied') return null;
+          throw error;
+        }
+      };
       try {
         await u.reload();
         await u.getIdToken(true);
@@ -76,8 +84,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
         const ownerRef = doc(db, 'owners', u.uid);
-        const ownerSnap = await getDoc(ownerRef);
-        if (ownerSnap.exists()) {
+        const ownerSnap = await getDocOrNull('owners', u.uid);
+        if (ownerSnap?.exists()) {
           const owner = ownerSnap.data();
           if (!u.emailVerified || owner.subscriptionStatus === 'inactive' || owner.status === 'inactive') {
             clearProfile();
@@ -102,9 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        const pendingRef = doc(db, 'pendingOwners', u.uid);
-        const pendingSnap = await getDoc(pendingRef);
-        if (pendingSnap.exists()) {
+        const pendingSnap = await getDocOrNull('pendingOwners', u.uid);
+        if (pendingSnap?.exists()) {
           clearProfile();
           await firebaseSignOut(auth);
           return;

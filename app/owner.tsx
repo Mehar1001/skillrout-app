@@ -7,7 +7,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, type DocumentSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import {
@@ -124,14 +124,23 @@ export default function OwnerScreen() {
         return;
       }
 
-      let ownerSnap = await getDoc(doc(db, 'owners', user.uid));
-      if (ownerSnap.exists()) {
+      const getDocOrNull = async (collection: string, id: string): Promise<DocumentSnapshot | null> => {
+        try {
+          return await getDoc(doc(db, collection, id));
+        } catch (error: any) {
+          if (error.code === 'permission-denied') return null;
+          throw error;
+        }
+      };
+
+      let ownerSnap = await getDocOrNull('owners', user.uid);
+      if (ownerSnap?.exists()) {
         await provisionOwner();
         ownerSnap = await getDoc(doc(db, 'owners', user.uid));
       }
-      if (!ownerSnap.exists()) {
-        const pendingSnap = await getDoc(doc(db, 'pendingOwners', user.uid));
-        if (pendingSnap.exists()) {
+      if (!ownerSnap?.exists()) {
+        const pendingSnap = await getDocOrNull('pendingOwners', user.uid);
+        if (pendingSnap?.exists()) {
           setMessage({
             type: 'error',
             text: 'Your owner access request is still pending approval. You will be able to sign in once an admin approves it.',
