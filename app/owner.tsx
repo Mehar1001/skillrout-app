@@ -208,9 +208,10 @@ export default function OwnerScreen() {
           <View style={styles.header}>
             <Image
               source={require('../assets/images/skillrout-icon.png')}
-              style={styles.logo}
+              style={[styles.logo, { tintColor: colors.primary }]}
               accessibilityLabel="Skillrout"
             />
+            <Text style={styles.tagline}>Bookkeeping by</Text>
             <Text style={styles.title}>Skillrout</Text>
             <Text style={styles.subtitle}>
               {isRegistering ? 'Request owner access' : 'Sign in to manage stores and visits'}
@@ -327,6 +328,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     height: spacing.xxl,
     borderRadius: radii.lg,
     marginBottom: spacing.md,
+  },
+  tagline: {
+    fontSize: fontSizes.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: letterSpacings.wide,
+    marginTop: spacing.xs,
+    marginBottom: -spacing.xs,
   },
   title: {
     fontSize: fontSizes.h1,
