@@ -70,6 +70,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       try {
         await u.reload();
+        if (!u.emailVerified) {
+          clearProfile();
+          return;
+        }
         const ownerRef = doc(db, 'owners', u.uid);
         const ownerSnap = await getDoc(ownerRef);
         if (ownerSnap.exists()) {

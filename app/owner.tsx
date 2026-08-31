@@ -112,6 +112,17 @@ export default function OwnerScreen() {
       const user = userCredential.user;
       await user.reload();
 
+      if (!user.emailVerified) {
+        await sendEmailVerification(user);
+        setMessage({
+          type: 'error',
+          text: 'Email not verified. A new verification link has been sent — check your inbox and click it before signing in.',
+        });
+        await authSignOut();
+        setIsLoading(false);
+        return;
+      }
+
       let ownerSnap = await getDoc(doc(db, 'owners', user.uid));
       if (ownerSnap.exists()) {
         await provisionOwner();
