@@ -92,8 +92,8 @@ export default function StoreDetailScreen() {
           <Card key={machine.id} style={styles.machineCard}>
             <View style={styles.machineRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.machineNumber}>#{machine.machineNumber}</Text>
                 <Text style={styles.machineName}>{machine.name}</Text>
+                <Text style={styles.machineNumber}>Serial #{machine.machineNumber}</Text>
               </View>
               <View style={styles.baselineGroup}>
                 <View style={styles.baselineBox}>
@@ -184,14 +184,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.md,
   },
   machineNumber: {
-    color: colors.textPrimary,
-    fontSize: fontSizes.h2,
-    fontWeight: '700',
+    color: colors.textMuted,
+    fontSize: fontSizes.caption,
+    fontWeight: '600',
+    marginTop: spacing.xs,
   },
   machineName: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.body,
-    marginTop: spacing.xs,
+    color: colors.textPrimary,
+    fontSize: fontSizes.h3,
+    fontWeight: '700',
   },
   baselineGroup: {
     flexDirection: 'row',

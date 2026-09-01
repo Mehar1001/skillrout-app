@@ -6,6 +6,7 @@ import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../helpers/formatters';
+import { sortMachinesByNumber } from '../../helpers/machineOrdering';
 import { useVisit } from '../../hooks/useVisit';
 
 export default function CalculationScreen() {
@@ -26,11 +27,11 @@ export default function CalculationScreen() {
       <Text style={styles.subtitle}>New activity is calculated from Last Settled versus Credits In and Total Paid readings.</Text>
 
       <Card style={styles.card}>
-        {visit.machines.map(machine => (
+        {sortMachinesByNumber(visit.machines).map(machine => (
           <View key={machine.machineId} style={styles.machineRow}>
             <View style={styles.machineInfo}>
-              <Text style={styles.machineName}>Machine {machine.machineNumber}</Text>
-              {machine.name ? <Text style={styles.machineSubtitle}>{machine.name}</Text> : null}
+              <Text style={styles.machineName}>{machine.name || 'Unnamed machine'}</Text>
+              <Text style={styles.machineSubtitle}>#{machine.machineNumber}</Text>
             </View>
             <Amount label="New Credits In" value={machine.newIn} />
             <Amount label="New Total Paid" value={machine.newOut} />

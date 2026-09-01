@@ -241,7 +241,13 @@ export default function IndexScreen() {
               </View>
             )}
           </View>
-          <RouteButton href="/owner/register" label={isDesktop ? 'Get Started' : 'Start'} icon="arrow-forward" />
+          <Link
+            href="/owner/register"
+            style={[styles.topCta, { backgroundColor: colors.accent, color: colors.textOnAccent }]}
+            accessibilityRole="link"
+          >
+            {isDesktop ? 'Get Started  →' : 'Start  →'}
+          </Link>
         </View>
       </View>
 
@@ -504,6 +510,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flexShrink: 0,
+  },
+  topCta: {
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: radii.md,
+    fontSize: fontSizes.body,
+    fontWeight: '800',
+    textDecorationLine: 'none',
+    flexShrink: 0,
   },
   signInMenu: {
     position: 'relative',

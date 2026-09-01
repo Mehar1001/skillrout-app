@@ -1,4 +1,5 @@
 import { Visit } from '../types';
+import { compareMachineNumbers } from './machineOrdering';
 import { formatCurrency, formatDate, formatTime } from './formatters';
 
 const escapeHtml = (value: string) =>
@@ -151,7 +152,9 @@ export const buildReportSummary = (visits: Visit[]): ReportSummary => {
 
   return {
     storeSummaries: Array.from(storeMap.values()).sort((a, b) => b.totalNet - a.totalNet),
-    machineSummaries: Array.from(machineMap.values()).sort((a, b) => b.totalNet - a.totalNet),
+    machineSummaries: Array.from(machineMap.values()).sort((a, b) =>
+      a.storeName.localeCompare(b.storeName) || compareMachineNumbers({ ...a, name: a.machineName }, { ...b, name: b.machineName })
+    ),
     visitRows: visitRows.sort((a, b) => (a.runAt > b.runAt ? -1 : 1)),
     settlementTotals,
     totalVisits: visits.length,

@@ -91,9 +91,8 @@ export default function AddMachineScreen() {
       <Card style={styles.form}>
         <View style={styles.machineNumberField}>
           <Input
-            label="Machine #"
+            label="Serial #"
             value={machineNumber}
-            onChangeText={setMachineNumber}
             error={errors.machineNumber}
             placeholder="Auto-generated"
             editable={false}
@@ -175,8 +174,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   machineNumberField: {
-    width: '100%',
-    maxWidth: 180,
+    width: 120,
+    maxWidth: '100%',
   },
   baselineRow: {
     flexDirection: 'row',

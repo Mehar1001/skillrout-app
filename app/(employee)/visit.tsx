@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { MachineReadingTable } from '../../components/MachineReadingTable';
@@ -27,6 +27,7 @@ export default function VisitScreen() {
   const { storeId } = useLocalSearchParams<{ storeId: string }>();
   const router = useRouter();
   const { user, ownerId } = useAuth();
+  const { width } = useWindowDimensions();
   const { isOnline } = useNetworkStatus();
   const { saveDraft } = useDraftQueue();
   const [store, setStore] = useState<Store | null>(null);
@@ -293,19 +294,23 @@ export default function VisitScreen() {
         </View>
 
         <View style={styles.receiptScanner}>
-          <View style={styles.receiptScannerText}>
-            <Text style={styles.receiptScannerTitle}>Auto-fill from receipt</Text>
-            <Text style={styles.receiptScannerHelp}>Scan the full bookkeeping receipt once. Review every suggested value before applying.</Text>
-          </View>
-          <View style={styles.receiptActions}>
-            <View style={styles.receiptActionHalf}>
-              <Button title="Scan" iconName="camera-outline" onPress={() => {}} variant="accent" disabled={true} compact />
+          <View style={[styles.receiptScannerMain, width >= 700 && styles.receiptScannerMainWide]}>
+            <View style={styles.receiptScannerText}>
+              <Text style={styles.receiptScannerTitle}>Auto-fill from receipt</Text>
+              <Text style={styles.receiptScannerHelp}>Scan once, then review suggested values before applying.</Text>
             </View>
-            <View style={styles.receiptActionHalf}>
-              <Button title="Upload" iconName="cloud-upload-outline" onPress={() => {}} variant="secondary" disabled={true} compact />
+            <View style={styles.receiptControls}>
+              <View style={styles.receiptActions}>
+                <View style={styles.receiptActionHalf}>
+                  <Button title="Scan" iconName="camera-outline" onPress={() => {}} variant="accent" disabled={true} compact />
+                </View>
+                <View style={styles.receiptActionHalf}>
+                  <Button title="Upload" iconName="cloud-upload-outline" onPress={() => {}} variant="secondary" disabled={true} compact />
+                </View>
+              </View>
+              <Text style={styles.comingSoon}>Coming soon</Text>
             </View>
           </View>
-          <Text style={styles.comingSoon}>Receipt scan & upload are coming soon.</Text>
           {receiptImageUri && !scanTargetMachineId && !receiptOcr ? (
             <View style={styles.receiptAttachmentRow}>
               <Text style={styles.receiptAttached}>Receipt image attached to this visit.</Text>
@@ -456,39 +461,53 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.caption,
   },
   receiptScanner: {
-    padding: spacing.md,
+    padding: spacing.sm,
     marginBottom: spacing.md,
-    gap: spacing.md,
+    gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.accent,
-    borderRadius: radii.lg,
+    borderRadius: radii.md,
     backgroundColor: colors.accentSubtle,
+  },
+  receiptScannerMain: {
+    gap: spacing.sm,
+  },
+  receiptScannerMainWide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   receiptScannerText: {
     flex: 1,
   },
   receiptScannerTitle: {
     color: colors.textPrimary,
-    fontSize: fontSizes.h3,
+    fontSize: fontSizes.body,
     fontWeight: '700',
   },
   receiptScannerHelp: {
     marginTop: spacing.xs,
     color: colors.textSecondary,
-    fontSize: fontSizes.caption,
-    lineHeight: lineHeights.caption,
+    fontSize: 10,
+    lineHeight: fontSizes.caption,
+  },
+  receiptControls: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   receiptActions: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     alignItems: 'center',
   },
   receiptActionHalf: {
-    width: 120,
+    width: 100,
   },
   comingSoon: {
     color: colors.textMuted,
-    fontSize: fontSizes.caption,
+    fontSize: 10,
     fontStyle: 'italic',
   },
   receiptAttachmentRow: {

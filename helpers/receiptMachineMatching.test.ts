@@ -51,6 +51,14 @@ describe('receipt machine matching', () => {
       assert.equal(rows[0].machineName, 'Red Corner');
     });
 
+    it('matches a preserved legacy machine number', () => {
+      const machine = { ...makeMachine('m1', '1', 'Red Corner'), legacyMachineNumbers: ['1001'] };
+      const rows = matchReceiptCandidates([machine], [candidate('1001')]);
+      assert.equal(rows[0].machineId, 'm1');
+      assert.equal(rows[0].machineNumber, '1');
+      assert.ok(rows[0].warnings.some(w => w.includes('Legacy machine number')));
+    });
+
     it('warns when no machine matches', () => {
       const machines = [makeMachine('m1', '101', 'Red Corner')];
       const rows = matchReceiptCandidates(machines, [candidate('999')]);

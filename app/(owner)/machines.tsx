@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { httpsCallable } from 'firebase/functions';
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores } from '../../services/stores';
@@ -14,6 +15,19 @@ import { type Colors, fontSizes, radii, spacing } from '../../constants/designTo
 import { useColors } from '@/hooks/useColors';
 import { confirm } from '../../helpers/alert';
 import { formatCurrency } from '../../helpers/formatters';
+import { functions } from '../../firebaseConfig';
+
+interface MachineNumberMapping {
+  machineId: string;
+  name: string;
+  previousNumber: string;
+  nextNumber: string;
+}
+
+const renumberStoreMachines = httpsCallable<
+  { storeId: string; apply: boolean },
+  { applied: boolean; mapping: MachineNumberMapping[] }
+>(functions, 'renumberStoreMachines');
 
 export default function MachinesScreen() {
   const colors = useColors();
@@ -26,6 +40,8 @@ export default function MachinesScreen() {
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [numberMapping, setNumberMapping] = useState<MachineNumberMapping[] | null>(null);
+  const [renumbering, setRenumbering] = useState(false);
   const [form, setForm] = useState<Partial<Machine>>({
     id: '',
     machineNumber: '',
@@ -42,6 +58,7 @@ export default function MachinesScreen() {
 
   useEffect(() => {
     if (!user || !ownerId || !selectedStoreId) return;
+    setNumberMapping(null);
     listMachines(ownerId, selectedStoreId).then(setMachines);
     if (!form.id) {
       getNextMachineNumber(ownerId, selectedStoreId).then(nextNumber =>
@@ -70,6 +87,43 @@ export default function MachinesScreen() {
     setForm({ ...machine });
   };
 
+  const previewRenumbering = async () => {
+    if (!selectedStoreId) return;
+    setRenumbering(true);
+    setMessage(null);
+    try {
+      const result = await renumberStoreMachines({ storeId: selectedStoreId, apply: false });
+      setNumberMapping(result.data.mapping);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Could not preview machine numbering.' });
+    } finally {
+      setRenumbering(false);
+    }
+  };
+
+  const applyRenumbering = () => {
+    if (!selectedStoreId || !numberMapping) return;
+    const changed = numberMapping.filter(item => item.previousNumber !== item.nextNumber);
+    confirm(
+      'Renumber Machines',
+      `${changed.length} machine number${changed.length === 1 ? '' : 's'} will change to a 1…${numberMapping.length} sequence. Historical visits will keep their original snapshot numbers. Continue?`,
+      async () => {
+        setRenumbering(true);
+        try {
+          await renumberStoreMachines({ storeId: selectedStoreId, apply: true });
+          setMessage({ type: 'success', text: 'Machines renumbered in ascending order.' });
+          setNumberMapping(null);
+          setMachines(await listMachines(ownerId!, selectedStoreId));
+          resetForm();
+        } catch (error: any) {
+          setMessage({ type: 'error', text: error.message || 'Could not renumber machines.' });
+        } finally {
+          setRenumbering(false);
+        }
+      }
+    );
+  };
+
   const machineForm = (
     <Card style={styles.formCard}>
       <Text style={styles.sectionTitle}>
@@ -77,11 +131,10 @@ export default function MachinesScreen() {
       </Text>
       <View style={styles.machineNumberField}>
         <Input
-          label="Machine Number"
+          label="Serial #"
           value={form.machineNumber}
-          onChangeText={text => setForm(prev => ({ ...prev, machineNumber: text }))}
-          placeholder="Auto-generated"
-          editable={!form.id}
+          placeholder="Auto"
+          editable={false}
         />
       </View>
       <Input
@@ -271,7 +324,32 @@ export default function MachinesScreen() {
                 <View style={styles.storeBody}>
                   {!form.id ? machineForm : null}
 
-                  <Text style={styles.sectionTitle}>Machines at this Store</Text>
+                  <View style={styles.machineSectionHeader}>
+                    <Text style={styles.sectionTitle}>Machines at this Store</Text>
+                    <Button
+                      title="Preview 1…N"
+                      onPress={previewRenumbering}
+                      variant="secondary"
+                      compact
+                      disabled={renumbering || machines.length === 0}
+                      loading={renumbering}
+                    />
+                  </View>
+                  {numberMapping ? (
+                    <Card style={styles.renumberPreview}>
+                      <Text style={styles.renumberTitle}>Numbering preview</Text>
+                      {numberMapping.map(item => (
+                        <View key={item.machineId} style={styles.renumberRow}>
+                          <Text style={styles.renumberName}>{item.name || 'Unnamed machine'}</Text>
+                          <Text style={styles.renumberValue}>{item.previousNumber} → {item.nextNumber}</Text>
+                        </View>
+                      ))}
+                      <View style={styles.renumberActions}>
+                        <Button title="Apply Renumbering" onPress={applyRenumbering} disabled={renumbering} />
+                        <Button title="Cancel" onPress={() => setNumberMapping(null)} variant="secondary" disabled={renumbering} />
+                      </View>
+                    </Card>
+                  ) : null}
                   {machines.length === 0 ? (
                     <Text style={styles.empty}>No machines yet. Add the first one above.</Text>
                   ) : (
@@ -284,8 +362,9 @@ export default function MachinesScreen() {
                               !machine.active && { color: colors.textMuted },
                             ]}
                           >
-                            {machine.machineNumber} {machine.name ? `— ${machine.name}` : ''}
+                            {machine.name || 'Unnamed machine'}
                           </Text>
+                          <Text style={styles.machineSerial}>Serial #{machine.machineNumber}</Text>
                           <View style={styles.machineReadings}>
                             <Text style={styles.readingsText}>
                               Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)}
@@ -377,8 +456,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   machineNumberField: {
-    width: '100%',
-    maxWidth: 180,
+    width: 120,
+    maxWidth: '100%',
   },
   row: {
     flexDirection: 'row',
@@ -392,6 +471,43 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
+  machineSectionHeader: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  renumberPreview: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  renumberTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.h3,
+    fontWeight: '700',
+  },
+  renumberRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  renumberName: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: fontSizes.body,
+  },
+  renumberValue: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  renumberActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   machineCard: {
     marginBottom: spacing.md,
     gap: spacing.sm,
@@ -400,8 +516,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     padding: spacing.md,
   },
   machineName: {
-    fontSize: fontSizes.h2,
+    fontSize: fontSizes.h3,
     color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  machineSerial: {
+    marginTop: spacing.xs,
+    color: colors.textMuted,
+    fontSize: fontSizes.caption,
     fontWeight: '600',
   },
   machineReadings: {

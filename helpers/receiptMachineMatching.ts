@@ -46,35 +46,48 @@ export const matchReceiptCandidates = (
 ): ReceiptReviewRow[] => {
   return candidates.map(candidate => {
     const target = normalizeReceiptMachineNumber(candidate.receiptMachineNumber);
-    const exactMatches = machines.filter(
-      machine => normalizeReceiptMachineNumber(machine.machineNumber) === target
-    );
+    const exactMatches = machines
+      .map(machine => ({
+        machine,
+        matchedNumber: [machine.machineNumber, ...(machine.legacyMachineNumbers || [])]
+          .find(number => normalizeReceiptMachineNumber(number) === target),
+      }))
+      .filter(match => match.matchedNumber);
     const warnings = [...candidate.warnings];
 
     if (exactMatches.length === 1) {
+      const match = exactMatches[0];
+      if (match.matchedNumber !== match.machine.machineNumber) {
+        warnings.push(`Legacy machine number ${candidate.receiptMachineNumber} matched current machine ${match.machine.machineNumber}.`);
+      }
       return {
         ...candidate,
         warnings,
-        machineId: exactMatches[0].id,
-        machineNumber: exactMatches[0].machineNumber,
-        machineName: exactMatches[0].name,
+        machineId: match.machine.id,
+        machineNumber: match.machine.machineNumber,
+        machineName: match.machine.name,
       };
     }
 
     if (exactMatches.length === 0) {
       const maxDistance = Math.max(1, Math.floor(target.length / 3));
       const matches = machines
-        .map(machine => ({
-          machine,
-          distance: levenshtein(target, normalizeReceiptMachineNumber(machine.machineNumber)),
-        }))
+        .map(machine => {
+          const numbers = [machine.machineNumber, ...(machine.legacyMachineNumbers || [])];
+          const ranked = numbers
+            .map(number => ({ number, distance: levenshtein(target, normalizeReceiptMachineNumber(number)) }))
+            .sort((left, right) => left.distance - right.distance);
+          return { machine, matchedNumber: ranked[0].number, distance: ranked[0].distance };
+        })
         .filter(item => item.distance <= maxDistance)
         .sort((a, b) => a.distance - b.distance);
 
       if (matches.length === 0) {
         warnings.push(`Machine ${candidate.receiptMachineNumber} is not configured for this store.`);
       } else if (matches.length === 1) {
-        warnings.push(`Fuzzy match used for ${candidate.receiptMachineNumber} → ${matches[0].machine.machineNumber}.`);
+        const match = matches[0];
+        const legacy = match.matchedNumber !== match.machine.machineNumber ? ' legacy' : '';
+        warnings.push(`Fuzzy${legacy} match used for ${candidate.receiptMachineNumber} → ${match.machine.machineNumber}.`);
         return {
           ...candidate,
           warnings,

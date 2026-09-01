@@ -2,13 +2,14 @@ import { collection, doc, getDocs, setDoc, updateDoc, serverTimestamp } from 'fi
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebaseConfig';
 import { Machine } from '../types';
+import { sortMachinesByNumber } from '../helpers/machineOrdering';
 
 const getMachinesRef = (ownerId: string, storeId: string) =>
   collection(db, `owners/${ownerId}/stores/${storeId}/machines`);
 
 export const listMachines = async (ownerId: string, storeId: string): Promise<Machine[]> => {
   const snapshot = await getDocs(getMachinesRef(ownerId, storeId));
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Machine));
+  return sortMachinesByNumber(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Machine)));
 };
 
 export const getNextMachineNumber = async (
@@ -19,8 +20,8 @@ export const getNextMachineNumber = async (
   const numbers = machines
     .map(m => Number(m.machineNumber))
     .filter(n => Number.isFinite(n) && n > 0);
-  const max = numbers.length > 0 ? Math.max(...numbers) : 1000;
-  return String(Math.max(1001, max + 1));
+  const max = numbers.length > 0 ? Math.max(...numbers) : 0;
+  return String(max + 1);
 };
 
 export const saveMachine = async (
@@ -33,28 +34,25 @@ export const saveMachine = async (
   if (!machine.id && (Number(machine.lastSettledIn) <= 0 || Number(machine.lastSettledOut) <= 0)) {
     throw new Error('Initial IN and OUT must be greater than 0.');
   }
-  const id = machine.id || doc(getMachinesRef(ownerId, storeId)).id;
-  const ref = doc(db, `owners/${ownerId}/stores/${storeId}/machines`, id);
-  const machineNumber = machine.machineNumber?.trim() || (await getNextMachineNumber(ownerId, storeId));
-  const data = {
-    machineNumber,
+  if (!machine.id) {
+    const result = await employeeAddMachine(ownerId, storeId, {
+      machineNumber: machine.machineNumber?.trim() || '',
+      name,
+      lastSettledIn: machine.lastSettledIn ?? 0,
+      lastSettledOut: machine.lastSettledOut ?? 0,
+    });
+    return result.machineId;
+  }
+
+  const ref = doc(db, `owners/${ownerId}/stores/${storeId}/machines`, machine.id);
+  await setDoc(ref, {
+    machineNumber: machine.machineNumber?.trim(),
     name,
     storeId,
     active: machine.active ?? true,
     updatedAt: serverTimestamp(),
-    ...(machine.id
-      ? {}
-      : {
-          lastSettledIn: machine.lastSettledIn ?? 0,
-          lastSettledOut: machine.lastSettledOut ?? 0,
-          baselineVersion: 0,
-          lastSubmittedVisitId: null,
-          lastSubmittedAt: null,
-          createdAt: serverTimestamp(),
-        }),
-  };
-  await setDoc(ref, data, { merge: true });
-  return id;
+  }, { merge: true });
+  return machine.id;
 };
 
 export const updateMachine = async (
@@ -86,8 +84,8 @@ export const employeeAddMachine = async (
   ownerId: string,
   storeId: string,
   payload: { machineNumber: string; name: string; lastSettledIn: number; lastSettledOut: number }
-): Promise<{ machineId: string }> => {
+): Promise<{ machineId: string; machineNumber: string }> => {
   const addMachine = httpsCallable(functions, 'employeeAddMachine');
   const response = await addMachine({ ownerId, storeId, ...payload });
-  return response.data as { machineId: string };
+  return response.data as { machineId: string; machineNumber: string };
 };

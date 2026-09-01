@@ -44,6 +44,7 @@ export interface Store {
 export interface Machine {
   id: string;
   machineNumber: string;
+  legacyMachineNumbers?: string[];
   name: string;
   storeId: string;
   lastSettledIn: number;
@@ -56,6 +57,7 @@ export interface Machine {
   reactivatedAt?: Timestamp;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+  machineNumberRenumberedAt?: Timestamp;
 }
 
 export type OcrReadingStatus = 'suggested' | 'reviewed' | 'warning';

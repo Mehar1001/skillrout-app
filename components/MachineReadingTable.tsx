@@ -84,12 +84,8 @@ export const MachineReadingTable = ({
               <View key={machine.id} style={styles.rowGroup}>
                 <View style={[styles.row, rowError ? styles.rowError : null]}>
                   <View style={styles.machineCol}>
-                    <Text style={styles.machineNumber}>{machine.machineNumber}</Text>
-                    {machine.name ? (
-                      <Text style={styles.machineName} numberOfLines={1}>
-                        {machine.name}
-                      </Text>
-                    ) : null}
+                    <Text style={styles.machineName} numberOfLines={1}>{machine.name || 'Unnamed'}</Text>
+                    <Text style={styles.machineNumber}>#{machine.machineNumber}</Text>
                   </View>
 
                   <View style={styles.baselineCol}>
@@ -425,13 +421,15 @@ const makeStyles = (colors: Colors) =>
       justifyContent: 'center',
     },
     machineNumber: {
+      marginTop: spacing.xs,
+      color: colors.textMuted,
+      fontSize: fontSizes.caption,
+      fontWeight: '600',
+    },
+    machineName: {
       color: colors.textPrimary,
       fontSize: fontSizes.body,
       fontWeight: '700',
-    },
-    machineName: {
-      color: colors.textMuted,
-      fontSize: fontSizes.caption,
     },
     compactInput: {
       width: '100%',

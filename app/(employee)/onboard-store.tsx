@@ -33,7 +33,7 @@ export default function OnboardStoreScreen() {
   const [storePercent, setStorePercent] = useState('50');
   const [gamesPercent, setGamesPercent] = useState('50');
   const [machines, setMachines] = useState<MachineRow[]>([
-    { id: '1', machineNumber: '', name: '', lastSettledIn: '', lastSettledOut: '' },
+    { id: '1', machineNumber: '1', name: '', lastSettledIn: '', lastSettledOut: '' },
   ]);
   const [nextId, setNextId] = useState(2);
   const [submitted, setSubmitted] = useState(false);
@@ -53,9 +53,6 @@ export default function OnboardStoreScreen() {
     if (pctError) next.percent = pctError;
 
     machines.forEach((machine, index) => {
-      if (!machine.machineNumber.trim()) {
-        next[`machineNumber_${index}`] = 'Machine # is required.';
-      }
       if (!machine.name.trim()) {
         next[`machineName_${index}`] = 'Machine name is required.';
       }
@@ -83,7 +80,6 @@ export default function OnboardStoreScreen() {
         const lastIn = Number(m.lastSettledIn);
         const lastOut = Number(m.lastSettledOut);
         return (
-          !m.machineNumber.trim() ||
           !m.name.trim() ||
           m.lastSettledIn.trim() === '' ||
           isNaN(lastIn) ||
@@ -105,13 +101,17 @@ export default function OnboardStoreScreen() {
   const addMachine = () => {
     setMachines(prev => [
       ...prev,
-      { id: String(nextId), machineNumber: '', name: '', lastSettledIn: '', lastSettledOut: '' },
+      { id: String(nextId), machineNumber: String(prev.length + 1), name: '', lastSettledIn: '', lastSettledOut: '' },
     ]);
     setNextId(n => n + 1);
   };
 
   const removeMachine = (id: string) => {
-    setMachines(prev => (prev.length > 1 ? prev.filter(m => m.id !== id) : prev));
+    setMachines(prev =>
+      prev.length > 1
+        ? prev.filter(machine => machine.id !== id).map((machine, index) => ({ ...machine, machineNumber: String(index + 1) }))
+        : prev
+    );
   };
 
   const handleSave = async () => {
@@ -127,8 +127,8 @@ export default function OnboardStoreScreen() {
         address: address.trim(),
         defaultStorePercent: Number(storePercent),
         defaultVendorPercent: Number(gamesPercent),
-        machines: machines.map(m => ({
-          machineNumber: m.machineNumber.trim(),
+        machines: machines.map((m, index) => ({
+          machineNumber: String(index + 1),
           name: m.name.trim(),
           lastSettledIn: Number(m.lastSettledIn),
           lastSettledOut: Number(m.lastSettledOut),
@@ -189,11 +189,10 @@ export default function OnboardStoreScreen() {
               <View style={styles.machineNumberField}>
                 <Input
                   style={styles.machineInput}
-                  label={index === 0 ? 'Machine #' : undefined}
+                  label={index === 0 ? 'Serial #' : undefined}
                   placeholder="#"
-                  value={machine.machineNumber}
-                  onChangeText={text => updateMachine(machine.id, 'machineNumber', text)}
-                  error={errors[`machineNumber_${index}`]}
+                  value={String(index + 1)}
+                  editable={false}
                 />
               </View>
               <Input

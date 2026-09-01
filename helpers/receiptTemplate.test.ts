@@ -44,7 +44,8 @@ describe('receipt machine values', () => {
   it('builds last-to-present ranges and per-machine cash and payout', () => {
     const machine = buildReceiptLines(visit).machines[0];
     assert.deepEqual(machine, {
-      label: 'Lightning2 (786339)',
+      name: 'Lightning2',
+      machineNumber: '786339',
       inRange: '37,078.00 - 42,693.00',
       outRange: '19,040.00 - 25,880.00',
       cash: '$5,615.00',
@@ -54,7 +55,7 @@ describe('receipt machine values', () => {
 
   it('renders machine values in printable HTML', () => {
     const html = generateReceiptHtml(visit);
-    assert.match(html, /Lightning2 \(786339\)/);
+    assert.match(html, /Lightning2 <span class="machine-serial">#786339<\/span>/);
     assert.match(html, /37,078\.00 - 42,693\.00/);
     assert.match(html, /Cash<\/span><span>\$5,615\.00/);
     assert.match(html, /Payout \*<\/span><span>\(\$6,840\.00\)/);

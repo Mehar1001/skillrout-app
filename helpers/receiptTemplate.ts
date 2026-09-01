@@ -1,4 +1,5 @@
 import { Visit } from '../types';
+import { sortMachinesByNumber } from './machineOrdering';
 
 const escapeHtml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -39,7 +40,8 @@ export interface ReceiptLines {
   employee: string;
   vouchersTotal: string;
   machines: {
-    label: string;
+    name: string;
+    machineNumber: string;
     inRange: string;
     outRange: string;
     cash: string;
@@ -68,8 +70,9 @@ export const buildReceiptLines = (visit: Visit, lastCleared?: LastClearedInfo | 
     visitId: visit.id.slice(-8).toUpperCase(),
     employee: visit.employeeName,
     vouchersTotal: receiptMoney(visit.totalNewOut),
-    machines: visit.machines.map(machine => ({
-      label: `${machine.name} (${machine.machineNumber})`,
+    machines: sortMachinesByNumber(visit.machines).map(machine => ({
+      name: machine.name || 'Unnamed machine',
+      machineNumber: machine.machineNumber,
       inRange: `${receiptAmount(machine.lastSettledIn)} - ${receiptAmount(machine.presentIn)}`,
       outRange: `${receiptAmount(machine.lastSettledOut)} - ${receiptAmount(machine.presentOut)}`,
       cash: receiptMoney(machine.newIn),
@@ -101,7 +104,7 @@ export const generateReceiptHtml = (visit: Visit, lastCleared?: LastClearedInfo 
   const machineRows = lines.machines
     .map(
       machine => `
-        <div class="machine-title">${escapeHtml(machine.label)}</div>
+        <div class="machine-title">${escapeHtml(machine.name)} <span class="machine-serial">#${escapeHtml(machine.machineNumber)}</span></div>
         <div class="machine-reading"><span>In:</span><span>${machine.inRange}</span></div>
         <div class="machine-reading"><span>Out:</span><span>${machine.outRange}</span></div>
         <div class="row"><span>Cash</span><span>${machine.cash}</span></div>
@@ -140,6 +143,7 @@ export const generateReceiptHtml = (visit: Visit, lastCleared?: LastClearedInfo 
           .divider { border-top: 1px dashed #171A20; margin: 6px 0; }
           .row { display: flex; justify-content: space-between; gap: 8px; }
           .machine-title { font-weight: 700; margin: 10px 0 2px; }
+          .machine-serial { color: #555; font-size: 10px; font-weight: 400; }
           .machine-reading { display: flex; gap: 4px; font-weight: 700; }
           .machine-reading span:last-child { margin-left: auto; text-align: right; }
           .pad { margin-bottom: 4px; }

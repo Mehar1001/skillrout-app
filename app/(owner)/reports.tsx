@@ -9,6 +9,7 @@ import { Card } from '../../components/Card';
 import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+import { sortMachinesByNumber } from '../../helpers/machineOrdering';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { buildReportSummary, generateReportHtml, type ReportSummary } from '../../helpers/reportTemplate';
 import { listVisits } from '../../services/visits';
@@ -234,7 +235,7 @@ export default function ReportsScreen() {
             {summary.machineSummaries.slice(0, 20).map(m => (
               <View key={`${m.storeId}:${m.machineId}`} style={styles.summaryRow}>
                 <View style={styles.summaryLeft}>
-                  <Text style={styles.summaryName}>{m.machineNumber} · {m.machineName}</Text>
+                  <Text style={styles.summaryName}>{m.machineName || 'Unnamed machine'} · #{m.machineNumber}</Text>
                   <Text style={styles.summaryMeta}>{m.storeName} · {m.visitCount} visit{m.visitCount === 1 ? '' : 's'}</Text>
                 </View>
                 <View style={styles.summaryRight}>
@@ -281,9 +282,9 @@ export default function ReportsScreen() {
                   </View>
                   {expanded ? (
                     <View style={styles.visitDetails}>
-                      {visit.machines.map((m, i) => (
+                      {sortMachinesByNumber(visit.machines).map((m, i) => (
                         <View key={m.machineId} style={styles.detailRow}>
-                          <Text style={styles.detailLabel}>{i + 1}. #{m.machineNumber} {m.name}</Text>
+                          <Text style={styles.detailLabel}>{i + 1}. {m.name || 'Unnamed machine'} · #{m.machineNumber}</Text>
                           <Text style={styles.detailValue}>
                             IN {formatCurrency(m.presentIn)} · OUT {formatCurrency(m.presentOut)} · Net {formatCurrency(m.machineNet)}
                           </Text>

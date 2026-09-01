@@ -29,7 +29,10 @@ export const ReceiptView = ({ visit, lastCleared }: { visit: Visit; lastCleared?
       <View style={styles.divider} />
       {lines.machines.map((machine, index) => (
         <View key={index} style={styles.machineBlock}>
-          <Text style={styles.machineTitle}>{machine.label}</Text>
+          <View style={styles.machineHeading}>
+            <Text style={styles.machineTitle}>{machine.name}</Text>
+            <Text style={styles.machineSerial}>#{machine.machineNumber}</Text>
+          </View>
           <ReceiptRow label="In:" value={machine.inRange} strong />
           <ReceiptRow label="Out:" value={machine.outRange} strong />
           <ReceiptRow label="Cash" value={machine.cash} />
@@ -135,12 +138,22 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   machineBlock: {
     marginBottom: spacing.md,
   },
+  machineHeading: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
   machineTitle: {
     color: colors.textPrimary,
     fontFamily: monoFont,
     fontSize: fontSizes.body,
     fontWeight: '700',
-    marginBottom: spacing.xs,
+  },
+  machineSerial: {
+    color: colors.textMuted,
+    fontFamily: monoFont,
+    fontSize: 10,
   },
   row: {
     flexDirection: 'row',

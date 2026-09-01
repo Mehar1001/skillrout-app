@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { initializeApp } from 'firebase-admin/app'; // Corrected: Import initializeApp directly
 import { getAuth } from 'firebase-admin/auth';
-import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
+import { DocumentReference, FieldValue, getFirestore, QueryDocumentSnapshot } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
 import { logger } from 'firebase-functions';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import { extractReceiptText } from './cloudVisionReceiptOcr.js';
@@ -554,6 +554,11 @@ export const runVisit = onCall(async (request: CallableRequest) => {
         readingSource: reading.readingSource === 'ocr_reviewed' ? 'ocr_reviewed' : 'manual',
         ...(reading.ocrScanId ? { ocrScanId: reading.ocrScanId } : {}),
       };
+    }).sort((left, right) => {
+      const leftNumber = Number(left.machineNumber);
+      const rightNumber = Number(right.machineNumber);
+      if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) return leftNumber - rightNumber;
+      return String(left.machineNumber).localeCompare(String(right.machineNumber), undefined, { numeric: true });
     });
 
     const store = storeDoc.data()!;
@@ -764,10 +769,9 @@ export const employeeOnboardStore = onCall(async (request: CallableRequest) => {
   const storeId = storeRef.id;
   const employeeRef = db.doc(`employees/${request.auth.uid}`);
 
-  const machineEntries = machines.map(machine => {
-    if (typeof machine?.machineNumber !== 'string' || !machine.machineNumber.trim() ||
-        typeof machine?.name !== 'string' || !machine.name.trim()) {
-      throw new HttpsError('invalid-argument', 'Each machine needs a number and a name.');
+  const machineEntries = machines.map((machine, index) => {
+    if (typeof machine?.name !== 'string' || !machine.name.trim()) {
+      throw new HttpsError('invalid-argument', 'Each machine needs a name.');
     }
     if (typeof machine?.lastSettledIn !== 'number' || typeof machine?.lastSettledOut !== 'number' ||
         machine.lastSettledIn <= 0 || machine.lastSettledOut <= 0) {
@@ -778,7 +782,7 @@ export const employeeOnboardStore = onCall(async (request: CallableRequest) => {
       id: machineRef.id,
       ref: machineRef,
       data: {
-        machineNumber: machine.machineNumber.trim(),
+        machineNumber: String(index + 1),
         name: machine.name.trim(),
         storeId,
         active: true,
@@ -828,14 +832,9 @@ export const employeeAddMachine = onCall(async (request: CallableRequest) => {
   }
 
   const caller = await resolveCaller(request.auth.uid);
-  if (caller.role !== 'employee') {
-    throw new HttpsError('permission-denied', 'Only employees can add machines through this flow.');
-  }
-
-  const { ownerId, storeId, machineNumber, name, lastSettledIn, lastSettledOut } = request.data as {
+  const { ownerId, storeId, name, lastSettledIn, lastSettledOut } = request.data as {
     ownerId: string;
     storeId: string;
-    machineNumber: string;
     name: string;
     lastSettledIn: number;
     lastSettledOut: number;
@@ -845,16 +844,11 @@ export const employeeAddMachine = onCall(async (request: CallableRequest) => {
     throw new HttpsError('invalid-argument', 'Owner and store are required.');
   }
   if (caller.ownerId !== ownerId) {
-    throw new HttpsError('permission-denied', 'You can only add machines to your owner\'s stores.');
+    throw new HttpsError('permission-denied', 'You can only add machines to your own business.');
   }
-
-  const employeeRef = db.doc(`employees/${request.auth.uid}`);
-  const employeeDoc = await employeeRef.get();
-  if (!employeeDoc.exists) {
-    throw new HttpsError('not-found', 'Employee record not found.');
-  }
-  const employee = employeeDoc.data()!;
-  if (!employee.assignedStoreIds?.includes(storeId)) {
+  if (caller.role === 'owner') {
+    await requireActiveOwner(request.auth.uid, request.auth.token.email_verified === true);
+  } else if (!caller.assignedStoreIds.includes(storeId)) {
     throw new HttpsError('permission-denied', 'This store is not assigned to you.');
   }
 
@@ -864,21 +858,26 @@ export const employeeAddMachine = onCall(async (request: CallableRequest) => {
     throw new HttpsError('not-found', 'Store not found.');
   }
 
-  if (typeof machineNumber !== 'string' || !machineNumber.trim() ||
-      typeof name !== 'string' || !name.trim()) {
-    throw new HttpsError('invalid-argument', 'Machine number and name are required.');
+  if (typeof name !== 'string' || !name.trim()) {
+    throw new HttpsError('invalid-argument', 'Machine name is required.');
   }
   if (typeof lastSettledIn !== 'number' || typeof lastSettledOut !== 'number' ||
       lastSettledIn <= 0 || lastSettledOut <= 0) {
     throw new HttpsError('invalid-argument', 'Last IN and Last OUT must be greater than 0.');
   }
 
-  const machineRef = db.collection(`owners/${ownerId}/stores/${storeId}/machines`).doc();
-  const machineId = machineRef.id;
+  const machinesRef = db.collection(`owners/${ownerId}/stores/${storeId}/machines`);
+  const machineRef = machinesRef.doc();
+  let machineNumber = '';
 
   await db.runTransaction(async transaction => {
+    const machineDocs = await transaction.get(machinesRef);
+    const numbers = machineDocs.docs
+      .map(machine => Number(machine.data().machineNumber))
+      .filter(number => Number.isSafeInteger(number) && number > 0);
+    machineNumber = String((numbers.length ? Math.max(...numbers) : 0) + 1);
     transaction.set(machineRef, {
-      machineNumber: machineNumber.trim(),
+      machineNumber,
       name: name.trim(),
       storeId,
       active: true,
@@ -894,7 +893,66 @@ export const employeeAddMachine = onCall(async (request: CallableRequest) => {
     transaction.update(storeRef, { updatedAt: FieldValue.serverTimestamp() });
   });
 
-  return { machineId };
+  return { machineId: machineRef.id, machineNumber };
+});
+
+export const renumberStoreMachines = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to renumber machines.');
+  await requireActiveOwner(request.auth.uid, request.auth.token.email_verified === true);
+  const storeId = typeof request.data?.storeId === 'string' ? request.data.storeId : '';
+  const apply = request.data?.apply === true;
+  if (!storeId) throw new HttpsError('invalid-argument', 'Store is required.');
+
+  const storeRef = db.doc(`owners/${request.auth.uid}/stores/${storeId}`);
+  const machinesRef = db.collection(`owners/${request.auth.uid}/stores/${storeId}/machines`);
+  const buildMapping = (docs: QueryDocumentSnapshot[]) =>
+    docs
+      .map(machine => ({ id: machine.id, ...machine.data() }))
+      .sort((left: any, right: any) => {
+        const leftNumber = Number(left.machineNumber);
+        const rightNumber = Number(right.machineNumber);
+        const leftValid = Number.isSafeInteger(leftNumber) && leftNumber > 0;
+        const rightValid = Number.isSafeInteger(rightNumber) && rightNumber > 0;
+        if (leftValid && rightValid && leftNumber !== rightNumber) return leftNumber - rightNumber;
+        if (leftValid !== rightValid) return leftValid ? -1 : 1;
+        const leftCreated = left.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER;
+        const rightCreated = right.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER;
+        if (leftCreated !== rightCreated) return leftCreated - rightCreated;
+        return left.id.localeCompare(right.id);
+      })
+      .map((machine: any, index: number) => ({
+        machineId: machine.id as string,
+        name: String(machine.name || ''),
+        previousNumber: String(machine.machineNumber || ''),
+        nextNumber: String(index + 1),
+      }));
+
+  if (!apply) {
+    const [store, machines] = await Promise.all([storeRef.get(), machinesRef.get()]);
+    if (!store.exists) throw new HttpsError('not-found', 'Store not found.');
+    if (machines.size > 400) throw new HttpsError('resource-exhausted', 'Contact support to renumber more than 400 machines.');
+    return { applied: false, mapping: buildMapping(machines.docs) };
+  }
+
+  let mapping: ReturnType<typeof buildMapping> = [];
+  await db.runTransaction(async transaction => {
+    const store = await transaction.get(storeRef);
+    const machines = await transaction.get(machinesRef);
+    if (!store.exists) throw new HttpsError('not-found', 'Store not found.');
+    if (machines.size > 400) throw new HttpsError('resource-exhausted', 'Contact support to renumber more than 400 machines.');
+    mapping = buildMapping(machines.docs);
+    mapping.forEach(item => {
+      if (item.previousNumber === item.nextNumber) return;
+      transaction.update(machinesRef.doc(item.machineId), {
+        machineNumber: item.nextNumber,
+        ...(item.previousNumber ? { legacyMachineNumbers: FieldValue.arrayUnion(item.previousNumber) } : {}),
+        machineNumberRenumberedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    });
+    transaction.update(storeRef, { updatedAt: FieldValue.serverTimestamp() });
+  });
+  return { applied: true, mapping };
 });
 
 interface MachineChange {

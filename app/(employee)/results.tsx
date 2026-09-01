@@ -6,6 +6,7 @@ import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/de
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
+import { sortMachinesByNumber } from '../../helpers/machineOrdering';
 import { useVisit } from '../../hooks/useVisit';
 import { VisitMachine } from '../../types';
 
@@ -20,6 +21,7 @@ export default function ResultsScreen() {
   if (loading) return <LoadingState />;
   if (!visit) return <ErrorState message={error} onRetry={refresh} />;
   const timestamp = visit.timestamp?.toDate?.();
+  const sortedMachines = sortMachinesByNumber(visit.machines);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -38,8 +40,8 @@ export default function ResultsScreen() {
         </View>
       </View>
 
-      <ComparisonTable title="Last settled readings" machines={visit.machines} mode="last" />
-      <ComparisonTable title="Present readings — this RUN" machines={visit.machines} mode="present" />
+      <ComparisonTable title="Last settled readings" machines={sortedMachines} mode="last" />
+      <ComparisonTable title="Present readings — this RUN" machines={sortedMachines} mode="present" />
 
       <Text style={styles.guidance}>Confirm each machine’s Credits In and Total Paid values before continuing.</Text>
       <Button
@@ -69,8 +71,8 @@ const ComparisonTable = ({
     {machines.map(machine => (
       <View key={machine.machineId} style={styles.tableRow}>
         <View style={styles.machineColumn}>
-          <Text style={styles.machineName}>Machine {machine.machineNumber}</Text>
-          {machine.name ? <Text style={styles.machineSubtitle}>{machine.name}</Text> : null}
+          <Text style={styles.machineName}>{machine.name || 'Unnamed machine'}</Text>
+          <Text style={styles.machineSubtitle}>#{machine.machineNumber}</Text>
           {mode === 'present' ? (
             machine.photoUrl ? (
               <Image
