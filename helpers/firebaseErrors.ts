@@ -21,6 +21,9 @@ export function mapFirebaseError(error: unknown): string {
   if (code === 'auth/wrong-password') {
     return 'The password does not match this account.';
   }
+  if (code === 'auth/quota-exceeded') {
+    return 'Sign-in is temporarily unavailable because too many requests were made. Please wait a few minutes and try again.';
+  }
   if (code === 'auth/too-many-requests') {
     return 'Too many attempts. Please wait a moment and try again.';
   }
