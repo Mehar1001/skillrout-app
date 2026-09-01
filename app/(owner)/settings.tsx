@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail, updatePassword } from 'firebase/auth';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
@@ -10,6 +10,8 @@ import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { isPasswordValid } from '../../helpers/passwordValidation';
+import { mapFirebaseError } from '../../helpers/firebaseErrors';
+import { sendSkillroutPasswordReset } from '../../helpers/passwordReset';
 import { auth } from '../../firebaseConfig';
 
 export default function OwnerSettingsScreen() {
@@ -50,8 +52,8 @@ export default function OwnerSettingsScreen() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Could not update password.' });
+    } catch (e) {
+      setMessage({ type: 'error', text: mapFirebaseError(e) });
     } finally {
       setLoading(false);
     }
@@ -61,10 +63,10 @@ export default function OwnerSettingsScreen() {
     if (!user?.email) return;
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, user.email);
+      await sendSkillroutPasswordReset(auth, user.email, 'owner');
       Alert.alert('Reset link sent', `Check your inbox at ${user.email}.`);
-    } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not send reset link.');
+    } catch (e) {
+      Alert.alert('Error', mapFirebaseError(e));
     } finally {
       setLoading(false);
     }

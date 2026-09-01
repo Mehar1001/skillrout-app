@@ -90,6 +90,7 @@ export default function RootLayout() {
             <Stack.Screen name="owner/login" options={{ title: 'Owner Sign In' }} />
             <Stack.Screen name="owner/register" options={{ title: 'Request Access' }} />
             <Stack.Screen name="employee/login" options={{ title: 'Employee Sign In' }} />
+            <Stack.Screen name="auth/action" options={{ title: 'Reset Password' }} />
             <Stack.Screen name="(owner)" />
             <Stack.Screen name="(employee)" />
           </Stack>

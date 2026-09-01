@@ -36,7 +36,8 @@ You are building **Skillrout** in the `Skillrout` Expo/Firebase project.
 - Prefer `const` + arrow functions.
 - Use `expo-router` `useRouter()` and `useLocalSearchParams()`.
 - Cloud Functions go in `functions/src/index.ts`.
-- `app/_layout.tsx` registers: `index`, `owner/login`, `owner/register`, `employee/login`, `(owner)`, `(employee)`.
+- `app/_layout.tsx` registers: `index`, `owner/login`, `owner/register`, `employee/login`, `auth/action`, `(owner)`, `(employee)`.
+- Firebase Authentication's password-reset template action URL must be `https://skillrout.web.app/auth/action`.
 - Owner tabs in `app/(owner)/_layout.tsx`: `dashboard`, `stores`, `machines`, `employees`, `history`.
 - Employee flow screens: `select-store`, `visit`, `results`, `calculation`, `settlement`, `outcome`, `receipt`, `employee-history`.
 - The home/landing screen `app/index.tsx` is the public product page.

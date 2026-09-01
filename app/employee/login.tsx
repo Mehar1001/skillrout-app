@@ -1,17 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
   browserLocalPersistence,
   browserSessionPersistence,
-  sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -30,6 +29,7 @@ import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } f
 import { useColors } from '@/hooks/useColors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { mapFirebaseError } from '../../helpers/firebaseErrors';
+import { isValidResetEmail, sendSkillroutPasswordReset } from '../../helpers/passwordReset';
 import { auth, db, functions } from '../../firebaseConfig';
 
 const prepareEmployeeSession = httpsCallable(functions, 'prepareEmployeeSession');
@@ -38,12 +38,18 @@ export default function EmployeeSignInScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
   const router = useRouter();
+  const { reset } = useLocalSearchParams<{ reset?: string }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const scheme = useColorScheme() ?? 'light';
+
+  useEffect(() => {
+    if (reset === 'success') setMessage({ type: 'success', text: 'Password updated. Sign in with your new password.' });
+  }, [reset]);
 
   const clearMessage = () => setMessage(null);
   const handleBackHome = async () => {
@@ -96,20 +102,22 @@ export default function EmployeeSignInScreen() {
     }
   };
 
-  const handlePasswordReset = () => {
+  const handlePasswordReset = async () => {
     clearMessage();
-    if (!email.includes('@')) {
-      setMessage({ type: 'error', text: 'Please enter a valid email address to reset your password.' });
+    if (!isValidResetEmail(email)) {
+      setMessage({ type: 'error', text: 'Enter a valid email address to reset your password.' });
       return;
     }
 
-    sendPasswordResetEmail(auth, email.trim())
-      .then(() => {
-        setMessage({ type: 'success', text: `A reset link has been sent to ${email}.` });
-      })
-      .catch((error: any) => {
-        setMessage({ type: 'error', text: mapFirebaseError(error) });
-      });
+    setIsResetting(true);
+    try {
+      await sendSkillroutPasswordReset(auth, email, 'employee');
+      setMessage({ type: 'success', text: 'If an employee account exists for this email, a reset link has been sent.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: mapFirebaseError(error) });
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -169,8 +177,8 @@ export default function EmployeeSignInScreen() {
               </View>
             )}
 
-            <Pressable onPress={handlePasswordReset} style={styles.forgot} accessibilityRole="button" accessibilityLabel="Forgot password">
-              <Text style={styles.forgotText}>Forgot password?</Text>
+            <Pressable onPress={handlePasswordReset} style={styles.forgot} accessibilityRole="button" accessibilityLabel="Forgot password" disabled={isResetting}>
+              <Text style={styles.forgotText}>{isResetting ? 'Sending reset link…' : 'Forgot password?'}</Text>
             </Pressable>
 
             {message ? (

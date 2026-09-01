@@ -319,6 +319,29 @@ export const completeEmployeePasswordChange = onCall(async (request: CallableReq
   return { success: true };
 });
 
+export const completePasswordReset = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to complete password recovery.');
+  const employeeRef = db.doc(`employees/${request.auth.uid}`);
+  const employee = await employeeRef.get();
+  if (employee.exists) {
+    if (employee.data()?.active !== true || !employee.data()?.ownerId) {
+      throw new HttpsError('permission-denied', 'Employee account is inactive.');
+    }
+    await employeeRef.update({
+      mustChangePassword: false,
+      passwordResetCompletedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return { role: 'employee' as const };
+  }
+
+  const owner = await db.doc(`owners/${request.auth.uid}`).get();
+  if (!owner.exists || owner.data()?.status === 'inactive' || owner.data()?.subscriptionStatus === 'inactive') {
+    throw new HttpsError('permission-denied', 'Account is not active.');
+  }
+  return { role: 'owner' as const };
+});
+
 const supportedImage = (image: Buffer, mimeType: string) => {
   if (mimeType === 'image/jpeg') return image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff;
   if (mimeType === 'image/png') return image.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));

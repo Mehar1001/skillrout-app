@@ -1,4 +1,3 @@
-import { sendPasswordResetEmail } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
@@ -10,6 +9,8 @@ import { Input } from '../../components/Input';
 import { type Colors, fontSizes, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { auth, db, functions } from '../../firebaseConfig';
+import { mapFirebaseError } from '../../helpers/firebaseErrors';
+import { sendSkillroutPasswordReset } from '../../helpers/passwordReset';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores } from '../../services/stores';
 import { Employee, Store } from '../../types';
@@ -35,6 +36,7 @@ export default function EmployeesScreen() {
   const [stores, setStores] = useState<Store[]>([]);
   const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>([]);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [resettingEmployeeId, setResettingEmployeeId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [confirming, setConfirming] = useState<{ employee: Employee; nextActive: boolean } | null>(null);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
@@ -164,11 +166,14 @@ export default function EmployeesScreen() {
 
   const handlePasswordLink = async (employee: Employee) => {
     setMessage(null);
+    setResettingEmployeeId(employee.id);
     try {
-      await sendPasswordResetEmail(auth, employee.email);
-      setMessage({ type: 'success', text: `Password setup link sent to ${employee.email}.` });
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Failed to send password link.' });
+      await sendSkillroutPasswordReset(auth, employee.email, 'employee');
+      setMessage({ type: 'success', text: `Password reset link sent to ${employee.email}.` });
+    } catch (e) {
+      setMessage({ type: 'error', text: mapFirebaseError(e) });
+    } finally {
+      setResettingEmployeeId(null);
     }
   };
 
@@ -314,7 +319,13 @@ export default function EmployeesScreen() {
                     variant={item.active ? 'danger' : 'accent'}
                     compact
                   />
-                  <Button title="Link" onPress={() => handlePasswordLink(item)} variant="secondary" compact />
+                  <Button
+                    title={resettingEmployeeId === item.id ? 'Sending…' : 'Reset Link'}
+                    onPress={() => handlePasswordLink(item)}
+                    variant="secondary"
+                    compact
+                    disabled={resettingEmployeeId !== null}
+                  />
                   <Button title="Delete" onPress={() => setDeletingEmployee(item)} variant="danger" compact />
                 </View>
               </View>

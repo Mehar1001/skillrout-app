@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { alert } from '../../helpers/alert';
+import { mapFirebaseError } from '../../helpers/firebaseErrors';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
@@ -41,13 +42,8 @@ export default function ChangePasswordScreen() {
       setPassword('');
       setConfirmPassword('');
       router.replace('/select-store' as any);
-    } catch (error: any) {
-      alert(
-        'Password Change Failed',
-        error?.code === 'auth/requires-recent-login'
-          ? 'Sign out, sign in again with the temporary password, and retry.'
-          : error?.message || 'Your password could not be changed.'
-      );
+    } catch (error) {
+      alert('Password Change Failed', mapFirebaseError(error));
     } finally {
       setSaving(false);
     }

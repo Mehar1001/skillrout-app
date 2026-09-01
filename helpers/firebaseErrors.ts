@@ -21,6 +21,15 @@ export function mapFirebaseError(error: unknown): string {
   if (code === 'auth/wrong-password') {
     return 'The password does not match this account.';
   }
+  if (code === 'auth/expired-action-code') {
+    return 'This password reset link has expired. Request a new link and try again.';
+  }
+  if (code === 'auth/invalid-action-code') {
+    return 'This password reset link is invalid or has already been used.';
+  }
+  if (code === 'auth/user-token-expired') {
+    return 'Your session has expired. Sign in again to continue.';
+  }
   if (code === 'auth/quota-exceeded') {
     return 'Sign-in is temporarily unavailable because too many requests were made. Please wait a few minutes and try again.';
   }
@@ -39,10 +48,10 @@ export function mapFirebaseError(error: unknown): string {
   if (code === 'auth/network-request-failed' || code === 'unavailable' || message.includes('network')) {
     return 'Network connection failed. Check your internet and try again.';
   }
-  if (code === 'permission-denied') {
+  if (code === 'permission-denied' || code === 'functions/permission-denied') {
     return 'You do not have permission to do that. Contact your owner if this is unexpected.';
   }
-  if (code === 'unauthenticated') {
+  if (code === 'unauthenticated' || code === 'functions/unauthenticated') {
     return 'Please sign in again.';
   }
   if (code === 'not-found') {
