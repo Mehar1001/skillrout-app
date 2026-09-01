@@ -88,6 +88,8 @@ export default function RootLayout() {
           <Stack key={fontKey} screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" options={{ title: 'Skillrout' }} />
             <Stack.Screen name="owner" options={{ title: 'Skillrout Sign In' }} />
+            <Stack.Screen name="request-access" options={{ title: 'Request Access' }} />
+            <Stack.Screen name="employee-signin" options={{ title: 'Employee Sign In' }} />
             <Stack.Screen name="(owner)" />
             <Stack.Screen name="(employee)" />
           </Stack>

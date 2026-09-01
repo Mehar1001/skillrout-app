@@ -97,15 +97,26 @@ Create and reuse these first when they exist:
 Planned primitives that are **not yet implemented**: `Select.tsx`, `Badge.tsx`, `VisitSummary.tsx`, `OwnerShell.tsx`. Before creating a one-off component, ask: can an existing primitive handle this?
 
 ## 6. Cloud Functions
-All Cloud Functions live in `functions/src/index.ts` and currently are:
-- `createEmployee`
-- `runVisit`
-- `setVisitSplit`
-- `submitVisit`
+All Cloud Functions live in `functions/src/index.ts` and include:
+- `registerOwnerProfile` / `provisionOwner` — owner onboarding
+- `createEmployee` / `setEmployeeActive` / `resetEmployeeTemporaryPassword` / `updateEmployeeAssignments` — employee management
+- `employeeOnboardStore` / `employeeAddMachine` — employee-initiated setup
+- `runVisit` / `submitVisit` / `adjustVisit` / `setVisitSplit` — visit lifecycle
+- `extractReceiptReadings` — receipt OCR + Cloud Vision
+- `checkOcrUsage` — OCR daily-usage helper
 
 Do not refer to the old `submitSettlement` / `voidSettlement` naming unless you are updating to match the current file.
 
-## 7. Testing & Verification
+## 7. Data Retention & Staging
+- Visit data, store data, employee data, and machine data are retained indefinitely until an explicit retention policy is added.
+- OCR results are cached for 365 days in the `ocrCache/{uid}_{imageHash}` Firestore document.
+- To stage before major production releases:
+  1. Create a separate Firebase project in the Firebase Console.
+  2. Add it with `npx firebase use --add` and select it as the staging alias.
+  3. Use `npx firebase hosting:channel:deploy staging` for hosting previews.
+  4. Keep `.env` / `.env.staging` secrets out of the repo.
+
+## 8. Testing & Verification
 - Verify every screen renders on web (`npx expo start --web`) before considering a feature done.
 - Confirm the current route is registered in `app/_layout.tsx`.
 - Run `npx tsc --noEmit` to catch type errors.

@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -10,8 +9,7 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
-import { doc, getDoc, type DocumentSnapshot } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
+import { doc, getDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import {
   Image,
@@ -31,11 +29,9 @@ import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } f
 import { useColors } from '@/hooks/useColors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { mapFirebaseError } from '../helpers/firebaseErrors';
-import { auth, db, functions } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 
-const provisionOwner = httpsCallable(functions, 'provisionOwner');
-
-export default function OwnerScreen() {
+export default function EmployeeSignInScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
   const router = useRouter();
@@ -48,15 +44,6 @@ export default function OwnerScreen() {
 
   const clearMessage = () => setMessage(null);
   const ScreenContainer = Platform.OS === 'web' ? View : Pressable;
-
-  const getDocOrNull = async (collection: string, id: string): Promise<DocumentSnapshot | null> => {
-    try {
-      return await getDoc(doc(db, collection, id));
-    } catch (error: any) {
-      if (error.code === 'permission-denied') return null;
-      throw error;
-    }
-  };
 
   const handleLogin = async () => {
     clearMessage();
@@ -86,46 +73,18 @@ export default function OwnerScreen() {
         return;
       }
 
-      let ownerSnap = await getDocOrNull('owners', user.uid);
-      if (ownerSnap?.exists()) {
-        await provisionOwner();
-        ownerSnap = await getDoc(doc(db, 'owners', user.uid));
-      }
+      const employeeSnap = await getDoc(doc(db, 'employees', user.uid));
+      const employee = employeeSnap.data();
 
-      if (!ownerSnap?.exists()) {
-        const pendingSnap = await getDocOrNull('pendingOwners', user.uid);
-        if (pendingSnap?.exists()) {
-          setMessage({
-            type: 'error',
-            text: 'Your owner access request is still pending approval. You will be able to sign in once an admin approves it.',
-          });
-          await firebaseSignOut(auth);
-          setIsLoading(false);
-          return;
-        }
-        setMessage({ type: 'error', text: 'Account not found for this role.' });
+      if (!employeeSnap.exists() || employee?.active !== true || !employee.ownerId) {
+        const text = !employeeSnap.exists() ? 'Account not found for this role.' : 'Your account is not active in Skillrout.';
+        setMessage({ type: 'error', text });
         await firebaseSignOut(auth);
         setIsLoading(false);
         return;
       }
 
-      const ownerData = ownerSnap.data();
-
-      if (ownerData.subscriptionStatus === 'inactive' || ownerData.status === 'inactive') {
-        const errorText = ownerData.status === 'inactive'
-          ? 'Your account has been deactivated. Please contact support.'
-          : 'Your account is not active. Please contact support.';
-        setMessage({ type: 'error', text: errorText });
-        await firebaseSignOut(auth);
-        setIsLoading(false);
-        return;
-      }
-
-      await AsyncStorage.multiRemove([
-        `ownerPassword_${user.uid}`,
-        `reportingPassword_${user.uid}`,
-      ]);
-      router.replace('/dashboard' as any);
+      router.replace((employee.mustChangePassword ? '/change-password' : '/select-store') as any);
     } catch (error: any) {
       const text =
         error.code === 'auth/user-not-found' ||
@@ -178,7 +137,7 @@ export default function OwnerScreen() {
             />
             <Text style={styles.tagline}>Bookkeeping by</Text>
             <Text style={styles.title}>Skillrout</Text>
-            <Text style={styles.subtitle}>Sign in to manage stores and visits</Text>
+            <Text style={styles.subtitle}>Employee sign in</Text>
           </View>
 
           <View style={styles.form}>
@@ -240,14 +199,14 @@ export default function OwnerScreen() {
           </View>
 
           <Pressable
-            onPress={() => router.push('/request-access')}
+            onPress={() => router.push('/')}
             style={styles.requestAccess}
             accessibilityRole="button"
           >
-            <Text style={styles.requestAccessText}>Need an owner account? Request access</Text>
+            <Text style={styles.requestAccessText}>Back to home</Text>
           </Pressable>
 
-          <Text style={styles.footer}>Secure admin access — Skillrout</Text>
+          <Text style={styles.footer}>Secure employee access — Skillrout</Text>
         </ScrollView>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       </KeyboardAvoidingView>
