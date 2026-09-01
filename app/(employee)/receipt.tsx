@@ -58,22 +58,28 @@ export default function ReceiptScreen() {
   const handlePrint = async () => {
     if (!user || !ownerId || !visit) return;
     setWorking(true);
+    let printWindow: Window | null = null;
     try {
-      await markPrinted(ownerId, visit.storeId, visit.id, user.uid);
-      const html = generateReceiptHtml(visit, lastCleared);
       if (Platform.OS === 'web') {
         if (typeof window === 'undefined') return;
-        const printWindow = window.open('', '_blank');
+        printWindow = window.open('', '_blank');
         if (!printWindow) throw new Error('Allow popups to print receipts.');
-        printWindow.document.open();
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => printWindow.print(), 100);
+      }
+
+      await markPrinted(ownerId, visit.storeId, visit.id, user.uid);
+      const html = generateReceiptHtml(visit, lastCleared);
+
+      if (Platform.OS === 'web') {
+        printWindow!.document.open();
+        printWindow!.document.write(html);
+        printWindow!.document.close();
+        printWindow!.focus();
+        setTimeout(() => printWindow!.print(), 400);
         return;
       }
       await Print.printAsync({ html });
     } catch (e: any) {
+      printWindow?.close();
       Alert.alert('Print Error', e.message || 'Receipt could not be printed.');
     } finally {
       setWorking(false);
