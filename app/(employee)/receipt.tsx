@@ -58,28 +58,41 @@ export default function ReceiptScreen() {
   const handlePrint = async () => {
     if (!user || !ownerId || !visit) return;
     setWorking(true);
-    let printWindow: Window | null = null;
+    let printFrame: any = null;
     try {
-      if (Platform.OS === 'web') {
-        if (typeof window === 'undefined') return;
-        printWindow = window.open('', '_blank');
-        if (!printWindow) throw new Error('Allow popups to print receipts.');
-      }
-
       await markPrinted(ownerId, visit.storeId, visit.id, user.uid);
       const html = generateReceiptHtml(visit, lastCleared);
 
       if (Platform.OS === 'web') {
-        printWindow!.document.open();
-        printWindow!.document.write(html);
-        printWindow!.document.close();
-        printWindow!.focus();
-        setTimeout(() => printWindow!.print(), 400);
+        if (typeof document === 'undefined') return;
+        printFrame = (document as any).createElement('iframe');
+        printFrame.style.position = 'fixed';
+        printFrame.style.left = '-9999px';
+        printFrame.style.top = '-9999px';
+        printFrame.style.width = '1px';
+        printFrame.style.height = '1px';
+        printFrame.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(printFrame);
+
+        const doc = printFrame.contentWindow?.document;
+        if (!doc) throw new Error('Print preview could not be prepared.');
+
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        setTimeout(() => {
+          printFrame?.contentWindow?.focus();
+          printFrame?.contentWindow?.print();
+          // Remove the hidden frame after the user has time to print.
+          setTimeout(() => printFrame?.remove(), 120000);
+        }, 400);
+        setWorking(false);
         return;
       }
       await Print.printAsync({ html });
     } catch (e: any) {
-      printWindow?.close();
+      printFrame?.remove();
       Alert.alert('Print Error', e.message || 'Receipt could not be printed.');
     } finally {
       setWorking(false);

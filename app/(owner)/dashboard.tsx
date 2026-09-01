@@ -34,7 +34,7 @@ export default function OwnerDashboard() {
             Select a store, enter machine readings, RUN, then print or submit.
           </Text>
         </View>
-        <Button title="Start Visit" onPress={() => router.push('/employee-signin' as any)} variant="accent" />
+        <Button title="Start Visit" onPress={() => router.push('/employee/login' as any)} variant="accent" />
       </Card>
 
       <Text style={styles.sectionTitle}>Manage</Text>

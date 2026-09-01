@@ -36,11 +36,14 @@ You are building **Skillrout** in the `Skillrout` Expo/Firebase project.
 - Prefer `const` + arrow functions.
 - Use `expo-router` `useRouter()` and `useLocalSearchParams()`.
 - Cloud Functions go in `functions/src/index.ts`.
-- `app/_layout.tsx` registers: `index`, `owner`, `(owner)`, `(employee)`.
+- `app/_layout.tsx` registers: `index`, `owner/login`, `owner/register`, `employee/login`, `(owner)`, `(employee)`.
 - Owner tabs in `app/(owner)/_layout.tsx`: `dashboard`, `stores`, `machines`, `employees`, `history`.
 - Employee flow screens: `select-store`, `visit`, `results`, `calculation`, `settlement`, `outcome`, `receipt`, `employee-history`.
-- Sign-in is a single screen `app/owner.tsx`; it detects the user's role and redirects employees to `/select-store`.
-- Employee creation calls the `createEmployee` Cloud Function directly from `app/(owner)/employees.tsx`; do **not** create a `services/employees.ts` unless explicitly asked.
+- The home/landing screen `app/index.tsx` is the public product page.
+- Admin sign-in is `app/owner/login.tsx` (route `/owner/login`); it only accepts owner/admin accounts.
+- Employee sign-in is `app/employee/login.tsx` (route `/employee/login`); it only accepts employee accounts.
+- Owner registration is `app/owner/register.tsx` (route `/owner/register`).
+- The dashboard "Start Visit" button routes to `/employee/login` so an admin can sign in as an employee.
 - Use Firestore transactions for `submitVisit` (and `voidVisit` once implemented).
 
 ## 4. UI/UX Design System

@@ -1,7 +1,15 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+} from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import {
   Image,
@@ -11,27 +19,25 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../constants/designTokens';
+import { Button } from '../../components/Button';
+import { Input } from '../../components/Input';
+import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { mapFirebaseError } from '../helpers/firebaseErrors';
-import { auth, functions } from '../firebaseConfig';
+import { mapFirebaseError } from '../../helpers/firebaseErrors';
+import { auth, db } from '../../firebaseConfig';
 
-const passwordComplexityRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,128}$/;
-const registerOwnerProfile = httpsCallable(functions, 'registerOwnerProfile');
-
-export default function RequestAccessScreen() {
+export default function EmployeeSignInScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [ownerName, setOwnerName] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const scheme = useColorScheme() ?? 'light';
@@ -39,51 +45,73 @@ export default function RequestAccessScreen() {
   const clearMessage = () => setMessage(null);
   const ScreenContainer = Platform.OS === 'web' ? View : Pressable;
 
-  const handleRegistration = async () => {
+  const handleLogin = async () => {
     clearMessage();
-    if (!ownerName.trim() || email.trim() === '' || password.trim() === '') {
-      setMessage({ type: 'error', text: 'Business name, email, and password are required.' });
+    if (email.trim() === '' || password.trim() === '') {
+      setMessage({ type: 'error', text: 'Both email and password are required.' });
       return;
     }
-    if (ownerName.trim().length > 120) {
-      setMessage({ type: 'error', text: 'Business name must be 120 characters or fewer.' });
-      return;
-    }
-    if (!passwordComplexityRegex.test(password)) {
-      setMessage({
-        type: 'error',
-        text: 'Password must be 10–128 characters and include at least one letter, one number, and one special character (e.g., @$!%*?&).',
-      });
-      return;
-    }
-
     Keyboard.dismiss();
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-      const user = userCredential.user;
-      try {
-        await registerOwnerProfile({ businessName: ownerName.trim() });
-      } catch (profileError) {
-        await user.delete().catch(() => undefined);
-        throw profileError;
+      if (Platform.OS === 'web') {
+        await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence).catch(() => undefined);
       }
-      setMessage({
-        type: 'success',
-        text: 'Your owner access request has been submitted. It must be approved before you can sign in.',
-      });
-      setEmail('');
-      setPassword('');
-      setOwnerName('');
+
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const user = userCredential.user;
+      const idToken = await user.getIdTokenResult(true);
+
+      if (!idToken.claims.email_verified) {
+        await sendEmailVerification(user);
+        setMessage({
+          type: 'error',
+          text: 'Email not verified. A new verification link has been sent — check your inbox and click it before signing in.',
+        });
+        await firebaseSignOut(auth);
+        setIsLoading(false);
+        return;
+      }
+
+      const employeeSnap = await getDoc(doc(db, 'employees', user.uid));
+      const employee = employeeSnap.data();
+
+      if (!employeeSnap.exists() || employee?.active !== true || !employee.ownerId) {
+        const text = !employeeSnap.exists() ? 'Account not found for this role.' : 'Your account is not active in Skillrout.';
+        setMessage({ type: 'error', text });
+        await firebaseSignOut(auth);
+        setIsLoading(false);
+        return;
+      }
+
+      router.replace((employee.mustChangePassword ? '/change-password' : '/select-store') as any);
     } catch (error: any) {
       const text =
-        error.code === 'auth/email-already-in-use'
-          ? 'This email is already registered. Try signing in.'
+        error.code === 'auth/user-not-found' ||
+        error.code === 'auth/wrong-password' ||
+        error.code === 'auth/invalid-credential'
+          ? 'Invalid email or password. Please try again or register.'
           : mapFirebaseError(error);
       setMessage({ type: 'error', text });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePasswordReset = () => {
+    clearMessage();
+    if (!email.includes('@')) {
+      setMessage({ type: 'error', text: 'Please enter a valid email address to reset your password.' });
+      return;
+    }
+
+    sendPasswordResetEmail(auth, email.trim())
+      .then(() => {
+        setMessage({ type: 'success', text: `A reset link has been sent to ${email}.` });
+      })
+      .catch((error: any) => {
+        setMessage({ type: 'error', text: mapFirebaseError(error) });
+      });
   };
 
   return (
@@ -103,23 +131,16 @@ export default function RequestAccessScreen() {
         >
           <View style={styles.header}>
             <Image
-              source={require('../assets/images/skillrout-icon-blue.png')}
+              source={require('../../assets/images/skillrout-icon-blue.png')}
               style={styles.logo}
               accessibilityLabel="Skillrout"
             />
             <Text style={styles.tagline}>Bookkeeping by</Text>
             <Text style={styles.title}>Skillrout</Text>
-            <Text style={styles.subtitle}>Request owner access</Text>
+            <Text style={styles.subtitle}>Employee sign in</Text>
           </View>
 
           <View style={styles.form}>
-            <Input
-              label="Business name"
-              placeholder="Your business"
-              value={ownerName}
-              onChangeText={setOwnerName}
-              autoCapitalize="words"
-            />
             <Input
               label="Email"
               placeholder="you@business.com"
@@ -135,16 +156,24 @@ export default function RequestAccessScreen() {
               secureTextEntry
               value={password}
               onChangeText={setPassword}
-              autoComplete="new-password"
+              autoComplete="password"
             />
 
-            <View style={styles.requirements}>
-              <Text style={styles.requirementsTitle}>Password requirements</Text>
-              <Text style={styles.requirementsText}>
-                • At least 10 characters{'\n'}
-                • One letter, one number, one special character (@$!%*?&)
-              </Text>
-            </View>
+            {Platform.OS === 'web' && (
+              <View style={styles.remember}>
+                <Switch
+                  value={rememberMe}
+                  onValueChange={setRememberMe}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={rememberMe ? colors.textOnPrimary : colors.textSecondary}
+                />
+                <Text style={styles.rememberText}>Keep me signed in</Text>
+              </View>
+            )}
+
+            <Pressable onPress={handlePasswordReset} style={styles.forgot} accessibilityRole="button" accessibilityLabel="Forgot password">
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </Pressable>
 
             {message ? (
               <View
@@ -165,19 +194,19 @@ export default function RequestAccessScreen() {
             ) : null}
 
             <View style={styles.action}>
-              <Button title="Submit Request" onPress={handleRegistration} loading={isLoading} />
+              <Button title="Sign In" onPress={handleLogin} loading={isLoading} />
             </View>
           </View>
 
           <Pressable
-            onPress={() => router.push('/owner')}
+            onPress={() => router.push('/')}
             style={styles.requestAccess}
             accessibilityRole="button"
           >
-            <Text style={styles.requestAccessText}>Already have an account? Sign in</Text>
+            <Text style={styles.requestAccessText}>Back to home</Text>
           </Pressable>
 
-          <Text style={styles.footer}>Secure admin access — Skillrout</Text>
+          <Text style={styles.footer}>Secure employee access — Skillrout</Text>
         </ScrollView>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       </KeyboardAvoidingView>
@@ -245,25 +274,28 @@ const makeStyles = (colors: Colors) =>
       padding: spacing.lg,
       marginBottom: spacing.xl,
     },
-    requirements: {
-      marginTop: spacing.md,
-      padding: spacing.md,
-      backgroundColor: colors.surfaceSecondary,
-      borderRadius: radii.md,
-      marginBottom: spacing.md,
-    },
-    requirementsTitle: {
-      fontSize: fontSizes.caption,
-      color: colors.textPrimary,
-      fontWeight: '700',
+    remember: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.xs,
       marginBottom: spacing.xs,
-      textTransform: 'uppercase',
-      letterSpacing: letterSpacings.wide,
     },
-    requirementsText: {
-      fontSize: fontSizes.caption,
+    rememberText: {
+      fontSize: fontSizes.body,
       color: colors.textSecondary,
-      lineHeight: lineHeights.caption,
+    },
+    forgot: {
+      alignSelf: 'flex-end',
+      minHeight: 44,
+      justifyContent: 'center',
+      paddingVertical: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    forgotText: {
+      fontSize: fontSizes.body,
+      color: colors.primary,
+      fontWeight: '600',
     },
     messageBox: {
       padding: spacing.md,

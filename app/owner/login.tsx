@@ -25,13 +25,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../constants/designTokens';
+import { Button } from '../../components/Button';
+import { Input } from '../../components/Input';
+import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { mapFirebaseError } from '../helpers/firebaseErrors';
-import { auth, db, functions } from '../firebaseConfig';
+import { mapFirebaseError } from '../../helpers/firebaseErrors';
+import { auth, db, functions } from '../../firebaseConfig';
 
 const provisionOwner = httpsCallable(functions, 'provisionOwner');
 
@@ -172,7 +172,7 @@ export default function OwnerScreen() {
         >
           <View style={styles.header}>
             <Image
-              source={require('../assets/images/skillrout-icon-blue.png')}
+              source={require('../../assets/images/skillrout-icon-blue.png')}
               style={styles.logo}
               accessibilityLabel="Skillrout"
             />
@@ -240,7 +240,7 @@ export default function OwnerScreen() {
           </View>
 
           <Pressable
-            onPress={() => router.push('/request-access')}
+            onPress={() => router.push('/owner/register')}
             style={styles.requestAccess}
             accessibilityRole="button"
           >

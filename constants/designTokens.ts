@@ -1,5 +1,5 @@
-// Skillrout — shadcn-inspired white/blue/black design tokens
-// White-dominant light mode, deep slate dark mode.
+// Skillrout — warm, earthy design tokens
+// 60% cream background, 30% olive neutrals, 10% terracotta accent.
 // Dual-mode (light/dark) system. Use `useColors()` to access the active palette.
 
 // Fibonacci-based spacing scale (golden-ratio progression).
@@ -48,58 +48,58 @@ export const letterSpacings = {
 } as const;
 
 export const darkColors = {
-  primary: '#3B82F6',
-  primaryHover: '#60A5FA',
-  primarySubtle: 'rgba(59, 130, 246, 0.16)',
+  primary: '#8A9B6B',
+  primaryHover: '#A8B58E',
+  primarySubtle: 'rgba(138, 155, 107, 0.16)',
 
-  accent: '#1E293B',
-  accentDark: '#0F172A',
-  accentHover: '#334155',
-  accentSubtle: 'rgba(30, 41, 59, 0.5)',
+  accent: '#D98258',
+  accentDark: '#B55A34',
+  accentHover: '#E09063',
+  accentSubtle: 'rgba(217, 130, 88, 0.16)',
 
-  background: '#020617',
-  surface: '#0F172A',
-  surfaceSecondary: '#1E293B',
-  border: '#1E293B',
+  background: '#1A1F18',
+  surface: '#222820',
+  surfaceSecondary: '#2A3026',
+  border: '#3A4336',
 
-  textPrimary: '#F8FAFC',
-  textSecondary: '#CBD5E1',
-  textMuted: '#94A3B8',
+  textPrimary: '#F5F1E8',
+  textSecondary: '#B8BFB0',
+  textMuted: '#8A8F7E',
   textOnPrimary: '#FFFFFF',
-  textOnAccent: '#F8FAFC',
+  textOnAccent: '#FFFFFF',
 
-  success: '#22C55E',
+  success: '#4ADE80',
   error: '#F87171',
   warning: '#FBBF24',
   info: '#38BDF8',
-  overlay: 'rgba(0, 0, 0, 0.48)',
+  overlay: 'rgba(0, 0, 0, 0.56)',
 
-  glowPrimary: 'rgba(59, 130, 246, 0.25)',
-  glowAccent: 'rgba(248, 250, 252, 0.08)',
-  glowSuccess: 'rgba(34, 197, 94, 0.25)',
-  glowError: 'rgba(248, 113, 113, 0.25)',
+  glowPrimary: 'rgba(138, 155, 107, 0.25)',
+  glowAccent: 'rgba(245, 241, 232, 0.08)',
+  glowSuccess: 'rgba(74, 222, 128, 0.20)',
+  glowError: 'rgba(248, 113, 113, 0.20)',
 } as const;
 
 export const lightColors = {
-  primary: '#2563EB',
-  primaryHover: '#1D4ED8',
-  primarySubtle: 'rgba(37, 99, 235, 0.08)',
+  primary: '#687357',
+  primaryHover: '#4E5A3E',
+  primarySubtle: 'rgba(104, 115, 87, 0.10)',
 
-  accent: '#F1F5F9',
-  accentDark: '#E2E8F0',
-  accentHover: '#E2E8F0',
-  accentSubtle: 'rgba(241, 245, 249, 0.5)',
+  accent: '#C7633D',
+  accentDark: '#A5522F',
+  accentHover: '#B55A34',
+  accentSubtle: 'rgba(199, 99, 61, 0.10)',
 
-  background: '#FFFFFF',
+  background: '#F5F1E8',
   surface: '#FFFFFF',
-  surfaceSecondary: '#F8FAFC',
-  border: '#E2E8F0',
+  surfaceSecondary: '#ECE7DD',
+  border: '#D9D3C7',
 
-  textPrimary: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#94A3B8',
+  textPrimary: '#283628',
+  textSecondary: '#5B6653',
+  textMuted: '#8A8F7E',
   textOnPrimary: '#FFFFFF',
-  textOnAccent: '#0F172A',
+  textOnAccent: '#FFFFFF',
 
   success: '#16A34A',
   error: '#DC2626',
@@ -107,17 +107,13 @@ export const lightColors = {
   info: '#0EA5E9',
   overlay: 'rgba(0, 0, 0, 0.48)',
 
-  glowPrimary: 'rgba(37, 99, 235, 0.10)',
-  glowAccent: 'rgba(15, 23, 42, 0.04)',
+  glowPrimary: 'rgba(104, 115, 87, 0.10)',
+  glowAccent: 'rgba(40, 54, 40, 0.04)',
   glowSuccess: 'rgba(22, 163, 74, 0.10)',
   glowError: 'rgba(220, 38, 38, 0.10)',
 } as const;
 
 export type Colors = typeof lightColors | typeof darkColors;
-
-// Convenience for components that are not yet theme-aware.
-// For full dark/light support, prefer `useColors()` from `hooks/useColors`.
-export const colors: Colors = lightColors;
 
 const baseShadows = {
   shadowOffset: { width: 0, height: 1 },
@@ -186,3 +182,7 @@ export const lightShadows = {
     elevation: 1,
   },
 } as const;
+
+// Convenience for components that are not yet theme-aware.
+// For full dark/light support, prefer `useColors()` from `hooks/useColors`.
+export const colors: Colors = lightColors;

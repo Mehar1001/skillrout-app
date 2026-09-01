@@ -24,7 +24,7 @@ function SessionManager() {
     if (!user) return;
     if (Date.now() - lastActivity.current >= INACTIVITY_LIMIT_MS) {
       await signOut();
-      router.replace('/owner' as any);
+      router.replace('/owner/login' as any);
     }
   }, [user, signOut, router]);
 
@@ -59,7 +59,7 @@ function SessionManager() {
     lastActivity.current = Date.now();
     timer.current = setTimeout(async () => {
       await signOut();
-      router.replace('/owner' as any);
+      router.replace('/owner/login' as any);
     }, INACTIVITY_LIMIT_MS);
     return () => {
       if (timer.current) clearTimeout(timer.current);
@@ -87,9 +87,9 @@ export default function RootLayout() {
         <DraftQueueProvider>
           <Stack key={fontKey} screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" options={{ title: 'Skillrout' }} />
-            <Stack.Screen name="owner" options={{ title: 'Skillrout Sign In' }} />
-            <Stack.Screen name="request-access" options={{ title: 'Request Access' }} />
-            <Stack.Screen name="employee-signin" options={{ title: 'Employee Sign In' }} />
+            <Stack.Screen name="owner/login" options={{ title: 'Owner Sign In' }} />
+            <Stack.Screen name="owner/register" options={{ title: 'Request Access' }} />
+            <Stack.Screen name="employee/login" options={{ title: 'Employee Sign In' }} />
             <Stack.Screen name="(owner)" />
             <Stack.Screen name="(employee)" />
           </Stack>

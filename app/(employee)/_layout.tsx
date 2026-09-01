@@ -16,7 +16,7 @@ export default function EmployeeLayout() {
   useEffect(() => {
     if (loading) return;
     if (!user || role !== 'employee') {
-      router.replace('/owner');
+      router.replace('/owner/login');
       return;
     }
     const currentRoute = segments[segments.length - 1];
@@ -29,7 +29,7 @@ export default function EmployeeLayout() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.replace('/owner');
+    router.replace('/owner/login');
   };
 
   return (

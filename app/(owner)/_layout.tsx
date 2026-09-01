@@ -13,14 +13,14 @@ export default function OwnerLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && (!user || role !== 'owner')) router.replace('/owner');
+    if (!loading && (!user || role !== 'owner')) router.replace('/owner/login');
   }, [user, role, loading, router]);
 
   if (loading || !user || role !== 'owner') return null;
 
   const handleSignOut = async () => {
     await signOut();
-    router.replace('/owner');
+    router.replace('/owner/login');
   };
 
   return (
