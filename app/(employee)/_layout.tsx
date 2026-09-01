@@ -43,6 +43,14 @@ export default function EmployeeLayout() {
     router.replace('/');
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/select-store');
+  };
+
   const currentRoute = segments[segments.length - 1] ?? 'select-store';
 
   return (
@@ -72,7 +80,7 @@ export default function EmployeeLayout() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Go back"
-                    onPress={() => router.back()}
+                    onPress={handleBack}
                     style={styles.navIcon}
                     hitSlop={spacing.xs}
                   >

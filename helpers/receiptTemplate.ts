@@ -38,7 +38,13 @@ export interface ReceiptLines {
   visitId: string;
   employee: string;
   vouchersTotal: string;
-  machines: { label: string; creditsIn: string; totalPaid: string }[];
+  machines: {
+    label: string;
+    inRange: string;
+    outRange: string;
+    cash: string;
+    payout: string;
+  }[];
   moneyIn: string;
   moneyOut: string;
   net: string;
@@ -63,9 +69,11 @@ export const buildReceiptLines = (visit: Visit, lastCleared?: LastClearedInfo | 
     employee: visit.employeeName,
     vouchersTotal: receiptMoney(visit.totalNewOut),
     machines: visit.machines.map(machine => ({
-      label: `< ${machine.machineNumber} > Credits In`,
-      creditsIn: receiptAmount(machine.newIn),
-      totalPaid: receiptAmount(machine.newOut),
+      label: `${machine.name} (${machine.machineNumber})`,
+      inRange: `${receiptAmount(machine.lastSettledIn)} - ${receiptAmount(machine.presentIn)}`,
+      outRange: `${receiptAmount(machine.lastSettledOut)} - ${receiptAmount(machine.presentOut)}`,
+      cash: receiptMoney(machine.newIn),
+      payout: `(${receiptMoney(machine.newOut)})`,
     })),
     moneyIn: receiptMoney(visit.totalNewIn),
     moneyOut: receiptMoney(visit.totalNewOut),
@@ -93,8 +101,11 @@ export const generateReceiptHtml = (visit: Visit, lastCleared?: LastClearedInfo 
   const machineRows = lines.machines
     .map(
       machine => `
-        <div class="row"><span>${escapeHtml(machine.label)}</span><span>${machine.creditsIn}</span></div>
-        <div class="row pad"><span>Total Paid</span><span>${machine.totalPaid}</span></div>
+        <div class="machine-title">${escapeHtml(machine.label)}</div>
+        <div class="machine-reading"><span>In:</span><span>${machine.inRange}</span></div>
+        <div class="machine-reading"><span>Out:</span><span>${machine.outRange}</span></div>
+        <div class="row"><span>Cash</span><span>${machine.cash}</span></div>
+        <div class="row pad"><span>Payout *</span><span>${machine.payout}</span></div>
       `
     )
     .join('');
@@ -128,6 +139,9 @@ export const generateReceiptHtml = (visit: Visit, lastCleared?: LastClearedInfo 
           .store { margin-top: 2px; text-align: center; }
           .divider { border-top: 1px dashed #171A20; margin: 6px 0; }
           .row { display: flex; justify-content: space-between; gap: 8px; }
+          .machine-title { font-weight: 700; margin: 10px 0 2px; }
+          .machine-reading { display: flex; gap: 4px; font-weight: 700; }
+          .machine-reading span:last-child { margin-left: auto; text-align: right; }
           .pad { margin-bottom: 4px; }
           .section-title { text-align: center; letter-spacing: 1px; margin: 2px 0; }
           .big { text-align: center; font-size: 24px; font-weight: 700; letter-spacing: 2px; margin: 4px 0; }
