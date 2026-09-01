@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,11 +12,14 @@ export default function EmployeeLayout() {
   const { user, role, employeeName, mustChangePassword, loading, signOut } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (loading) return;
     if (!user || role !== 'employee') {
-      router.replace('/owner/login');
+      router.replace('/');
       return;
     }
     const currentRoute = segments[segments.length - 1];
@@ -29,12 +32,49 @@ export default function EmployeeLayout() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.replace('/owner/login');
+    router.replace('/');
   };
 
+  const navigationItems = [
+    { label: 'Stores', route: '/select-store', icon: 'storefront-outline' },
+    { label: 'Drafts', route: '/drafts', icon: 'document-outline' },
+    { label: 'History', route: '/employee-history', icon: 'time-outline' },
+    { label: 'Settings', route: '/settings', icon: 'settings-outline' },
+  ];
+
   return (
-    <Stack
-      screenOptions={{
+    <View style={styles.shell}>
+      {isDesktop && (
+        <View style={[styles.sidebar, { width: sidebarCollapsed ? 76 : 220 }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            onPress={() => setSidebarCollapsed(value => !value)}
+            style={styles.sidebarToggle}
+          >
+            <Ionicons name={sidebarCollapsed ? 'chevron-forward' : 'chevron-back'} size={22} color={colors.primary} />
+          </Pressable>
+          {navigationItems.map(item => (
+            <Pressable
+              key={item.route}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+              onPress={() => router.push(item.route as any)}
+              style={styles.sidebarItem}
+            >
+              <Ionicons name={item.icon as any} size={22} color={colors.primary} />
+              {!sidebarCollapsed && <Text style={styles.sidebarLabel}>{item.label}</Text>}
+            </Pressable>
+          ))}
+          <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.sidebarLogout}>
+            <Ionicons name="log-out-outline" size={22} color={colors.error} />
+            {!sidebarCollapsed && <Text style={styles.sidebarLogoutText}>Log out</Text>}
+          </Pressable>
+        </View>
+      )}
+      <View style={styles.content}>
+        <Stack
+          screenOptions={{
         headerStyle: styles.header,
         headerTitleStyle: styles.headerTitle,
         headerTintColor: colors.textPrimary,
@@ -102,12 +142,60 @@ export default function EmployeeLayout() {
       <Stack.Screen name="outcome" options={{ title: 'Outcome' }} />
       <Stack.Screen name="receipt" options={{ title: 'Receipt Preview' }} />
       <Stack.Screen name="employee-history" options={{ title: 'History' }} />
-      <Stack.Screen name="settings" options={{ title: 'Profile & Settings' }} />
-    </Stack>
+          <Stack.Screen name="settings" options={{ title: 'Profile & Settings' }} />
+        </Stack>
+      </View>
+    </View>
   );
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  shell: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
+  },
+  sidebar: {
+    backgroundColor: colors.surface,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.lg,
+  },
+  sidebarToggle: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  sidebarItem: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  sidebarLabel: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.body,
+    fontWeight: '600',
+  },
+  sidebarLogout: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: 'auto',
+  },
+  sidebarLogoutText: {
+    color: colors.error,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
   header: {
     backgroundColor: colors.background,
   },

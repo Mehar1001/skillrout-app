@@ -1,18 +1,18 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
   browserLocalPersistence,
   browserSessionPersistence,
   sendPasswordResetEmail,
-  sendEmailVerification,
   setPersistence,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import {
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -29,7 +29,9 @@ import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } f
 import { useColors } from '@/hooks/useColors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { mapFirebaseError } from '../../helpers/firebaseErrors';
-import { auth, db } from '../../firebaseConfig';
+import { auth, db, functions } from '../../firebaseConfig';
+
+const prepareEmployeeSession = httpsCallable(functions, 'prepareEmployeeSession');
 
 export default function EmployeeSignInScreen() {
   const colors = useColors();
@@ -48,7 +50,11 @@ export default function EmployeeSignInScreen() {
   const handleLogin = async () => {
     clearMessage();
     if (email.trim() === '' || password.trim() === '') {
-      setMessage({ type: 'error', text: 'Both email and password are required.' });
+      setMessage({ type: 'error', text: 'Enter your email and password.' });
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setMessage({ type: 'error', text: 'Enter a valid email address.' });
       return;
     }
     Keyboard.dismiss();
@@ -58,20 +64,10 @@ export default function EmployeeSignInScreen() {
         await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence).catch(() => undefined);
       }
 
-      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       const user = userCredential.user;
-      const idToken = await user.getIdTokenResult(true);
-
-      if (!idToken.claims.email_verified) {
-        await sendEmailVerification(user);
-        setMessage({
-          type: 'error',
-          text: 'Email not verified. A new verification link has been sent — check your inbox and click it before signing in.',
-        });
-        await firebaseSignOut(auth);
-        setIsLoading(false);
-        return;
-      }
+      await prepareEmployeeSession();
+      await user.getIdToken(true);
 
       const employeeSnap = await getDoc(doc(db, 'employees', user.uid));
       const employee = employeeSnap.data();
@@ -86,13 +82,7 @@ export default function EmployeeSignInScreen() {
 
       router.replace((employee.mustChangePassword ? '/change-password' : '/select-store') as any);
     } catch (error: any) {
-      const text =
-        error.code === 'auth/user-not-found' ||
-        error.code === 'auth/wrong-password' ||
-        error.code === 'auth/invalid-credential'
-          ? 'Invalid email or password. Please try again or register.'
-          : mapFirebaseError(error);
-      setMessage({ type: 'error', text });
+      setMessage({ type: 'error', text: mapFirebaseError(error) });
     } finally {
       setIsLoading(false);
     }
@@ -129,12 +119,14 @@ export default function EmployeeSignInScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
+          <Pressable onPress={() => router.replace('/')} style={styles.backHome} accessibilityRole="button">
+            <Ionicons name="arrow-back" size={20} color={colors.primary} />
+            <Text style={styles.backHomeText}>Back to home</Text>
+          </Pressable>
           <View style={styles.header}>
-            <Image
-              source={require('../../assets/images/skillrout-icon-blue.png')}
-              style={styles.logo}
-              accessibilityLabel="Skillrout"
-            />
+            <View style={styles.logo} accessibilityLabel="Skillrout">
+              <Ionicons name="receipt-outline" size={30} color={colors.textOnPrimary} />
+            </View>
             <Text style={styles.tagline}>Bookkeeping by</Text>
             <Text style={styles.title}>Skillrout</Text>
             <Text style={styles.subtitle}>Employee sign in</Text>
@@ -198,13 +190,6 @@ export default function EmployeeSignInScreen() {
             </View>
           </View>
 
-          <Pressable
-            onPress={() => router.push('/')}
-            style={styles.requestAccess}
-            accessibilityRole="button"
-          >
-            <Text style={styles.requestAccessText}>Back to home</Text>
-          </Pressable>
 
           <Text style={styles.footer}>Secure employee access — Skillrout</Text>
         </ScrollView>
@@ -231,6 +216,19 @@ const makeStyles = (colors: Colors) =>
       alignSelf: 'stretch',
       marginBottom: spacing.xl,
     },
+    backHome: {
+      alignSelf: 'flex-start',
+      minHeight: 44,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginBottom: spacing.lg,
+    },
+    backHomeText: {
+      color: colors.primary,
+      fontSize: fontSizes.body,
+      fontWeight: '700',
+    },
     logo: {
       width: spacing.xxl,
       height: spacing.xxl,
@@ -239,6 +237,7 @@ const makeStyles = (colors: Colors) =>
       justifyContent: 'center',
       alignItems: 'center',
       alignSelf: 'center',
+      backgroundColor: colors.primary,
     },
     tagline: {
       fontSize: fontSizes.caption,

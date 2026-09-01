@@ -24,7 +24,7 @@ function SessionManager() {
     if (!user) return;
     if (Date.now() - lastActivity.current >= INACTIVITY_LIMIT_MS) {
       await signOut();
-      router.replace('/owner/login' as any);
+      router.replace('/' as any);
     }
   }, [user, signOut, router]);
 
@@ -59,7 +59,7 @@ function SessionManager() {
     lastActivity.current = Date.now();
     timer.current = setTimeout(async () => {
       await signOut();
-      router.replace('/owner/login' as any);
+      router.replace('/' as any);
     }, INACTIVITY_LIMIT_MS);
     return () => {
       if (timer.current) clearTimeout(timer.current);

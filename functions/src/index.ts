@@ -147,6 +147,17 @@ export const getPendingOwners = onCall(async (request: CallableRequest) => {
   };
 });
 
+export const prepareEmployeeSession = onCall(async (request: CallableRequest) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to continue.');
+  const employee = await db.doc(`employees/${request.auth.uid}`).get();
+  if (!employee.exists || employee.data()?.active !== true || !employee.data()?.ownerId) {
+    throw new HttpsError('permission-denied', 'This is not an active employee account.');
+  }
+  const user = await auth.getUser(request.auth.uid);
+  if (!user.emailVerified) await auth.updateUser(request.auth.uid, { emailVerified: true });
+  return { success: true };
+});
+
 export const createEmployee = onCall(async (request: CallableRequest) => {
   const context = request.auth;
   const { email, name, password, assignedStoreIds } = request.data as {

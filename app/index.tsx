@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
-import { Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useState } from 'react';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -380,11 +380,9 @@ export default function IndexScreen() {
   if (loading) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
-        <Image
-          source={require('../assets/images/skillrout-icon.png')}
-          style={styles.logoSmall}
-          accessibilityLabel="Skillrout"
-        />
+        <View style={styles.logoSmall} accessibilityLabel="Skillrout">
+          <Ionicons name="receipt-outline" size={28} color={colors.textOnPrimary} />
+        </View>
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading Skillrout…</Text>
       </View>
     );
@@ -400,11 +398,9 @@ export default function IndexScreen() {
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <View style={styles.brand}>
-          <Image
-            source={require('../assets/images/skillrout-icon.png')}
-            style={styles.logoSmall}
-            accessibilityLabel="Skillrout"
-          />
+          <View style={styles.logoSmall} accessibilityLabel="Skillrout">
+            <Ionicons name="receipt-outline" size={28} color={colors.textOnPrimary} />
+          </View>
           <View>
             <Text style={[styles.brandEyebrow, { color: colors.primary }]}>BOOKKEEPING BY</Text>
             <Text style={[styles.brandName, { color: colors.textPrimary }]}>Skillrout</Text>
@@ -503,6 +499,9 @@ const makeStyles = (colors: Colors) =>
       width: spacing.xxl,
       height: spacing.xxl,
       borderRadius: radii.lg,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     header: {
       flexDirection: 'row',

@@ -1,10 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import {
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -102,11 +102,9 @@ export default function RequestAccessScreen() {
           keyboardDismissMode="interactive"
         >
           <View style={styles.header}>
-            <Image
-              source={require('../../assets/images/skillrout-icon-blue.png')}
-              style={styles.logo}
-              accessibilityLabel="Skillrout"
-            />
+            <View style={styles.logo} accessibilityLabel="Skillrout">
+              <Ionicons name="receipt-outline" size={30} color={colors.textOnPrimary} />
+            </View>
             <Text style={styles.tagline}>Bookkeeping by</Text>
             <Text style={styles.title}>Skillrout</Text>
             <Text style={styles.subtitle}>Request owner access</Text>
@@ -210,6 +208,7 @@ const makeStyles = (colors: Colors) =>
       justifyContent: 'center',
       alignItems: 'center',
       alignSelf: 'center',
+      backgroundColor: colors.primary,
     },
     tagline: {
       fontSize: fontSizes.caption,

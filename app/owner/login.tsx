@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -14,7 +15,6 @@ import { doc, getDoc, type DocumentSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import {
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -61,7 +61,11 @@ export default function OwnerScreen() {
   const handleLogin = async () => {
     clearMessage();
     if (email.trim() === '' || password.trim() === '') {
-      setMessage({ type: 'error', text: 'Both email and password are required.' });
+      setMessage({ type: 'error', text: 'Enter your email and password.' });
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setMessage({ type: 'error', text: 'Enter a valid email address.' });
       return;
     }
     Keyboard.dismiss();
@@ -71,7 +75,7 @@ export default function OwnerScreen() {
         await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence).catch(() => undefined);
       }
 
-      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       const user = userCredential.user;
       const idToken = await user.getIdTokenResult(true);
 
@@ -127,13 +131,7 @@ export default function OwnerScreen() {
       ]);
       router.replace('/dashboard' as any);
     } catch (error: any) {
-      const text =
-        error.code === 'auth/user-not-found' ||
-        error.code === 'auth/wrong-password' ||
-        error.code === 'auth/invalid-credential'
-          ? 'Invalid email or password. Please try again or register.'
-          : mapFirebaseError(error);
-      setMessage({ type: 'error', text });
+      setMessage({ type: 'error', text: mapFirebaseError(error) });
     } finally {
       setIsLoading(false);
     }
@@ -170,12 +168,14 @@ export default function OwnerScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
+          <Pressable onPress={() => router.replace('/')} style={styles.backHome} accessibilityRole="button">
+            <Ionicons name="arrow-back" size={20} color={colors.primary} />
+            <Text style={styles.backHomeText}>Back to home</Text>
+          </Pressable>
           <View style={styles.header}>
-            <Image
-              source={require('../../assets/images/skillrout-icon-blue.png')}
-              style={styles.logo}
-              accessibilityLabel="Skillrout"
-            />
+            <View style={styles.logo} accessibilityLabel="Skillrout">
+              <Ionicons name="receipt-outline" size={30} color={colors.textOnPrimary} />
+            </View>
             <Text style={styles.tagline}>Bookkeeping by</Text>
             <Text style={styles.title}>Skillrout</Text>
             <Text style={styles.subtitle}>Sign in to manage stores and visits</Text>
@@ -272,6 +272,19 @@ const makeStyles = (colors: Colors) =>
       alignSelf: 'stretch',
       marginBottom: spacing.xl,
     },
+    backHome: {
+      alignSelf: 'flex-start',
+      minHeight: 44,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginBottom: spacing.lg,
+    },
+    backHomeText: {
+      color: colors.primary,
+      fontSize: fontSizes.body,
+      fontWeight: '700',
+    },
     logo: {
       width: spacing.xxl,
       height: spacing.xxl,
@@ -280,6 +293,7 @@ const makeStyles = (colors: Colors) =>
       justifyContent: 'center',
       alignItems: 'center',
       alignSelf: 'center',
+      backgroundColor: colors.primary,
     },
     tagline: {
       fontSize: fontSizes.caption,

@@ -6,14 +6,20 @@ export function mapFirebaseError(error: unknown): string {
   const code = (error as { code?: string }).code || '';
   const message = (error as { message?: string }).message || '';
 
-  if (code === 'auth/invalid-email' || code === 'auth/invalid-credential') {
-    return 'Email or password is incorrect.';
+  if (code === 'auth/invalid-email') {
+    return 'Enter a valid email address.';
   }
-  if (code === 'auth/user-disabled' || code === 'auth/user-not-found') {
-    return 'This account is not active. Contact your owner.';
+  if (code === 'auth/invalid-credential') {
+    return 'The email or password does not match our records.';
+  }
+  if (code === 'auth/user-not-found') {
+    return 'This email address does not match an account.';
+  }
+  if (code === 'auth/user-disabled') {
+    return 'This account has been disabled. Contact your owner or administrator.';
   }
   if (code === 'auth/wrong-password') {
-    return 'Password is incorrect.';
+    return 'The password does not match this account.';
   }
   if (code === 'auth/too-many-requests') {
     return 'Too many attempts. Please wait a moment and try again.';

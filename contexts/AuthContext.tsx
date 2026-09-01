@@ -1,4 +1,4 @@
-import { onAuthStateChanged, signOut as firebaseSignOut, User } from 'firebase/auth';
+import { onIdTokenChanged, signOut as firebaseSignOut, User } from 'firebase/auth';
 import { doc, getDoc, getDocs, onSnapshot, query, where, type DocumentSnapshot } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebaseConfig';
@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     }, 4000);
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async u => {
+    const unsubscribeAuth = onIdTokenChanged(auth, async u => {
       unsubscribeProfile?.();
       unsubscribeProfile = undefined;
       setUser(u);
