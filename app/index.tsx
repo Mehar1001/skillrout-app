@@ -1,1008 +1,1054 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Link, Redirect, useRouter } from 'expo-router';
+import { Link, Redirect } from 'expo-router';
+import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useState } from 'react';
 import { BrandMark } from '../components/BrandMark';
-import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../constants/designTokens';
-import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../contexts/AuthContext';
+import { useColors } from '@/hooks/useColors';
 
-type SectionId =
-  | 'about'
-  | 'howItWorks'
-  | 'features'
-  | 'ocr'
-  | 'accuracy'
-  | 'insights'
-  | 'security'
-  | 'comingSoon';
+type SectionKey = 'how' | 'features' | 'security' | 'roles';
 
-interface Section {
-  id: SectionId;
+const workflowSteps = [
+  { title: 'Select store', body: 'Open an assigned location.', icon: 'storefront-outline' },
+  { title: 'Scan or enter', body: 'Capture each machine reading.', icon: 'scan-outline' },
+  { title: 'Review', body: 'Confirm readings and calculations.', icon: 'checkmark-circle-outline' },
+  { title: 'Submit', body: 'Advance an eligible settlement.', icon: 'paper-plane-outline' },
+  { title: 'History', body: 'Keep every visit permanently traceable.', icon: 'time-outline' },
+] as const;
+
+const features = [
+  {
+    title: 'OCR-assisted scanning',
+    body: 'Capture meter readings with the camera, review the result, and stay in control before anything is accepted.',
+    icon: 'scan-outline',
+    large: true,
+    badge: 'Coming soon',
+  },
+  {
+    title: 'Smart calculations',
+    body: 'Automatically compare current readings with the last settled baseline.',
+    icon: 'calculator-outline',
+  },
+  {
+    title: 'Visit history',
+    body: 'Know who visited, when it happened, and exactly what was recorded.',
+    icon: 'time-outline',
+  },
+  {
+    title: 'Reports & insights',
+    body: 'See settlement totals, pending work, activity, trends, and exceptions.',
+    icon: 'bar-chart-outline',
+    large: true,
+  },
+  {
+    title: 'Receipt-ready records',
+    body: 'Generate clear thermal receipts from the permanent visit snapshot.',
+    icon: 'receipt-outline',
+  },
+  {
+    title: 'Photos & evidence',
+    body: 'Attach machine evidence directly to the relevant visit.',
+    icon: 'camera-outline',
+  },
+] as const;
+
+const RouteButton = ({
+  href,
+  label,
+  variant = 'primary',
+  icon,
+}: {
+  href: '/owner/login' | '/employee/login' | '/owner/register';
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}
-
-const SECTIONS: Section[] = [
-  { id: 'about', label: 'About', icon: 'information-circle-outline' },
-  { id: 'howItWorks', label: 'How It Works', icon: 'list-outline' },
-  { id: 'features', label: 'Features', icon: 'grid-outline' },
-  { id: 'ocr', label: 'OCR Scanning', icon: 'camera-outline' },
-  { id: 'accuracy', label: 'Accuracy & Controls', icon: 'shield-checkmark-outline' },
-  { id: 'insights', label: 'Insights', icon: 'bar-chart-outline' },
-  { id: 'security', label: 'Security', icon: 'lock-closed-outline' },
-  { id: 'comingSoon', label: 'Coming Soon', icon: 'rocket-outline' },
-];
-
-const MiniWorkflow = ({ colors, styles }: { colors: Colors; styles: any }) => (
-  <Card style={[styles.workflow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-    <View style={styles.workflowHeader}>
-      <Ionicons name="storefront-outline" size={18} color={colors.primary} />
-      <Text style={[styles.workflowTitle, { color: colors.textPrimary }]}>STORE VISIT</Text>
-    </View>
-    <Text style={[styles.workflowStore, { color: colors.textPrimary }]}>ABC Market</Text>
-
-    <View style={styles.workflowRow}>
-      <View style={styles.workflowHalf}>
-        <Text style={[styles.workflowSub, { color: colors.textMuted }]}>Last Settled</Text>
-        <View style={styles.workflowPair}>
-          <Text style={[styles.workflowLabel, { color: colors.textSecondary }]}>IN</Text>
-          <Text style={[styles.workflowValue, { color: colors.textPrimary }]}>10,000</Text>
-        </View>
-        <View style={styles.workflowPair}>
-          <Text style={[styles.workflowLabel, { color: colors.textSecondary }]}>OUT</Text>
-          <Text style={[styles.workflowValue, { color: colors.textPrimary }]}>7,500</Text>
-        </View>
-      </View>
-      <View style={[styles.workflowHalf, { borderLeftWidth: 1, borderLeftColor: colors.border, paddingLeft: spacing.md }]}>
-        <Text style={[styles.workflowSub, { color: colors.textMuted }]}>Present Reading</Text>
-        <View style={styles.workflowPair}>
-          <Text style={[styles.workflowLabel, { color: colors.textSecondary }]}>IN</Text>
-          <Text style={[styles.workflowValue, { color: colors.textPrimary }]}>10,850</Text>
-        </View>
-        <View style={styles.workflowPair}>
-          <Text style={[styles.workflowLabel, { color: colors.textSecondary }]}>OUT</Text>
-          <Text style={[styles.workflowValue, { color: colors.textPrimary }]}>8,100</Text>
-        </View>
-      </View>
-    </View>
-
-    <View style={[styles.workflowDiff, { backgroundColor: colors.surfaceSecondary }]}>
-      <Text style={[styles.workflowDiffTitle, { color: colors.textPrimary }]}>New Activity</Text>
-      <View style={styles.workflowRow}>
-        <View style={styles.workflowHalf}>
-          <Text style={[styles.workflowDiffLabel, { color: colors.textSecondary }]}>New IN</Text>
-          <Text style={[styles.workflowDiffValue, { color: colors.success }]}>+850</Text>
-        </View>
-        <View style={styles.workflowHalf}>
-          <Text style={[styles.workflowDiffLabel, { color: colors.textSecondary }]}>New OUT</Text>
-          <Text style={[styles.workflowDiffValue, { color: colors.success }]}>+600</Text>
-        </View>
-      </View>
-      <View style={[styles.workflowNet, { borderTopColor: colors.border }]}>
-        <Text style={[styles.workflowNetLabel, { color: colors.textSecondary }]}>Net</Text>
-        <Text style={[styles.workflowNetValue, { color: colors.accent }]}>+250</Text>
-      </View>
-    </View>
-
-    <View style={styles.workflowStatus}>
-      <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-      <Text style={[styles.workflowStatusText, { color: colors.success }]}>Ready to Submit</Text>
-    </View>
-  </Card>
-);
-
-const SectionAbout = ({ colors, router, onSelect, styles }: { colors: Colors; router: any; onSelect: (id: SectionId) => void; styles: any }) => (
-  <View>
-    <Text style={[styles.eyebrow, { color: colors.primary }]}>Bookkeeping by</Text>
-    <Text style={[styles.display, { color: colors.textPrimary }]}>Skillrout</Text>
-    <Text style={[styles.hero, { color: colors.textPrimary }]}>
-      Bookkeeping built around the way your stores actually operate.
-    </Text>
-    <Text style={[styles.body, { color: colors.textSecondary }]}>
-      Track machine readings, employee visits, settlements, receipts, photos, and history — without spreadsheets,
-      paper calculations, or missing records.
-    </Text>
-
-    <View style={styles.heroActions}>
-      <Button title="Create Owner Account" onPress={() => router.push('/owner/register')} iconName="arrow-forward" />
-      <Button title="Owner Sign In" onPress={() => router.push('/owner/login')} variant="secondary" />
-      <Button title="Employee Sign In" onPress={() => router.push('/employee/login')} variant="secondary" />
-      <Button title="See How It Works" onPress={() => onSelect('howItWorks')} variant="secondary" />
-    </View>
-
-    <Text style={[styles.trustLine, { color: colors.textMuted }]}>
-      Every visit recorded. Every calculation traceable.
-    </Text>
-
-    <MiniWorkflow colors={colors} styles={styles} />
-
-    <View style={styles.tiles}>
-      {[
-        { title: 'Stores', icon: 'storefront-outline' },
-        { title: 'Machines', icon: 'hardware-chip-outline' },
-        { title: 'Employees', icon: 'people-outline' },
-        { title: 'Settlements', icon: 'cash-outline' },
-      ].map(tile => (
-        <View key={tile.title} style={[styles.tile, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Ionicons name={tile.icon as any} size={28} color={colors.primary} />
-          <Text style={[styles.tileTitle, { color: colors.textPrimary }]}>{tile.title}</Text>
-        </View>
-      ))}
-    </View>
-  </View>
-);
-
-const SectionHowItWorks = ({ colors, styles }: { colors: Colors; styles: any }) => {
-  const steps = [
-    { n: '01', title: 'Select Store', body: 'Employee opens the assigned location.' },
-    { n: '02', title: 'Capture Readings', body: 'Enter machine IN/OUT readings or scan them.' },
-    { n: '03', title: 'RUN', body: 'Skillrout calculates activity from the last settled reading.' },
-    { n: '04', title: 'Review', body: 'Positive, zero, or negative result is clearly identified.' },
-    { n: '05', title: 'Submit or Print', body: 'Valid settlements advance the baseline.' },
-    { n: '06', title: 'History', body: 'Every completed visit stays permanently traceable.' },
-  ];
+  variant?: 'primary' | 'secondary';
+  icon?: keyof typeof Ionicons.glyphMap;
+}) => {
+  const colors = useColors();
+  const primary = variant === 'primary';
   return (
-    <View>
-      <Text style={[styles.eyebrow, { color: colors.primary }]}>How Skillrout Works</Text>
-      <Text style={[styles.h2, { color: colors.textPrimary }]}>Six steps. Less confusion.</Text>
-      <View style={styles.steps}>
-        {steps.map(step => (
-          <View key={step.n} style={styles.step}>
-            <View style={[styles.stepNumber, { backgroundColor: colors.primarySubtle, borderColor: colors.border }]}>
-              <Text style={[styles.stepNumberText, { color: colors.primary }]}>{step.n}</Text>
-            </View>
-            <View style={styles.stepBody}>
-              <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>{step.title}</Text>
-              <Text style={[styles.stepDesc, { color: colors.textSecondary }]}>{step.body}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
+    <Link href={href} asChild>
+      <Pressable
+        accessibilityRole="link"
+        style={({ pressed }) => [
+          styles.routeButton,
+          {
+            backgroundColor: primary ? colors.primary : colors.surface,
+            borderColor: primary ? colors.primary : colors.border,
+            opacity: pressed ? 0.78 : 1,
+          },
+        ]}
+      >
+        <Text style={[styles.routeButtonText, { color: primary ? colors.textOnPrimary : colors.textPrimary }]}>
+          {label}
+        </Text>
+        {icon && <Ionicons name={icon} size={18} color={primary ? colors.textOnPrimary : colors.primary} />}
+      </Pressable>
+    </Link>
   );
 };
 
-const SectionFeatures = ({ colors, styles }: { colors: Colors; styles: any }) => (
-  <View>
-    <Text style={[styles.eyebrow, { color: colors.primary }]}>Features</Text>
-    <Text style={[styles.h2, { color: colors.textPrimary }]}>Everything that keeps your records straight.</Text>
-    <View style={styles.bento}>
-      <Card style={[styles.bentoLarge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Ionicons name="storefront-outline" size={28} color={colors.primary} />
-        <Text style={[styles.bentoTitle, { color: colors.textPrimary }]}>Store & Machine Tracking</Text>
-        <Text style={[styles.bentoBody, { color: colors.textSecondary }]}>Keep every location and machine organized.</Text>
-      </Card>
-      <Card style={[styles.bentoSmall, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Ionicons name="time-outline" size={24} color={colors.primary} />
-        <Text style={[styles.bentoTitle, { color: colors.textPrimary }]}>Visit History</Text>
-        <Text style={[styles.bentoBody, { color: colors.textSecondary }]}>Every RUN creates a permanent record.</Text>
-      </Card>
-      <Card style={[styles.bentoSmall, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Ionicons name="calculator-outline" size={24} color={colors.primary} />
-        <Text style={[styles.bentoTitle, { color: colors.textPrimary }]}>Auto Calculations</Text>
-        <Text style={[styles.bentoBody, { color: colors.textSecondary }]}>Changes from the last settled reading.</Text>
-      </Card>
-      <Card style={[styles.bentoSmall, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Ionicons name="camera-outline" size={24} color={colors.primary} />
-        <Text style={[styles.bentoTitle, { color: colors.textPrimary }]}>Machine Photos</Text>
-        <Text style={[styles.bentoBody, { color: colors.textSecondary }]}>Attach evidence directly to the visit.</Text>
-      </Card>
-      <Card style={[styles.bentoSmall, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Ionicons name="receipt-outline" size={24} color={colors.primary} />
-        <Text style={[styles.bentoTitle, { color: colors.textPrimary }]}>Thermal Receipts</Text>
-        <Text style={[styles.bentoBody, { color: colors.textSecondary }]}>Generate print-ready settlement reports.</Text>
-      </Card>
-      <Card style={[styles.bentoLarge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Ionicons name="people-outline" size={28} color={colors.primary} />
-        <Text style={[styles.bentoTitle, { color: colors.textPrimary }]}>Employee Accountability</Text>
-        <Text style={[styles.bentoBody, { color: colors.textSecondary }]}>Know who visited, when, and what they recorded.</Text>
-      </Card>
-      <Card style={[styles.bentoSmall, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Ionicons name="bar-chart-outline" size={24} color={colors.primary} />
-        <Text style={[styles.bentoTitle, { color: colors.textPrimary }]}>Insights</Text>
-        <Text style={[styles.bentoBody, { color: colors.textSecondary }]}>Understand visits, trends, and exceptions.</Text>
-      </Card>
-    </View>
-  </View>
-);
-
-const SectionOcr = ({ colors, styles }: { colors: Colors; styles: any }) => (
-  <View>
-    <Text style={[styles.eyebrow, { color: colors.primary }]}>OCR Scanning</Text>
-    <Text style={[styles.h2, { color: colors.textPrimary }]}>Faster readings with OCR</Text>
-    <View style={[styles.comingSoonPill, { backgroundColor: colors.accentSubtle, borderColor: colors.border }]}>
-      <Text style={[styles.comingSoonPillText, { color: colors.accent }]}>Coming Soon</Text>
-    </View>
-    <Text style={[styles.body, { color: colors.textSecondary }]}>
-      Point your camera at a machine meter and Skillrout will help capture the reading automatically.
-    </Text>
-    <Card style={[styles.ocrFlow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      {['Scan Meter', 'Review reading', 'Confirm'].map((step, i) => (
-        <View key={step} style={styles.ocrStep}>
-          <View style={[styles.ocrDot, { backgroundColor: colors.primary }]}>
-            <Text style={[styles.ocrDotText, { color: colors.textOnPrimary }]}>{i + 1}</Text>
-          </View>
-          <Text style={[styles.ocrText, { color: colors.textPrimary }]}>{step}</Text>
-          {i < 2 && <Ionicons name="arrow-down" size={18} color={colors.textMuted} style={styles.ocrArrow} />}
-        </View>
-      ))}
-    </Card>
-    <Text style={[styles.body, { color: colors.textSecondary }]}>
-      You stay in control. Scanned readings are reviewed before they are accepted.
-    </Text>
-  </View>
-);
-
-const SectionAccuracy = ({ colors, styles }: { colors: Colors; styles: any }) => (
-  <View>
-    <Text style={[styles.eyebrow, { color: colors.primary }]}>Accuracy & Controls</Text>
-    <Text style={[styles.h2, { color: colors.textPrimary }]}>Built-in safeguards for every settlement.</Text>
-    <View style={styles.checks}>
-      {[
-        'Last settled values preserved',
-        'Automatic IN / OUT calculation',
-        'Positive-only settlement submission',
-        'Store + Vendor % validation',
-        'Duplicate/concurrent submission protection',
-        'Permanent RUN history',
-        'Submitted records protected from normal editing',
-      ].map(item => (
-        <View key={item} style={styles.check}>
-          <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-          <Text style={[styles.checkText, { color: colors.textSecondary }]}>{item}</Text>
-        </View>
-      ))}
-    </View>
-    <View style={[styles.callout, { backgroundColor: colors.accentSubtle, borderColor: colors.border }]}>
-      <Text style={[styles.calloutTitle, { color: colors.accentDark }]}>RUN ≠ PRINT ≠ SUBMIT</Text>
-      <Text style={[styles.calloutBody, { color: colors.textSecondary }]}>
-        RUN records the visit. PRINT produces the report. SUBMIT advances the settlement.
-      </Text>
-    </View>
-    <Text style={[styles.body, { color: colors.textSecondary }]}>
-      Less manual calculation. More control. Better records.
-    </Text>
-  </View>
-);
-
-const SectionInsights = ({ colors, styles }: { colors: Colors; styles: any }) => (
-  <View>
-    <Text style={[styles.eyebrow, { color: colors.primary }]}>Insights</Text>
-    <Text style={[styles.h2, { color: colors.textPrimary }]}>See what is happening across the business.</Text>
-    <Card style={[styles.insightsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.insightsTitle, { color: colors.textPrimary }]}>THIS MONTH</Text>
-      <View style={styles.insightsGrid}>
-        {[
-          { label: 'Store Visits', value: '48' },
-          { label: 'Submitted', value: '36' },
-          { label: 'Printed Only', value: '8' },
-          { label: 'Pending', value: '4' },
-        ].map(item => (
-          <View key={item.label} style={styles.insight}>
-            <Text style={[styles.insightValue, { color: colors.textPrimary }]}>{item.value}</Text>
-            <Text style={[styles.insightLabel, { color: colors.textMuted }]}>{item.label}</Text>
-          </View>
-        ))}
+const LivePreview = ({ colors }: { colors: Colors }) => (
+  <View style={[styles.previewShell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={styles.previewTop}>
+      <View>
+        <Text style={[styles.previewEyebrow, { color: colors.textMuted }]}>LIVE STORE VISIT</Text>
+        <Text style={[styles.previewStore, { color: colors.textPrimary }]}>ABC Market</Text>
       </View>
-      <View style={[styles.net, { borderTopColor: colors.border }]}>
-        <Text style={[styles.netLabel, { color: colors.textSecondary }]}>Net Activity</Text>
-        <Text style={[styles.netValue, { color: colors.accent }]}>$12,540</Text>
+      <View style={[styles.liveBadge, { backgroundColor: colors.primarySubtle }]}>
+        <View style={[styles.liveDot, { backgroundColor: colors.success }]} />
+        <Text style={[styles.liveText, { color: colors.primary }]}>Live preview</Text>
       </View>
-    </Card>
-    <Text style={[styles.body, { color: colors.textSecondary }]}>
-      Track store activity, employee activity, settlement totals, positive/negative results, pending settlements,
-      machine history, and visit frequency.
-    </Text>
-  </View>
-);
+    </View>
 
-const SectionSecurity = ({ colors, styles }: { colors: Colors; styles: any }) => (
-  <View>
-    <Text style={[styles.eyebrow, { color: colors.primary }]}>Security</Text>
-    <Text style={[styles.h2, { color: colors.textPrimary }]}>Your operational history should stay yours.</Text>
-    <View style={styles.checks}>
-      {[
-        'Secure authentication',
-        'Role-based access',
-        'Protected submitted settlements',
-        'Timestamped activity',
-        'Historical snapshots',
-        'Controlled employee permissions',
-      ].map(item => (
-        <View key={item} style={styles.check}>
-          <Ionicons name="lock-closed" size={18} color={colors.primary} />
-          <Text style={[styles.checkText, { color: colors.textSecondary }]}>{item}</Text>
-        </View>
-      ))}
+    <View style={[styles.scanPanel, { backgroundColor: colors.background, borderColor: colors.border }]}>
+      <View style={[styles.scanIcon, { backgroundColor: colors.primary }]}>
+        <Ionicons name="scan" size={28} color={colors.textOnPrimary} />
+      </View>
+      <View style={styles.scanCopy}>
+        <Text style={[styles.scanTitle, { color: colors.textPrimary }]}>Machine 12 scanned</Text>
+        <Text style={[styles.scanBody, { color: colors.textSecondary }]}>Readings recognized and ready to review</Text>
+      </View>
+      <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+    </View>
+
+    <View style={styles.readingGrid}>
+      <View style={[styles.readingCard, { backgroundColor: colors.surfaceSecondary }]}>
+        <Text style={[styles.readingLabel, { color: colors.textMuted }]}>LAST SETTLED IN</Text>
+        <Text style={[styles.readingValue, { color: colors.textPrimary }]}>10,000</Text>
+      </View>
+      <View style={[styles.readingCard, { backgroundColor: colors.primarySubtle }]}>
+        <Text style={[styles.readingLabel, { color: colors.textMuted }]}>PRESENT IN</Text>
+        <Text style={[styles.readingValue, { color: colors.textPrimary }]}>10,850</Text>
+      </View>
+      <View style={[styles.readingCard, { backgroundColor: colors.surfaceSecondary }]}>
+        <Text style={[styles.readingLabel, { color: colors.textMuted }]}>LAST SETTLED OUT</Text>
+        <Text style={[styles.readingValue, { color: colors.textPrimary }]}>7,500</Text>
+      </View>
+      <View style={[styles.readingCard, { backgroundColor: colors.primarySubtle }]}>
+        <Text style={[styles.readingLabel, { color: colors.textMuted }]}>PRESENT OUT</Text>
+        <Text style={[styles.readingValue, { color: colors.textPrimary }]}>8,100</Text>
+      </View>
+    </View>
+
+    <View style={[styles.calculation, { borderTopColor: colors.border }]}>
+      <View>
+        <Text style={[styles.calculationLabel, { color: colors.textMuted }]}>AUTOMATIC CALCULATION</Text>
+        <Text style={[styles.calculationFormula, { color: colors.textSecondary }]}>New IN 850 − New OUT 600</Text>
+      </View>
+      <Text style={[styles.netValue, { color: colors.accent }]}>+$250</Text>
+    </View>
+
+    <View style={[styles.readyBar, { backgroundColor: colors.primary }]}>
+      <Ionicons name="shield-checkmark" size={20} color={colors.textOnPrimary} />
+      <Text style={[styles.readyText, { color: colors.textOnPrimary }]}>Settlement ready for review</Text>
     </View>
   </View>
 );
-
-const SectionComingSoon = ({ colors, styles }: { colors: Colors; styles: any }) => (
-  <View>
-    <Text style={[styles.eyebrow, { color: colors.primary }]}>Coming Soon</Text>
-    <Text style={[styles.h2, { color: colors.textPrimary }]}>What we’re building next.</Text>
-    <View style={styles.comingSoonGrid}>
-      {[
-        { title: 'OCR Meter Scanning', body: 'Capture readings faster using the camera.', icon: 'camera-outline' },
-        { title: 'Smarter Insights', body: 'Spot unusual activity and trends automatically.', icon: 'bulb-outline' },
-        { title: 'Visit Reminders', body: 'Know when stores need attention.', icon: 'calendar-outline' },
-      ].map(card => (
-        <Card key={card.title} style={[styles.comingSoonCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Ionicons name={card.icon as any} size={28} color={colors.accent} />
-          <Text style={[styles.comingSoonTitle, { color: colors.textPrimary }]}>{card.title}</Text>
-          <Text style={[styles.comingSoonBody, { color: colors.textSecondary }]}>{card.body}</Text>
-          <View style={[styles.comingSoonPillInline, { backgroundColor: colors.accentSubtle }]}>
-            <Text style={[styles.comingSoonPillText, { color: colors.accent }]}>Coming Soon</Text>
-          </View>
-        </Card>
-      ))}
-    </View>
-  </View>
-);
-
-const SectionFooter = ({ colors, router, styles }: { colors: Colors; router: any; styles: any }) => (
-  <View style={[styles.final, { borderTopColor: colors.border }]}>
-    <Text style={[styles.finalTitle, { color: colors.textPrimary }]}>
-      Spend less time reconciling records. Spend more time running the business.
-    </Text>
-    <View style={styles.finalActions}>
-      <Button title="Create Owner Account" onPress={() => router.push('/owner/register')} iconName="arrow-forward" />
-      <Button title="Employee Sign In" onPress={() => router.push('/employee/login')} variant="secondary" />
-    </View>
-    <Pressable onPress={() => router.push('/owner/login')} style={styles.finalSignIn} accessibilityRole="button">
-      <Text style={[styles.finalSignInText, { color: colors.primary }]}>Already using Skillrout as an owner? Sign in.</Text>
-    </Pressable>
-  </View>
-);
-
-const SECTION_RENDERERS: Record<SectionId, (props: { colors: Colors; router: any; onSelect: (id: SectionId) => void; styles: any }) => React.ReactElement> = {
-  about: SectionAbout,
-  howItWorks: SectionHowItWorks,
-  features: SectionFeatures,
-  ocr: SectionOcr,
-  accuracy: SectionAccuracy,
-  insights: SectionInsights,
-  security: SectionSecurity,
-  comingSoon: SectionComingSoon,
-};
 
 export default function IndexScreen() {
   const colors = useColors();
-  const styles = makeStyles(colors);
-  const router = useRouter();
   const { user, role, loading } = useAuth();
   const { width } = useWindowDimensions();
-  const [activeSection, setActiveSection] = useState<SectionId>('about');
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionOffsets = useRef<Partial<Record<SectionKey, number>>>({});
   const [signInOpen, setSignInOpen] = useState(false);
-  const isWide = width >= 768;
+  const isDesktop = width >= 900;
 
   if (loading) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
-        <BrandMark size={spacing.xxl} style={styles.logoSmall} />
+        <BrandMark size={55} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading Skillrout…</Text>
       </View>
     );
   }
 
-  if (user && role) {
-    return <Redirect href={role === 'owner' ? '/dashboard' : '/select-store'} />;
-  }
+  if (user && role) return <Redirect href={role === 'owner' ? '/dashboard' : '/select-store'} />;
 
-  const ActiveComponent = SECTION_RENDERERS[activeSection];
+  const scrollTo = (section: SectionKey) => {
+    const y = sectionOffsets.current[section];
+    if (typeof y === 'number') scrollRef.current?.scrollTo({ y: Math.max(0, y - 80), animated: true });
+  };
+
+  const sectionLayout = (section: SectionKey) => (event: any) => {
+    sectionOffsets.current[section] = event.nativeEvent.layout.y;
+  };
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+    <ScrollView
+      ref={scrollRef}
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={styles.page}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={[styles.nav, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
         <View style={styles.brand}>
-          <BrandMark size={spacing.xxl} style={styles.logoSmall} />
+          <BrandMark size={44} />
           <View>
             <Text style={[styles.brandEyebrow, { color: colors.primary }]}>BOOKKEEPING BY</Text>
             <Text style={[styles.brandName, { color: colors.textPrimary }]}>Skillrout</Text>
           </View>
         </View>
 
-        <View style={styles.headerActions}>
-          <View style={styles.dropdown}>
+        {isDesktop && (
+          <View style={styles.navLinks}>
+            <Pressable onPress={() => scrollTo('features')} style={styles.navLink} accessibilityRole="button">
+              <Text style={[styles.navLinkText, { color: colors.textSecondary }]}>Features</Text>
+            </Pressable>
+            <Pressable onPress={() => scrollTo('how')} style={styles.navLink} accessibilityRole="button">
+              <Text style={[styles.navLinkText, { color: colors.textSecondary }]}>How It Works</Text>
+            </Pressable>
+            <Pressable onPress={() => scrollTo('security')} style={styles.navLink} accessibilityRole="button">
+              <Text style={[styles.navLinkText, { color: colors.textSecondary }]}>Security</Text>
+            </Pressable>
+          </View>
+        )}
+
+        <View style={styles.navActions}>
+          <View style={styles.signInMenu}>
             <Pressable
-              onPress={() => setSignInOpen(v => !v)}
-              style={styles.dropdownTrigger}
+              onPress={() => setSignInOpen(value => !value)}
+              style={styles.signInTrigger}
               accessibilityRole="button"
               accessibilityLabel="Sign in"
+              accessibilityState={{ expanded: signInOpen }}
             >
-              <Text style={[styles.dropdownTriggerText, { color: colors.textPrimary }]}>Sign In</Text>
+              <Text style={[styles.signInText, { color: colors.textPrimary }]}>Sign In</Text>
               <Ionicons name={signInOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textPrimary} />
             </Pressable>
             {signInOpen && (
-              <View style={[styles.dropdownMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.signInDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Link href="/owner/login" asChild>
-                  <Pressable
-                    onPress={() => setSignInOpen(false)}
-                    style={styles.dropdownItem}
-                    accessibilityRole="link"
-                  >
-                    <Ionicons name="briefcase-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.dropdownItemText, { color: colors.textPrimary }]}>Owner Sign In</Text>
+                  <Pressable onPress={() => setSignInOpen(false)} style={styles.signInOption} accessibilityRole="link">
+                    <Ionicons name="briefcase-outline" size={19} color={colors.primary} />
+                    <View>
+                      <Text style={[styles.signInOptionTitle, { color: colors.textPrimary }]}>Owner Sign In</Text>
+                      <Text style={[styles.signInOptionBody, { color: colors.textMuted }]}>Manage your business</Text>
+                    </View>
                   </Pressable>
                 </Link>
                 <Link href="/employee/login" asChild>
-                  <Pressable
-                    onPress={() => setSignInOpen(false)}
-                    style={styles.dropdownItem}
-                    accessibilityRole="link"
-                  >
-                    <Ionicons name="people-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.dropdownItemText, { color: colors.textPrimary }]}>Employee Sign In</Text>
+                  <Pressable onPress={() => setSignInOpen(false)} style={styles.signInOption} accessibilityRole="link">
+                    <Ionicons name="people-outline" size={19} color={colors.primary} />
+                    <View>
+                      <Text style={[styles.signInOptionTitle, { color: colors.textPrimary }]}>Employee Sign In</Text>
+                      <Text style={[styles.signInOptionBody, { color: colors.textMuted }]}>Complete store visits</Text>
+                    </View>
                   </Pressable>
                 </Link>
               </View>
             )}
           </View>
-          <Button title="Create Owner Account" onPress={() => router.push('/owner/register')} compact />
+          <RouteButton href="/owner/register" label={isDesktop ? 'Get Started' : 'Start'} icon="arrow-forward" />
         </View>
       </View>
 
-      <View style={[isWide ? styles.split : styles.stack, { flexDirection: isWide ? 'row' : 'column' }]}>
-        <View style={[styles.left, isWide && styles.leftWide]}>
-          <Text style={[styles.discover, { color: colors.textMuted }]}>Discover Skillrout</Text>
-          {SECTIONS.map(section => {
-            const active = activeSection === section.id;
-            return (
-              <Pressable
-                key={section.id}
-                onPress={() => setActiveSection(section.id)}
-                style={[styles.navItem, active && { borderLeftColor: colors.accent }]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-              >
-                <Ionicons name={section.icon} size={20} color={active ? colors.accent : colors.textMuted} />
-                <Text
-                  style={[
-                    styles.navLabel,
-                    { color: active ? colors.accent : colors.textSecondary },
-                    active && styles.navLabelActive,
-                  ]}
-                >
-                  {section.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+      <View style={[styles.hero, { flexDirection: isDesktop ? 'row' : 'column' }]}>
+        <View style={styles.heroCopy}>
+          <View style={[styles.kicker, { backgroundColor: colors.primarySubtle }]}>
+            <Ionicons name="sparkles-outline" size={16} color={colors.primary} />
+            <Text style={[styles.kickerText, { color: colors.primary }]}>A calmer way to run store visits</Text>
+          </View>
+          <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
+            Every Store Visit.{`\n`}Every Machine.{`\n`}
+            <Text style={{ color: colors.accent }}>Every Settlement.</Text>{`\n`}Accounted for.
+          </Text>
+          <Text style={[styles.heroBody, { color: colors.textSecondary }]}>
+            Replace spreadsheets, paper logs, and manual math with a clean operational system built for stores,
+            machines, employees, and settlements.
+          </Text>
+          <View style={styles.heroActions}>
+            <RouteButton href="/owner/register" label="Create Owner Account" icon="arrow-forward" />
+            <Pressable onPress={() => scrollTo('how')} style={styles.textAction} accessibilityRole="button">
+              <Text style={[styles.textActionLabel, { color: colors.textPrimary }]}>See how it works</Text>
+              <Ionicons name="arrow-down" size={18} color={colors.primary} />
+            </Pressable>
+          </View>
+          <View style={styles.trustRow}>
+            {['Every visit recorded', 'Automatic calculations', 'Traceable history'].map(item => (
+              <View key={item} style={styles.trustItem}>
+                <Ionicons name="checkmark-circle" size={17} color={colors.success} />
+                <Text style={[styles.trustText, { color: colors.textSecondary }]}>{item}</Text>
+              </View>
+            ))}
+          </View>
         </View>
+        <View style={styles.heroPreview}>
+          <LivePreview colors={colors} />
+        </View>
+      </View>
 
-        <View style={[styles.right, isWide && styles.rightWide]}>
-          <ActiveComponent colors={colors} router={router} onSelect={setActiveSection} styles={styles} />
-          <SectionFooter colors={colors} router={router} styles={styles} />
+      <View style={[styles.proofBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.proofLead, { color: colors.textPrimary }]}>One system. One reliable record.</Text>
+        {[
+          { value: 'RUN', label: 'records the visit' },
+          { value: 'PRINT', label: 'creates the report' },
+          { value: 'SUBMIT', label: 'advances settlement' },
+        ].map(item => (
+          <View key={item.value} style={styles.proofItem}>
+            <Text style={[styles.proofValue, { color: colors.accent }]}>{item.value}</Text>
+            <Text style={[styles.proofLabel, { color: colors.textMuted }]}>{item.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.section} onLayout={sectionLayout('how')}>
+        <View style={styles.sectionHeading}>
+          <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>HOW IT WORKS</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>From store visit to permanent history.</Text>
+          <Text style={[styles.sectionBody, { color: colors.textSecondary }]}>
+            A clear workflow guides employees while preserving the controls owners depend on.
+          </Text>
+        </View>
+        <View style={styles.workflowSteps}>
+          {workflowSteps.map((step, index) => (
+            <View key={step.title} style={styles.workflowStep}>
+              <View style={[styles.stepIcon, { backgroundColor: index === 1 ? colors.accentSubtle : colors.primarySubtle }]}>
+                <Ionicons name={step.icon} size={23} color={index === 1 ? colors.accent : colors.primary} />
+              </View>
+              <Text style={[styles.stepNumber, { color: colors.textMuted }]}>0{index + 1}</Text>
+              <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>{step.title}</Text>
+              <Text style={[styles.stepBody, { color: colors.textSecondary }]}>{step.body}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section} onLayout={sectionLayout('features')}>
+        <View style={styles.sectionHeading}>
+          <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>BUILT FOR REAL OPERATIONS</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Powerful without feeling complicated.</Text>
+          <Text style={[styles.sectionBody, { color: colors.textSecondary }]}>
+            The details your business needs, organized into one calm workspace.
+          </Text>
+        </View>
+        <View style={styles.bentoGrid}>
+          {features.map(feature => (
+            <Card
+              key={feature.title}
+              style={[
+                styles.featureCard,
+                'large' in feature && feature.large && styles.featureCardLarge,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.featureTop}>
+                <View style={[styles.featureIcon, { backgroundColor: colors.primarySubtle }]}>
+                  <Ionicons name={feature.icon} size={25} color={colors.primary} />
+                </View>
+                {'badge' in feature && feature.badge && (
+                  <View style={[styles.featureBadge, { backgroundColor: colors.accentSubtle }]}>
+                    <Text style={[styles.featureBadgeText, { color: colors.accent }]}>{feature.badge}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>{feature.title}</Text>
+              <Text style={[styles.featureBody, { color: colors.textSecondary }]}>{feature.body}</Text>
+            </Card>
+          ))}
+        </View>
+      </View>
+
+      <View
+        style={[styles.securitySection, { backgroundColor: colors.primary, flexDirection: isDesktop ? 'row' : 'column' }]}
+        onLayout={sectionLayout('security')}
+      >
+        <View style={styles.securityCopy}>
+          <Text style={[styles.securityEyebrow, { color: colors.textOnPrimary }]}>SECURITY & CONTROL</Text>
+          <Text style={[styles.securityTitle, { color: colors.textOnPrimary }]}>Trust the record, not the paperwork.</Text>
+          <Text style={[styles.securityBody, { color: colors.textOnPrimary }]}>
+            Role-based access, protected submissions, permanent snapshots, and controlled business rules keep your
+            operational history accountable.
+          </Text>
+        </View>
+        <View style={styles.securityChecks}>
+          {[
+            'Secure Firebase authentication',
+            'Owner-controlled employee access',
+            'Protected submitted settlements',
+            'Timestamped activity and history',
+            'Duplicate submission safeguards',
+            'Photos tied to the relevant visit',
+          ].map(item => (
+            <View key={item} style={styles.securityCheck}>
+              <View style={[styles.securityCheckIcon, { backgroundColor: colors.textOnPrimary }]}>
+                <Ionicons name="checkmark" size={16} color={colors.primary} />
+              </View>
+              <Text style={[styles.securityCheckText, { color: colors.textOnPrimary }]}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section} onLayout={sectionLayout('roles')}>
+        <View style={styles.sectionHeading}>
+          <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>CHOOSE YOUR ROLE</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>The right workspace for the work you do.</Text>
+        </View>
+        <View style={[styles.roleGrid, { flexDirection: isDesktop ? 'row' : 'column' }]}>
+          <Card style={[styles.ownerRole, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.roleIcon, { backgroundColor: colors.primarySubtle }]}>
+              <Ionicons name="briefcase-outline" size={28} color={colors.primary} />
+            </View>
+            <Text style={[styles.roleLabel, { color: colors.primary }]}>OWNER</Text>
+            <Text style={[styles.roleTitle, { color: colors.textPrimary }]}>Run the operation.</Text>
+            <Text style={[styles.roleBody, { color: colors.textSecondary }]}>
+              Create stores and machines, provide employee access, review visits, manage settlements, and understand
+              what is happening across the business.
+            </Text>
+            <View style={styles.roleActions}>
+              <RouteButton href="/owner/register" label="Create Owner Account" icon="arrow-forward" />
+              <RouteButton href="/owner/login" label="Owner Sign In" variant="secondary" />
+            </View>
+          </Card>
+          <Card style={[styles.employeeRole, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+            <View style={[styles.roleIcon, { backgroundColor: colors.accentSubtle }]}>
+              <Ionicons name="people-outline" size={28} color={colors.accent} />
+            </View>
+            <Text style={[styles.roleLabel, { color: colors.accent }]}>EMPLOYEE</Text>
+            <Text style={[styles.roleTitle, { color: colors.textPrimary }]}>Complete store visits.</Text>
+            <Text style={[styles.roleBody, { color: colors.textSecondary }]}>
+              Select an assigned store, capture readings and photos, review calculations, print receipts, and submit
+              eligible settlements.
+            </Text>
+            <Text style={[styles.roleNote, { color: colors.textMuted }]}>Employee access is provided by your business owner.</Text>
+            <RouteButton href="/employee/login" label="Employee Sign In" variant="secondary" icon="arrow-forward" />
+          </Card>
+        </View>
+      </View>
+
+      <View style={[styles.finalCta, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <BrandMark size={55} />
+        <Text style={[styles.finalTitle, { color: colors.textPrimary }]}>Every visit accounted for.</Text>
+        <Text style={[styles.finalBody, { color: colors.textSecondary }]}>Start building a cleaner operational record today.</Text>
+        <RouteButton href="/owner/register" label="Get Started" icon="arrow-forward" />
+      </View>
+
+      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+        <View style={styles.brand}>
+          <BrandMark size={36} />
+          <Text style={[styles.footerBrand, { color: colors.textPrimary }]}>Skillrout</Text>
+        </View>
+        <Text style={[styles.footerText, { color: colors.textMuted }]}>Bookkeeping built around real store operations.</Text>
+        <View style={styles.footerLinks}>
+          <Pressable onPress={() => scrollTo('features')} style={styles.footerLink} accessibilityRole="button">
+            <Text style={[styles.footerLinkText, { color: colors.textSecondary }]}>Features</Text>
+          </Pressable>
+          <Pressable onPress={() => scrollTo('security')} style={styles.footerLink} accessibilityRole="button">
+            <Text style={[styles.footerLinkText, { color: colors.textSecondary }]}>Security</Text>
+          </Pressable>
+          <Link href="/owner/login" asChild>
+            <Pressable style={styles.footerLink} accessibilityRole="link">
+              <Text style={[styles.footerLinkText, { color: colors.textSecondary }]}>Sign In</Text>
+            </Pressable>
+          </Link>
         </View>
       </View>
     </ScrollView>
   );
 }
 
-const makeStyles = (colors: Colors) =>
-  StyleSheet.create({
-    container: {
-      flexGrow: 1,
-      padding: spacing.lg,
-    },
-    loading: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.md,
-    },
-    loadingText: {
-      fontSize: fontSizes.body,
-    },
-    logoSmall: {
-      width: spacing.xxl,
-      height: spacing.xxl,
-      borderRadius: radii.lg,
-      resizeMode: 'contain',
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingBottom: spacing.lg,
-      marginBottom: spacing.xl,
-      gap: spacing.md,
-      zIndex: 1000,
-    },
-    brand: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    brandEyebrow: {
-      fontSize: fontSizes.caption,
-      fontWeight: '700',
-      letterSpacing: letterSpacings.wide,
-    },
-    brandName: {
-      fontSize: fontSizes.h3,
-      fontWeight: '800',
-      letterSpacing: letterSpacings.tight,
-    },
-    headerActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    dropdown: {
-      position: 'relative',
-      zIndex: 1001,
-    },
-    dropdownTrigger: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      minHeight: 44,
-      paddingHorizontal: spacing.sm,
-    },
-    dropdownTriggerText: {
-      fontSize: fontSizes.body,
-      fontWeight: '600',
-    },
-    dropdownMenu: {
-      position: 'absolute',
-      top: 40,
-      right: 0,
-      minWidth: 180,
-      borderWidth: 1,
-      borderRadius: radii.md,
-      padding: spacing.xs,
-      zIndex: 1002,
-      elevation: 12,
-    },
-    dropdownItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      minHeight: 44,
-      paddingHorizontal: spacing.sm,
-      borderRadius: radii.sm,
-    },
-    dropdownItemText: {
-      fontSize: fontSizes.body,
-      fontWeight: '600',
-    },
-    split: {
-      flex: 1,
-      gap: spacing.xl,
-    },
-    stack: {
-      flex: 1,
-      gap: spacing.lg,
-    },
-    left: {
-      gap: spacing.xs,
-    },
-    leftWide: {
-      width: '38%',
-      maxWidth: 280,
-    },
-    discover: {
-      fontSize: fontSizes.caption,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: letterSpacings.wide,
-      marginBottom: spacing.sm,
-    },
-    navItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      minHeight: 48,
-      paddingHorizontal: spacing.sm,
-      borderLeftWidth: 2,
-      borderLeftColor: 'transparent',
-      borderRadius: radii.sm,
-    },
-    navLabel: {
-      fontSize: fontSizes.body,
-      fontWeight: '600',
-    },
-    navLabelActive: {
-      fontWeight: '800',
-    },
-    right: {
-      flex: 1,
-      gap: spacing.xl,
-      paddingBottom: spacing.xxl,
-    },
-    rightWide: {
-      width: '62%',
-    },
-    eyebrow: {
-      fontSize: fontSizes.caption,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: letterSpacings.wide,
-      marginBottom: spacing.xs,
-    },
-    display: {
-      fontSize: fontSizes.display,
-      fontWeight: '800',
-      color: colors.textPrimary,
-      marginBottom: spacing.sm,
-      letterSpacing: letterSpacings.tight,
-    },
-    hero: {
-      fontSize: fontSizes.h1,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      marginBottom: spacing.md,
-      lineHeight: lineHeights.h1,
-    },
-    body: {
-      fontSize: fontSizes.body,
-      lineHeight: lineHeights.body,
-      color: colors.textSecondary,
-      marginBottom: spacing.md,
-    },
-    heroActions: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    trustLine: {
-      fontSize: fontSizes.caption,
-      fontStyle: 'italic',
-      marginBottom: spacing.xl,
-    },
-    workflow: {
-      maxWidth: 400,
-      padding: spacing.lg,
-      borderWidth: 1,
-      marginTop: spacing.md,
-      marginBottom: spacing.xl,
-    },
-    workflowHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      marginBottom: spacing.xs,
-    },
-    workflowTitle: {
-      fontSize: fontSizes.caption,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: letterSpacings.wide,
-    },
-    workflowStore: {
-      fontSize: fontSizes.h2,
-      fontWeight: '700',
-      marginBottom: spacing.md,
-    },
-    workflowRow: {
-      flexDirection: 'row',
-      gap: spacing.md,
-    },
-    workflowHalf: {
-      flex: 1,
-    },
-    workflowSub: {
-      fontSize: fontSizes.caption,
-      fontWeight: '600',
-      marginBottom: spacing.xs,
-    },
-    workflowPair: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: spacing.xs,
-    },
-    workflowLabel: {
-      fontSize: fontSizes.body,
-    },
-    workflowValue: {
-      fontSize: fontSizes.body,
-      fontWeight: '700',
-    },
-    workflowDiff: {
-      borderRadius: radii.md,
-      padding: spacing.md,
-      marginTop: spacing.md,
-      marginBottom: spacing.md,
-    },
-    workflowDiffTitle: {
-      fontSize: fontSizes.caption,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: letterSpacings.wide,
-      marginBottom: spacing.sm,
-    },
-    workflowDiffLabel: {
-      fontSize: fontSizes.caption,
-    },
-    workflowDiffValue: {
-      fontSize: fontSizes.h3,
-      fontWeight: '800',
-    },
-    workflowNet: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      borderTopWidth: 1,
-      marginTop: spacing.md,
-      paddingTop: spacing.md,
-    },
-    workflowNetLabel: {
-      fontSize: fontSizes.body,
-      fontWeight: '700',
-    },
-    workflowNetValue: {
-      fontSize: fontSizes.h2,
-      fontWeight: '800',
-    },
-    workflowStatus: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-    },
-    workflowStatusText: {
-      fontSize: fontSizes.body,
-      fontWeight: '700',
-    },
-    tiles: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.md,
-      marginTop: spacing.md,
-    },
-    tile: {
-      flex: 1,
-      minWidth: 120,
-      minHeight: 100,
-      padding: spacing.md,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
-    },
-    tileTitle: {
-      fontSize: fontSizes.body,
-      fontWeight: '700',
-    },
-    h2: {
-      fontSize: fontSizes.h2,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      marginBottom: spacing.lg,
-      lineHeight: lineHeights.h2,
-    },
-    steps: {
-      gap: spacing.md,
-    },
-    step: {
-      flexDirection: 'row',
-      gap: spacing.md,
-    },
-    stepNumber: {
-      width: 44,
-      height: 44,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    stepNumberText: {
-      fontSize: fontSizes.body,
-      fontWeight: '800',
-    },
-    stepBody: {
-      flex: 1,
-      paddingTop: spacing.xs,
-    },
-    stepTitle: {
-      fontSize: fontSizes.h3,
-      fontWeight: '700',
-      marginBottom: spacing.xs,
-    },
-    stepDesc: {
-      fontSize: fontSizes.body,
-      lineHeight: lineHeights.body,
-    },
-    bento: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.md,
-    },
-    bentoLarge: {
-      width: '100%',
-      minWidth: 240,
-      flex: 1,
-    },
-    bentoSmall: {
-      width: '47%',
-      minWidth: 160,
-      flex: 1,
-    },
-    bentoTitle: {
-      fontSize: fontSizes.h3,
-      fontWeight: '700',
-      marginTop: spacing.sm,
-      marginBottom: spacing.xs,
-    },
-    bentoBody: {
-      fontSize: fontSizes.body,
-      lineHeight: lineHeights.body,
-    },
-    comingSoonPill: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
-      borderRadius: radii.pill,
-      borderWidth: 1,
-      marginBottom: spacing.md,
-    },
-    comingSoonPillText: {
-      fontSize: fontSizes.caption,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: letterSpacings.wide,
-    },
-    ocrFlow: {
-      padding: spacing.lg,
-      marginTop: spacing.md,
-      marginBottom: spacing.md,
-      alignItems: 'center',
-      borderWidth: 1,
-    },
-    ocrStep: {
-      alignItems: 'center',
-      gap: spacing.xs,
-    },
-    ocrDot: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    ocrDotText: {
-      fontSize: fontSizes.body,
-      fontWeight: '700',
-    },
-    ocrText: {
-      fontSize: fontSizes.body,
-      fontWeight: '600',
-    },
-    ocrArrow: {
-      marginVertical: spacing.xs,
-    },
-    checks: {
-      gap: spacing.sm,
-      marginBottom: spacing.lg,
-    },
-    check: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      minHeight: 36,
-    },
-    checkText: {
-      fontSize: fontSizes.body,
-      lineHeight: lineHeights.body,
-    },
-    callout: {
-      borderRadius: radii.md,
-      padding: spacing.lg,
-      borderWidth: 1,
-      marginBottom: spacing.lg,
-    },
-    calloutTitle: {
-      fontSize: fontSizes.h3,
-      fontWeight: '800',
-      marginBottom: spacing.xs,
-    },
-    calloutBody: {
-      fontSize: fontSizes.body,
-      lineHeight: lineHeights.body,
-    },
-    insightsCard: {
-      padding: spacing.lg,
-      borderWidth: 1,
-      marginBottom: spacing.md,
-    },
-    insightsTitle: {
-      fontSize: fontSizes.caption,
-      fontWeight: '700',
-      letterSpacing: letterSpacings.wide,
-      marginBottom: spacing.md,
-    },
-    insightsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.md,
-      marginBottom: spacing.md,
-    },
-    insight: {
-      width: '45%',
-      minWidth: 120,
-    },
-    insightValue: {
-      fontSize: fontSizes.h2,
-      fontWeight: '800',
-    },
-    insightLabel: {
-      fontSize: fontSizes.caption,
-    },
-    net: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      borderTopWidth: 1,
-      paddingTop: spacing.md,
-    },
-    netLabel: {
-      fontSize: fontSizes.body,
-      fontWeight: '700',
-    },
-    netValue: {
-      fontSize: fontSizes.h2,
-      fontWeight: '800',
-    },
-    comingSoonGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.md,
-    },
-    comingSoonCard: {
-      flex: 1,
-      minWidth: 220,
-      borderWidth: 1,
-    },
-    comingSoonTitle: {
-      fontSize: fontSizes.h3,
-      fontWeight: '700',
-      marginTop: spacing.sm,
-      marginBottom: spacing.xs,
-    },
-    comingSoonBody: {
-      fontSize: fontSizes.body,
-      lineHeight: lineHeights.body,
-      marginBottom: spacing.md,
-    },
-    comingSoonPillInline: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
-      borderRadius: radii.pill,
-    },
-    final: {
-      borderTopWidth: 1,
-      paddingTop: spacing.xl,
-      marginTop: spacing.xl,
-    },
-    finalTitle: {
-      fontSize: fontSizes.h2,
-      fontWeight: '700',
-      textAlign: 'center',
-      marginBottom: spacing.lg,
-      lineHeight: lineHeights.h2,
-    },
-    finalActions: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    finalSignIn: {
-      alignSelf: 'center',
-      minHeight: 44,
-      justifyContent: 'center',
-    },
-    finalSignInText: {
-      fontSize: fontSizes.body,
-      fontWeight: '600',
-    },
-  });
-
+const styles = StyleSheet.create({
+  page: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
+  loadingText: {
+    fontSize: fontSizes.body,
+  },
+  nav: {
+    minHeight: 76,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    borderBottomWidth: 1,
+    zIndex: 1000,
+  },
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  brandEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: letterSpacings.wide,
+  },
+  brandName: {
+    fontSize: fontSizes.h3,
+    fontWeight: '800',
+  },
+  navLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xl,
+  },
+  navLink: {
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  navLinkText: {
+    fontSize: fontSizes.body,
+    fontWeight: '600',
+  },
+  navActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  signInMenu: {
+    position: 'relative',
+    zIndex: 1001,
+  },
+  signInTrigger: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  signInText: {
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  signInDropdown: {
+    position: 'absolute',
+    top: 48,
+    right: 0,
+    minWidth: 230,
+    padding: spacing.xs,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    zIndex: 1002,
+    elevation: 12,
+  },
+  signInOption: {
+    minHeight: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.sm,
+  },
+  signInOptionTitle: {
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  signInOptionBody: {
+    fontSize: fontSizes.caption,
+    marginTop: 2,
+  },
+  routeButton: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderRadius: radii.md,
+  },
+  routeButtonText: {
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  hero: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    alignItems: 'center',
+    gap: spacing.xl,
+    paddingVertical: spacing.xxl,
+  },
+  heroCopy: {
+    flex: 1,
+    minWidth: 280,
+  },
+  kicker: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
+    marginBottom: spacing.lg,
+  },
+  kickerText: {
+    fontSize: fontSizes.caption,
+    fontWeight: '700',
+  },
+  heroTitle: {
+    fontSize: fontSizes.display,
+    lineHeight: lineHeights.display,
+    fontWeight: '800',
+    letterSpacing: -1.2,
+    marginBottom: spacing.lg,
+  },
+  heroBody: {
+    maxWidth: 600,
+    fontSize: fontSizes.h3,
+    lineHeight: 25,
+    marginBottom: spacing.lg,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  textAction: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  textActionLabel: {
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  trustRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  trustItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  trustText: {
+    fontSize: fontSizes.caption,
+    fontWeight: '600',
+  },
+  heroPreview: {
+    flex: 1,
+    minWidth: 280,
+    width: '100%',
+    maxWidth: 540,
+  },
+  previewShell: {
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderRadius: radii.xl,
+    gap: spacing.md,
+  },
+  previewTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  previewEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: letterSpacings.wide,
+  },
+  previewStore: {
+    fontSize: fontSizes.h2,
+    fontWeight: '800',
+    marginTop: spacing.xs,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: radii.pill,
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  scanPanel: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderRadius: radii.md,
+  },
+  scanIcon: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+  },
+  scanCopy: {
+    flex: 1,
+  },
+  scanTitle: {
+    fontSize: fontSizes.body,
+    fontWeight: '800',
+  },
+  scanBody: {
+    fontSize: fontSizes.caption,
+    marginTop: spacing.xs,
+  },
+  readingGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  readingCard: {
+    width: '48%',
+    flexGrow: 1,
+    minWidth: 140,
+    padding: spacing.md,
+    borderRadius: radii.md,
+  },
+  readingLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  readingValue: {
+    fontSize: fontSizes.h2,
+    fontWeight: '800',
+    marginTop: spacing.xs,
+  },
+  calculation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+  },
+  calculationLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  calculationFormula: {
+    fontSize: fontSizes.caption,
+    marginTop: spacing.xs,
+  },
+  netValue: {
+    fontSize: fontSizes.h1,
+    fontWeight: '800',
+  },
+  readyBar: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.md,
+  },
+  readyText: {
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  proofBar: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderRadius: radii.lg,
+  },
+  proofLead: {
+    fontSize: fontSizes.h3,
+    fontWeight: '800',
+  },
+  proofItem: {
+    alignItems: 'center',
+  },
+  proofValue: {
+    fontSize: fontSizes.h3,
+    fontWeight: '800',
+  },
+  proofLabel: {
+    fontSize: fontSizes.caption,
+    marginTop: spacing.xs,
+  },
+  section: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    paddingTop: spacing.xxl + spacing.xl,
+    paddingBottom: spacing.xxl,
+  },
+  sectionHeading: {
+    maxWidth: 700,
+    marginBottom: spacing.xl,
+  },
+  sectionEyebrow: {
+    fontSize: fontSizes.caption,
+    fontWeight: '800',
+    letterSpacing: letterSpacings.uppercase,
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: fontSizes.h1,
+    lineHeight: lineHeights.h1,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    marginBottom: spacing.md,
+  },
+  sectionBody: {
+    fontSize: fontSizes.h3,
+    lineHeight: 25,
+  },
+  workflowSteps: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  workflowStep: {
+    flex: 1,
+    minWidth: 170,
+    paddingRight: spacing.md,
+  },
+  stepIcon: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+    marginBottom: spacing.md,
+  },
+  stepNumber: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: letterSpacings.wide,
+    marginBottom: spacing.xs,
+  },
+  stepTitle: {
+    fontSize: fontSizes.h3,
+    fontWeight: '800',
+    marginBottom: spacing.xs,
+  },
+  stepBody: {
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
+  },
+  bentoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  featureCard: {
+    flex: 1,
+    minWidth: 240,
+    minHeight: 210,
+    borderWidth: 1,
+    justifyContent: 'flex-start',
+  },
+  featureCardLarge: {
+    minWidth: 340,
+    flexGrow: 2,
+  },
+  featureTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  featureIcon: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+  },
+  featureBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+  },
+  featureBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  featureTitle: {
+    fontSize: fontSizes.h2,
+    fontWeight: '800',
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  featureBody: {
+    maxWidth: 430,
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
+  },
+  securitySection: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    gap: spacing.xl,
+    padding: spacing.xl,
+    borderRadius: radii.xl,
+    marginVertical: spacing.xl,
+  },
+  securityCopy: {
+    flex: 1,
+  },
+  securityEyebrow: {
+    fontSize: fontSizes.caption,
+    fontWeight: '800',
+    letterSpacing: letterSpacings.uppercase,
+    opacity: 0.78,
+    marginBottom: spacing.md,
+  },
+  securityTitle: {
+    fontSize: fontSizes.h1,
+    lineHeight: lineHeights.h1,
+    fontWeight: '800',
+    marginBottom: spacing.md,
+  },
+  securityBody: {
+    fontSize: fontSizes.h3,
+    lineHeight: 25,
+    opacity: 0.88,
+  },
+  securityChecks: {
+    flex: 1,
+    gap: spacing.md,
+  },
+  securityCheck: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  securityCheckIcon: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+  },
+  securityCheckText: {
+    flex: 1,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  roleGrid: {
+    gap: spacing.lg,
+  },
+  ownerRole: {
+    flex: 1.2,
+    borderWidth: 1,
+    padding: spacing.xl,
+  },
+  employeeRole: {
+    flex: 0.8,
+    borderWidth: 1,
+    padding: spacing.xl,
+  },
+  roleIcon: {
+    width: 55,
+    height: 55,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.lg,
+    marginBottom: spacing.lg,
+  },
+  roleLabel: {
+    fontSize: fontSizes.caption,
+    fontWeight: '800',
+    letterSpacing: letterSpacings.uppercase,
+    marginBottom: spacing.sm,
+  },
+  roleTitle: {
+    fontSize: fontSizes.h1,
+    fontWeight: '800',
+    marginBottom: spacing.md,
+  },
+  roleBody: {
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
+    marginBottom: spacing.lg,
+  },
+  roleNote: {
+    fontSize: fontSizes.caption,
+    marginBottom: spacing.md,
+  },
+  roleActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  finalCta: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderRadius: radii.xl,
+    marginVertical: spacing.xxl,
+  },
+  finalTitle: {
+    fontSize: fontSizes.h1,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  finalBody: {
+    fontSize: fontSizes.h3,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  footer: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    minHeight: 84,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    borderTopWidth: 1,
+  },
+  footerBrand: {
+    fontSize: fontSizes.h3,
+    fontWeight: '800',
+  },
+  footerText: {
+    fontSize: fontSizes.caption,
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  footerLink: {
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  footerLinkText: {
+    fontSize: fontSizes.caption,
+    fontWeight: '700',
+  },
+});
