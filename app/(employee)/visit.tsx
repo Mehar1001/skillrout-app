@@ -324,7 +324,7 @@ export default function VisitScreen() {
             </Text>
             <Button
               title="Add Machine"
-              onPress={() => router.push(`/machines` as any)}
+              onPress={() => router.push(`/add-machine?storeId=${storeId}` as any)}
               variant="primary"
             />
           </Card>

@@ -13,6 +13,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import {
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -124,9 +125,11 @@ export default function EmployeeSignInScreen() {
             <Text style={styles.backHomeText}>Back to home</Text>
           </Pressable>
           <View style={styles.header}>
-            <View style={styles.logo} accessibilityLabel="Skillrout">
-              <Ionicons name="receipt-outline" size={30} color={colors.textOnPrimary} />
-            </View>
+            <Image
+              source={require('../../assets/images/skillrout-icon-blue.png')}
+              style={[styles.logo, { tintColor: colors.primary }]}
+              accessibilityLabel="Skillrout"
+            />
             <Text style={styles.tagline}>Bookkeeping by</Text>
             <Text style={styles.title}>Skillrout</Text>
             <Text style={styles.subtitle}>Employee sign in</Text>
@@ -234,10 +237,8 @@ const makeStyles = (colors: Colors) =>
       height: spacing.xxl,
       borderRadius: radii.lg,
       marginBottom: spacing.md,
-      justifyContent: 'center',
-      alignItems: 'center',
       alignSelf: 'center',
-      backgroundColor: colors.primary,
+      resizeMode: 'contain',
     },
     tagline: {
       fontSize: fontSizes.caption,
