@@ -186,14 +186,16 @@ export default function OnboardStoreScreen() {
         {machines.map((machine, index) => (
           <View key={machine.id} style={styles.machineRow}>
             <View style={styles.machineInputs}>
-              <Input
-                style={styles.machineInput}
-                label={index === 0 ? 'Machine #' : undefined}
-                placeholder="#"
-                value={machine.machineNumber}
-                onChangeText={text => updateMachine(machine.id, 'machineNumber', text)}
-                error={errors[`machineNumber_${index}`]}
-              />
+              <View style={styles.machineNumberField}>
+                <Input
+                  style={styles.machineInput}
+                  label={index === 0 ? 'Machine #' : undefined}
+                  placeholder="#"
+                  value={machine.machineNumber}
+                  onChangeText={text => updateMachine(machine.id, 'machineNumber', text)}
+                  error={errors[`machineNumber_${index}`]}
+                />
+              </View>
               <Input
                 style={styles.machineInput}
                 label={index === 0 ? 'Machine name' : undefined}
@@ -316,6 +318,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  machineNumberField: {
+    width: 120,
+    maxWidth: '100%',
   },
   machineInput: {
     flex: 1,

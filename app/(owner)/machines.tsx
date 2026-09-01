@@ -75,13 +75,15 @@ export default function MachinesScreen() {
       <Text style={styles.sectionTitle}>
         {form.id ? 'Edit Machine' : 'Add Machine'}
       </Text>
-      <Input
-        label="Machine Number"
-        value={form.machineNumber}
-        onChangeText={text => setForm(prev => ({ ...prev, machineNumber: text }))}
-        placeholder="Auto-generated"
-        editable={!form.id}
-      />
+      <View style={styles.machineNumberField}>
+        <Input
+          label="Machine Number"
+          value={form.machineNumber}
+          onChangeText={text => setForm(prev => ({ ...prev, machineNumber: text }))}
+          placeholder="Auto-generated"
+          editable={!form.id}
+        />
+      </View>
       <Input
         label="Machine Name *"
         value={form.name || ''}
@@ -373,6 +375,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   formCard: {
     marginBottom: spacing.md,
+  },
+  machineNumberField: {
+    width: '100%',
+    maxWidth: 180,
   },
   row: {
     flexDirection: 'row',
