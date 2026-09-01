@@ -106,7 +106,9 @@ const SectionAbout = ({ colors, router, onSelect, styles }: { colors: Colors; ro
     </Text>
 
     <View style={styles.heroActions}>
-      <Button title="Get Started" onPress={() => router.push('/owner/register')} iconName="arrow-forward" />
+      <Button title="Create Owner Account" onPress={() => router.push('/owner/register')} iconName="arrow-forward" />
+      <Button title="Owner Sign In" onPress={() => router.push('/owner/login')} variant="secondary" />
+      <Button title="Employee Sign In" onPress={() => router.push('/employee/login')} variant="secondary" />
       <Button title="See How It Works" onPress={() => onSelect('howItWorks')} variant="secondary" />
     </View>
 
@@ -351,7 +353,7 @@ const SectionFooter = ({ colors, router, styles }: { colors: Colors; router: any
       <Button title="Employee Sign In" onPress={() => router.push('/employee/login')} variant="secondary" />
     </View>
     <Pressable onPress={() => router.push('/owner/login')} style={styles.finalSignIn} accessibilityRole="button">
-      <Text style={[styles.finalSignInText, { color: colors.primary }]}>Already using Skillrout? Sign in.</Text>
+      <Text style={[styles.finalSignInText, { color: colors.primary }]}>Already using Skillrout as an owner? Sign in.</Text>
     </Pressable>
   </View>
 );
@@ -512,6 +514,7 @@ const makeStyles = (colors: Colors) =>
       paddingBottom: spacing.lg,
       marginBottom: spacing.xl,
       gap: spacing.md,
+      zIndex: 1000,
     },
     brand: {
       flexDirection: 'row',
@@ -535,6 +538,7 @@ const makeStyles = (colors: Colors) =>
     },
     dropdown: {
       position: 'relative',
+      zIndex: 1001,
     },
     dropdownTrigger: {
       flexDirection: 'row',
@@ -555,7 +559,8 @@ const makeStyles = (colors: Colors) =>
       borderWidth: 1,
       borderRadius: radii.md,
       padding: spacing.xs,
-      zIndex: 100,
+      zIndex: 1002,
+      elevation: 12,
     },
     dropdownItem: {
       flexDirection: 'row',
