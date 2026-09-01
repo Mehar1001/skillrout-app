@@ -54,6 +54,9 @@ export function mapFirebaseError(error: unknown): string {
   if (code === 'unauthenticated' || code === 'functions/unauthenticated') {
     return 'Please sign in again.';
   }
+  if (code === 'functions/internal') {
+    return 'The server could not complete the request. Check the status before trying again.';
+  }
   if (code === 'not-found') {
     return 'The requested record was not found.';
   }

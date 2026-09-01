@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { MachineReadingTable } from '../../components/MachineReadingTable';
@@ -12,14 +12,34 @@ import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDraftQueue } from '../../contexts/DraftQueueContext';
 
+import { mapFirebaseError } from '../../helpers/firebaseErrors';
 import { matchReceiptCandidates, ReceiptReviewRow } from '../../helpers/receiptMachineMatching';
 import { validateBusinessDate, validatePresentReading } from '../../helpers/validators';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { listMachines } from '../../services/machines';
 import { prepareReceiptImage, readReceiptImage } from '../../services/receiptOcr';
 import { getStore } from '../../services/stores';
-import { getVisit, saveRun } from '../../services/visits';
+import { createVisitId, getVisit, type RunProgress, saveRun } from '../../services/visits';
 import { Machine, MachineReadingDraft, ReceiptOcrResponse, Store } from '../../types';
+
+const RUN_TIMEOUT_MS = 30000;
+
+const runProgressMessages: Record<RunProgress | 'checking', string> = {
+  preparing: 'Preparing your visit…',
+  'uploading-photos': 'Uploading machine photos…',
+  'uploading-receipt': 'Uploading the receipt…',
+  recording: 'Recording the visit securely…',
+  checking: 'Checking whether the visit was recorded…',
+};
+
+const withTimeout = <T,>(promise: Promise<T>, milliseconds: number): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('RUN_CONFIRMATION_TIMEOUT')), milliseconds);
+    promise.then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error); }
+    );
+  });
 
 export default function VisitScreen() {
   const colors = useColors();
@@ -35,6 +55,9 @@ export default function VisitScreen() {
   const [readings, setReadings] = useState<Record<string, MachineReadingDraft>>({});
   const businessDate = dayjs().format('YYYY-MM-DD');
   const [saving, setSaving] = useState(false);
+  const [runProgress, setRunProgress] = useState<RunProgress | 'checking' | 'unknown' | 'failed' | null>(null);
+  const [runMessage, setRunMessage] = useState('');
+  const [pendingVisitId, setPendingVisitId] = useState<string | null>(null);
   const [showRequiredErrors, setShowRequiredErrors] = useState(false);
   const [completedVisitId, setCompletedVisitId] = useState<string | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -201,8 +224,39 @@ export default function VisitScreen() {
     closeReceiptReview();
   };
 
+  const completeRun = (visitId: string) => {
+    setPendingVisitId(null);
+    setRunProgress(null);
+    setRunMessage('Visit recorded successfully.');
+    setCompletedVisitId(visitId);
+  };
+
+  const findRecordedVisit = async (visitId: string) => {
+    if (!ownerId || !storeId) return null;
+    return withTimeout(getVisit(ownerId, storeId, visitId), 10000).catch(() => null);
+  };
+
+  const checkRunStatus = async () => {
+    if (!pendingVisitId) return;
+    setSaving(true);
+    setRunProgress('checking');
+    setRunMessage('');
+    try {
+      const recorded = await findRecordedVisit(pendingVisitId);
+      if (recorded) {
+        completeRun(pendingVisitId);
+      } else {
+        setRunProgress('unknown');
+        setRunMessage('The visit is not recorded yet. You can safely retry RUN with the same visit reference.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRun = async () => {
     if (!user || !ownerId || !store || !storeId) return;
+    setRunMessage('');
     setShowRequiredErrors(true);
     if (dateError) {
       Alert.alert('Invalid Date', dateError);
@@ -240,14 +294,35 @@ export default function VisitScreen() {
       return;
     }
 
+    const visitId = pendingVisitId || createVisitId(ownerId, storeId);
+    setPendingVisitId(visitId);
     setSaving(true);
+    setRunProgress('preparing');
     try {
-      setCompletedVisitId(await saveRun(ownerId, storeId, businessDate, machines, readings, receiptImageUri ?? undefined));
-    } catch (e: any) {
-      Alert.alert(
-        'RUN Failed',
-        e.message || 'The visit could not be recorded. Your entries are still on screen; try again when online.'
+      if (pendingVisitId && await findRecordedVisit(visitId)) {
+        completeRun(visitId);
+        return;
+      }
+      const recordedVisitId = await withTimeout(
+        saveRun(ownerId, storeId, businessDate, machines, readings, receiptImageUri ?? undefined, {
+          visitId,
+          onProgress: setRunProgress,
+        }),
+        RUN_TIMEOUT_MS
       );
+      completeRun(recordedVisitId);
+    } catch (error: any) {
+      setRunProgress('checking');
+      const recorded = await findRecordedVisit(visitId);
+      if (recorded) {
+        completeRun(visitId);
+      } else if (error?.message === 'RUN_CONFIRMATION_TIMEOUT') {
+        setRunProgress('unknown');
+        setRunMessage('RUN is taking longer than expected. Check the status before trying again.');
+      } else {
+        setRunProgress('failed');
+        setRunMessage(`${mapFirebaseError(error)} Your readings are still on screen.`);
+      }
     } finally {
       setSaving(false);
     }
@@ -348,8 +423,41 @@ export default function VisitScreen() {
             />
 
             <View style={styles.runArea}>
+              {(saving || runProgress || runMessage) && (
+                <View style={[
+                  styles.runStatus,
+                  runProgress === 'failed' && styles.runStatusError,
+                  runProgress === 'unknown' && styles.runStatusWarning,
+                ]}>
+                  {saving && <ActivityIndicator size="small" color={colors.primary} />}
+                  <View style={styles.runStatusCopy}>
+                    <Text style={styles.runStatusTitle}>
+                      {saving && runProgress && runProgress !== 'unknown' && runProgress !== 'failed'
+                        ? runProgressMessages[runProgress]
+                        : runProgress === 'unknown'
+                          ? 'RUN status needs confirmation'
+                          : runProgress === 'failed'
+                            ? 'RUN was not completed'
+                            : runMessage}
+                    </Text>
+                    {saving ? <Text style={styles.runStatusHelp}>Keep this page open. Do not press RUN again.</Text> : null}
+                    {!saving && runMessage ? <Text style={styles.runStatusHelp}>{runMessage}</Text> : null}
+                  </View>
+                  {!saving && runProgress === 'unknown' ? (
+                    <View style={styles.checkStatusButton}>
+                      <Button title="Check Status" onPress={checkRunStatus} variant="secondary" compact />
+                    </View>
+                  ) : null}
+                </View>
+              )}
               <View style={styles.runButtonWrapper}>
-                <Button title={isOnline ? 'RUN' : 'Save Offline Draft'} onPress={handleRun} loading={saving} disabled={saving} variant="primary" />
+                <Button
+                  title={isOnline ? pendingVisitId ? 'Retry RUN' : 'RUN' : 'Save Offline Draft'}
+                  onPress={handleRun}
+                  loading={saving}
+                  disabled={saving}
+                  variant="primary"
+                />
               </View>
               <Text style={styles.runHelp}>
                 {isOnline
@@ -560,6 +668,43 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xl,
     alignItems: 'center',
+  },
+  runStatus: {
+    width: '100%',
+    maxWidth: 640,
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    backgroundColor: colors.primarySubtle,
+  },
+  runStatusWarning: {
+    borderColor: colors.warning,
+    backgroundColor: colors.surfaceSecondary,
+  },
+  runStatusError: {
+    borderColor: colors.error,
+    backgroundColor: colors.glowError,
+  },
+  runStatusCopy: {
+    flex: 1,
+  },
+  runStatusTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  runStatusHelp: {
+    marginTop: spacing.xs,
+    color: colors.textSecondary,
+    fontSize: fontSizes.caption,
+  },
+  checkStatusButton: {
+    minWidth: 120,
   },
   runButtonWrapper: {
     width: '50%',

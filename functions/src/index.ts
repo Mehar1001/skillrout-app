@@ -3,12 +3,14 @@ import { initializeApp } from 'firebase-admin/app'; // Corrected: Import initial
 import { getAuth } from 'firebase-admin/auth';
 import { DocumentReference, FieldValue, getFirestore, QueryDocumentSnapshot } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
 import { logger } from 'firebase-functions';
+import { setGlobalOptions } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import { extractReceiptText } from './cloudVisionReceiptOcr.js';
 import { parseReceiptText } from './receiptOcr.js';
 
 // Initialize Firebase Admin SDK using the direct import
 initializeApp(); // Called directly
+setGlobalOptions({ region: 'us-central1' });
 const db = getFirestore(); // Corrected: Get Firestore instance directly
 const auth = getAuth();
 
@@ -497,21 +499,29 @@ export const runVisit = onCall(async (request: CallableRequest) => {
   const visitRef = db.doc(`owners/${caller.ownerId}/stores/${storeId}/visits/${visitId}`);
   const machineQuery = db.collection(`owners/${caller.ownerId}/stores/${storeId}/machines`).where('active', '==', true);
 
+  const activeMachineSnapshot = await machineQuery.get();
+  if (activeMachineSnapshot.empty) throw new HttpsError('failed-precondition', 'This store has no active machines.');
+  const activeMachineRefs = activeMachineSnapshot.docs.map(machine => machine.ref);
+
   await db.runTransaction(async transaction => {
-    const storeDoc = await transaction.get(storeRef);
-    const existingVisit = await transaction.get(visitRef);
-    const machineDocs = await transaction.get(machineQuery);
+    const [storeDoc, existingVisit, ...machineDocs] = await transaction.getAll(
+      storeRef,
+      visitRef,
+      ...activeMachineRefs
+    );
     if (!storeDoc.exists) throw new HttpsError('not-found', 'Store not found.');
     if (existingVisit.exists) throw new HttpsError('already-exists', 'This visit has already been recorded.');
-    if (machineDocs.empty) throw new HttpsError('failed-precondition', 'This store has no active machines.');
+    if (machineDocs.some(machine => !machine.exists || machine.data()?.active !== true)) {
+      throw new HttpsError('aborted', 'The store machines changed. Refresh and run again.');
+    }
 
     const readingByMachine = new Map(readings.map(reading => [reading.machineId, reading]));
-    if (readingByMachine.size !== machineDocs.size) {
+    if (readingByMachine.size !== machineDocs.length) {
       throw new HttpsError('invalid-argument', 'Enter readings for every active machine.');
     }
 
-    const visitMachines = machineDocs.docs.map(machineDoc => {
-      const machine = machineDoc.data();
+    const visitMachines = machineDocs.map(machineDoc => {
+      const machine = machineDoc.data()!;
       const reading = readingByMachine.get(machineDoc.id);
       if (!reading || !Number.isFinite(reading.presentIn) || !Number.isFinite(reading.presentOut)) {
         throw new HttpsError('invalid-argument', `Valid readings are required for machine ${machine.machineNumber}.`);

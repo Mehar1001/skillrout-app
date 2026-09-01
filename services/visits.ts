@@ -23,6 +23,11 @@ const getVisitRef = (ownerId: string, storeId: string, visitId: string) =>
 const getVisitsRef = (ownerId: string, storeId: string) =>
   collection(db, `owners/${ownerId}/stores/${storeId}/visits`);
 
+export type RunProgress = 'preparing' | 'uploading-photos' | 'uploading-receipt' | 'recording';
+
+export const createVisitId = (ownerId: string, storeId: string): string =>
+  doc(getVisitsRef(ownerId, storeId)).id;
+
 export const getVisit = async (
   ownerId: string,
   storeId: string | undefined,
@@ -75,14 +80,19 @@ export const saveRun = async (
     visitId?: string;
     preUploadedPhotos?: Record<string, UploadedVisitPhoto>;
     preUploadedReceipt?: UploadedVisitPhoto;
+    onProgress?: (progress: RunProgress) => void;
   }
 ): Promise<string> => {
-  const visitId = options?.visitId || doc(getVisitsRef(ownerId, storeId)).id;
+  const visitId = options?.visitId || createVisitId(ownerId, storeId);
+  options?.onProgress?.('preparing');
   const uploadedPhotos = new Map<string, UploadedVisitPhoto>();
   if (options?.preUploadedPhotos) {
     Object.entries(options.preUploadedPhotos).forEach(([machineId, photo]) => {
       uploadedPhotos.set(machineId, photo);
     });
+  }
+  if (machines.some(machine => readings[machine.id]?.photoUri && !uploadedPhotos.has(machine.id))) {
+    options?.onProgress?.('uploading-photos');
   }
   await Promise.all(
     machines.map(async machine => {
@@ -95,12 +105,14 @@ export const saveRun = async (
       );
     })
   );
+  if (receiptPhotoUri && !options?.preUploadedReceipt) options?.onProgress?.('uploading-receipt');
   const uploadedReceipt = options?.preUploadedReceipt
     ? options.preUploadedReceipt
     : receiptPhotoUri
       ? await uploadVisitReceipt(ownerId, storeId, visitId, receiptPhotoUri)
       : undefined;
 
+  options?.onProgress?.('recording');
   const runVisit = httpsCallable(functions, 'runVisit');
   await runVisit({
     visitId,

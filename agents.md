@@ -101,6 +101,8 @@ Create and reuse these first when they exist:
 Planned primitives that are **not yet implemented**: `Select.tsx`, `Badge.tsx`, `VisitSummary.tsx`, `OwnerShell.tsx`. Before creating a one-off component, ask: can an existing primitive handle this?
 
 ## 6. Cloud Functions
+- Cloud Functions and the web Functions client are explicitly configured for `us-central1`; Firestore uses the `nam5` multi-region.
+- A `us-central1-<project>.cloudfunctions.net` request URL is expected and does not indicate a region mismatch.
 All Cloud Functions live in `functions/src/index.ts` and include:
 - `registerOwnerProfile` / `provisionOwner` — owner onboarding
 - `createEmployee` / `setEmployeeActive` / `resetEmployeeTemporaryPassword` / `updateEmployeeAssignments` — employee management

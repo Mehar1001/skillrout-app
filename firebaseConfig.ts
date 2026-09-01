@@ -29,7 +29,7 @@ if (Platform.OS === 'web') {
 // Initialize other Firebase Services
 const db = getFirestore(app);
 const storage = getStorage(app);
-const functions = getFunctions(app);
+const functions = getFunctions(app, 'us-central1');
 
 // Export the services you need for your app
 export { auth, db, firebaseConfig, functions, storage };
