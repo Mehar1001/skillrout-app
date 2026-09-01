@@ -383,8 +383,8 @@ export default function IndexScreen() {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <Image
-          source={require('../assets/images/skillrout-icon-blue.png')}
-          style={[styles.logoSmall, { tintColor: colors.primary }]}
+          source={require('../assets/images/skillrout-icon-green.png')}
+          style={styles.logoSmall}
           accessibilityLabel="Skillrout"
         />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading Skillrout…</Text>
@@ -403,8 +403,8 @@ export default function IndexScreen() {
       <View style={styles.header}>
         <View style={styles.brand}>
           <Image
-            source={require('../assets/images/skillrout-icon-blue.png')}
-            style={[styles.logoSmall, { tintColor: colors.primary }]}
+            source={require('../assets/images/skillrout-icon-green.png')}
+            style={styles.logoSmall}
             accessibilityLabel="Skillrout"
           />
           <View>

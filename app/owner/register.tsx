@@ -108,8 +108,8 @@ export default function RequestAccessScreen() {
           </Pressable>
           <View style={styles.header}>
             <Image
-              source={require('../../assets/images/skillrout-icon-blue.png')}
-              style={[styles.logo, { tintColor: colors.primary }]}
+              source={require('../../assets/images/skillrout-icon-green.png')}
+              style={styles.logo}
               accessibilityLabel="Skillrout"
             />
             <Text style={styles.tagline}>Bookkeeping by</Text>
