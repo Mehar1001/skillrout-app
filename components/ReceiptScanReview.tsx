@@ -131,7 +131,7 @@ export const ReceiptScanReview = ({
                     <Text style={styles.machineTitle}>Receipt machine {row.receiptMachineNumber}</Text>
                     <Text style={machine ? styles.matchText : styles.unmatchedText}>
                       {machine
-                        ? `Matched Machine ${machine.machineNumber}${machine.name ? ` · ${machine.name}` : ''}`
+                        ? `Matched ${machine.machineNumber}${machine.name ? ` · ${machine.name}` : ''}`
                         : 'No matching Skillrout machine'}
                     </Text>
                   </View>

@@ -55,7 +55,7 @@ describe('receipt machine values', () => {
 
   it('renders machine values in printable HTML', () => {
     const html = generateReceiptHtml(visit);
-    assert.match(html, /Lightning2 <span class="machine-serial">#786339<\/span>/);
+    assert.match(html, /<span class="machine-number">786339<\/span><span>Lightning2<\/span>/);
     assert.match(html, /37,078\.00 - 42,693\.00/);
     assert.match(html, /Cash<\/span><span>\$5,615\.00/);
     assert.match(html, /Payout \*<\/span><span>\(\$6,840\.00\)/);

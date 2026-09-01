@@ -235,7 +235,7 @@ export default function ReportsScreen() {
             {summary.machineSummaries.slice(0, 20).map(m => (
               <View key={`${m.storeId}:${m.machineId}`} style={styles.summaryRow}>
                 <View style={styles.summaryLeft}>
-                  <Text style={styles.summaryName}>{m.machineName || 'Unnamed machine'} · #{m.machineNumber}</Text>
+                  <Text style={styles.summaryName}>{m.machineNumber} · {m.machineName || 'Unnamed machine'}</Text>
                   <Text style={styles.summaryMeta}>{m.storeName} · {m.visitCount} visit{m.visitCount === 1 ? '' : 's'}</Text>
                 </View>
                 <View style={styles.summaryRight}>
@@ -284,7 +284,7 @@ export default function ReportsScreen() {
                     <View style={styles.visitDetails}>
                       {sortMachinesByNumber(visit.machines).map((m, i) => (
                         <View key={m.machineId} style={styles.detailRow}>
-                          <Text style={styles.detailLabel}>{i + 1}. {m.name || 'Unnamed machine'} · #{m.machineNumber}</Text>
+                          <Text style={styles.detailLabel}>{m.machineNumber} · {m.name || 'Unnamed machine'}</Text>
                           <Text style={styles.detailValue}>
                             IN {formatCurrency(m.presentIn)} · OUT {formatCurrency(m.presentOut)} · Net {formatCurrency(m.machineNet)}
                           </Text>

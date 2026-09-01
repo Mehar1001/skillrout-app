@@ -85,7 +85,7 @@ export const MachineReadingTable = ({
                 <View style={[styles.row, rowError ? styles.rowError : null]}>
                   <View style={styles.machineCol}>
                     <Text style={styles.machineName} numberOfLines={1}>{machine.name || 'Unnamed'}</Text>
-                    <Text style={styles.machineNumber}>#{machine.machineNumber}</Text>
+                    <Text style={styles.machineNumber}>{machine.machineNumber}</Text>
                   </View>
 
                   <View style={styles.baselineCol}>

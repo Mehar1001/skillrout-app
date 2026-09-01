@@ -91,7 +91,7 @@ export default function AddMachineScreen() {
       <Card style={styles.form}>
         <View style={styles.machineNumberField}>
           <Input
-            label="Serial #"
+            label="Number"
             value={machineNumber}
             error={errors.machineNumber}
             placeholder="Auto-generated"

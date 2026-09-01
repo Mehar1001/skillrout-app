@@ -1,23 +1,22 @@
 # Skillrout
 
-A production machine-reading and settlement platform for businesses that operate machines across multiple stores. Built with **Expo 53**, **React Native**, and **Firebase**.
+A production bookkeeping and operations platform for businesses that run machines across multiple stores. Built with **Expo 53**, **React Native**, and **Firebase**.
 
 ## What it does
 
-- Owner signup and sign-in with email verification.
-- Store and machine onboarding with cumulative IN/OUT baselines.
-- Employee onboarding, store assignment, and role-aware routing.
-- Employee store selection, machine readings, and the `RUN` / `PRINT` / `SUBMIT` flow.
-- Receipt and machine-photo capture, OCR, and review.
-- Fuzzy receipt machine-number matching and automatic visit-machine matching.
-- Historical visit corrections with optional baseline rewrite.
-- One-year OCR result caching and permanent visit history.
-- Clean, tokenized, Apple-like UI with bundled Ionicons on web and native.
+- Separate owner and employee sign-in, workspaces, and role-aware routing.
+- Owner store, machine, employee, and settlement management.
+- Employee store selection, cumulative IN/OUT readings, and visit recording.
+- Plain `1, 2, 3` machine numbering in the UI and on receipts — no `#` or `Serial` prefixes.
+- `RUN` / `PRINT` / `SUBMIT` workflow with immutable visit snapshots.
+- Retry-safe `RUN` with staged progress, timeout, and status check.
+- Thermal receipt and machine photo capture, plus receipt OCR parsing and legacy-number matching.
+- Owner history, reports, and employee history.
 
 ## Live app
 
-- **Web**: `https://skillrout.web.app`
-- **Firebase Console**: `https://console.firebase.google.com/project/skillrout/overview`
+- **Production Hosting**: `https://skillrout.web.app`
+- **Firebase project**: `skillrout`
 
 ## Quick start (local)
 
@@ -32,6 +31,7 @@ A production machine-reading and settlement platform for businesses that operate
 
    ```bash
    npm install
+   cd functions && npm install && cd ..
    ```
 
 3. Add your Firebase web config to `.env`
@@ -49,28 +49,43 @@ A production machine-reading and settlement platform for businesses that operate
 4. Verify the build and tests
 
    ```bash
-   npm run verify
    npx tsc --noEmit
-   cd functions && npm run build
+   npm run lint
+   npm run test
+   cd functions
+   npm run build
+   npm run lint
+   npm test
+   cd ..
    ```
 
-5. Start the web dev server
+5. Export the web bundle
+
+   ```bash
+   npx expo export --platform web
+   ```
+
+6. Start the web dev server (optional)
 
    ```bash
    npx expo start --web
    ```
 
-   Then open `http://localhost:8081`.
+## Core operating rules
+
+1. `RUN` records the visit permanently and never updates `machine.lastSettled`.
+2. `PRINT` only marks the visit as printed.
+3. `SUBMIT` is the only action that advances `machine.lastSettled`.
+4. `SUBMIT` works only when `totalNet > 0` and `storePercent + vendorPercent === 100`.
+5. Receipts always use the visit snapshot, not live machine master data.
+6. Photos belong to the visit, not the machine master record.
 
 ## Staging and data retention
 
-- All Firestore collections retain data indefinitely unless a lifecycle policy is configured.
-- OCR cache documents (`ocrCache`) expire after 365 days.
-- For staging, create a separate Firebase project, add it with `npx firebase use --add`, and use `npx firebase hosting:channel:deploy staging` for preview channels.
-
-## Manual QA and UAT
-
-Use the [Skillrout Tester Training, Manual QA, and UAT Guide](UAT.md) for tester onboarding, expected calculations, acceptance criteria, Firebase health checks, and browser debugging.
+- Production data is retained indefinitely unless a lifecycle policy is configured.
+- OCR cache (`ocrCache/{uid}_{imageHash}`) expires after 365 days.
+- The `.firebaserc` `staging` alias points to `skillrout-staging`.
+- This branch currently has **Hosting-only staging** with no separate `.env.staging` Firebase config; preview channels use the production backend unless a staging project and config are created.
 
 ## Docker
 
@@ -93,5 +108,4 @@ Open `http://localhost`.
 ## Notes
 
 - `.env` and `google-services.json` are not committed to the repo.
-- Keep your local `google-services.json` safe and place it back after cloning.
-- For Android/iOS native builds, run `npx expo prebuild` to generate the `android/` and `ios/` folders.
+- Cloud Functions are deployed to `us-central1`; Firestore is `nam5` multi-region.

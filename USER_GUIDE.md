@@ -1,12 +1,12 @@
 # Skillrout — Admin and Employee User Guide
 
-This guide explains how to use the Skillrout Dashboard in plain, simple steps. It is written for people who are not technical experts.
+This guide explains how to use the Skillrout Dashboard in plain, simple steps.
 
 ## What Skillrout does
 
 Skillrout is an app for business owners and employees to track store visits, machine meter readings, and cash settlements.
 
-- **Admins / Owners** set up stores, machines, and employee accounts.
+- **Admins / Owners** request access, set up stores, machines, and employee accounts.
 - **Employees** visit stores, read the machines, enter the readings, and settle the visit.
 
 There are only three important buttons to remember:
@@ -26,47 +26,42 @@ You need:
 
 ## Part 1 — Admin / Owner guide
 
-### 1.1 Create your owner account
+### 1.1 Request owner access
 
-1. Open the Skillrout app.
-2. Tap or click **Create Account**.
+1. Open the Skillrout app at `https://skillrout.web.app`.
+2. Tap **Get Started** or **Create Owner Account**.
 3. Type your **Business name**.
 4. Type your **email address**.
-5. Type a password. The password must have:
-   - At least 6 characters
-   - At least one letter
-   - At least one number
-   - At least one special character like `@`, `$`, `!`, `%`, `*`, `?`, or `&`
-   - Example: `Test123!`
-6. Tap **Create Account**.
+5. Type a strong password (10–128 characters, at least one letter, one number, and one special character like `@`, `$`, `!`, `%`, `*`, `?`, or `&`). Example: `SkillTest9!`.
+6. Tap **Submit request**.
 
 **What you see:**
 
-- A message tells you a verification email was sent.
-- A new user appears in Firebase Authentication.
-- An owner document is created for your business.
+- A message says the request is pending approval.
+- A pending owner record is created.
+- You cannot sign in until an admin approves the account and you verify your email.
 
 ### 1.2 Verify your email and sign in
 
 1. Open your email app.
 2. Find the verification email from Skillrout.
 3. Tap the verification link.
-4. Go back to the Skillrout app.
-5. Tap **Sign In**.
-6. Enter your email and password.
-7. Tap **Sign In**.
+4. Go to `https://skillrout.web.app/owner/login`.
+5. Enter your email and password.
+6. Tap **Sign In**.
 
 **What you see:**
 
 - If you did not verify, the app tells you to verify first.
-- If you verified, you see the **Owner Dashboard** with your business name and email.
+- If you are approved and verified, you see the **Owner Dashboard**.
 
 ### 1.3 Reset your password
 
-1. On the sign-in screen, type your email.
+1. On the owner sign-in screen, type your email.
 2. Tap **Forgot password?**.
 3. Open your email and tap the reset link.
-4. Follow the instructions to make a new password.
+4. The link opens `https://skillrout.web.app/auth/action`.
+5. Follow the instructions to make a new strong password.
 
 **What you see:**
 
@@ -82,8 +77,8 @@ A store is the place where the machines are located.
 3. Type the **Store name**, for example `UAT Store 1`.
 4. Type the **Address**, for example `100 Test Street`.
 5. Type the **Store percentage**. This is the share the store keeps. Example: `50`.
-6. Type the **Vendor percentage**. This is the share the vendor/operator keeps. Example: `50`.
-7. Make sure **Store % + Vendor % = 100%**.
+6. Type the **Vendor/Games percentage**. Example: `50`.
+7. Make sure **Store % + Vendor/Games % = 100%**.
 8. Tap **Save**.
 
 **What you see:**
@@ -99,7 +94,7 @@ A machine is the game or device the employee reads.
 1. From the **Owner Dashboard**, tap **Machines**.
 2. Select the store where the machine is.
 3. Tap the button to add a new machine.
-4. Type the **Machine number**. Example: `UAT-001`.
+4. The **Number** is auto-assigned `1`, `2`, `3`, etc. Do not type it.
 5. Type the **Machine name**. Example: `Front Machine`.
 6. Type the **Last Settled IN** value. Example: `1000`.
 7. Type the **Last Settled OUT** value. Example: `500`.
@@ -107,28 +102,41 @@ A machine is the game or device the employee reads.
 
 **What you see:**
 
-- The machine appears under the store.
+- The machine appears under the store as `1 Front Machine`.
+- The number is shown without `#` or `Serial`.
 - The machine keeps the `Last Settled IN` and `Last Settled OUT` values you entered.
 - These numbers are the starting point for the first employee visit.
 
-### 1.6 Create an employee
+### 1.6 Renumber machines
+
+1. Open **Machines** and select the store.
+2. Expand the renumber preview.
+3. Confirm the new order `1`, `2`, `3`.
+4. Tap **Apply renumbering**.
+
+**What you see:**
+
+- Old numbers are saved as **legacy numbers** for OCR/history.
+- Existing visit records keep the number they had at the time.
+
+### 1.7 Create an employee
 
 1. From the **Owner Dashboard**, tap **Employees**.
 2. Tap the button to add a new employee.
 3. Type the **Employee name**.
 4. Type the **Employee email**. This must be different from the owner email.
-5. Type a temporary **Password**.
+5. Type a strong temporary **Password**.
 6. Select one or more stores to assign to the employee.
 7. Tap **Create Employee**.
 
 **What you see:**
 
 - A new user is created in Firebase Authentication.
-- A document is created in the `employees` area with the owner's ID and assigned stores.
-- The employee appears as **Active** in the list.
+- A document is created in `employees/{uid}` with the owner's ID and assigned stores.
+- The employee is set to **must change password**.
 - If you do not select a store, the app shows an error and does not create the employee.
 
-### 1.7 View history
+### 1.8 View history
 
 1. From the **Owner Dashboard**, tap **History**.
 2. You see a list of every visit for every store.
@@ -141,14 +149,25 @@ A machine is the game or device the employee reads.
    - Print status (printed or not printed)
 4. Tap any visit to see the full details or reprint the receipt.
 
-### 1.8 Sign out
+### 1.9 Reports
+
+1. From the **Owner Dashboard**, tap **Reports**.
+2. Pick a date range.
+3. View or print the report.
+
+**What you see:**
+
+- A report using visit snapshots.
+- Machine numbers shown as plain `1`, `2`, `3`.
+
+### 1.10 Sign out
 
 1. Tap your profile or the menu.
 2. Tap **Sign Out**.
 
 **What you see:**
 
-- You return to the sign-in screen.
+- You return to the public home page.
 
 ---
 
@@ -157,13 +176,15 @@ A machine is the game or device the employee reads.
 ### 2.1 Sign in as an employee
 
 1. Open the Skillrout app.
-2. Tap **Sign In**.
-3. Enter the **employee email** the owner gave you.
-4. Enter the **temporary password** the owner gave you.
-5. Tap **Sign In**.
+2. Tap **Sign In** and choose **Employee Sign In**.
+3. Or go directly to `https://skillrout.web.app/employee/login`.
+4. Enter the **employee email** the owner gave you.
+5. Enter the **temporary password** the owner gave you.
+6. Tap **Sign In**.
 
 **What you see:**
 
+- On first login you are asked to create a new password.
 - You do not go to the owner dashboard.
 - You go to the **Select Store** screen.
 - You only see the stores the owner assigned to you.
@@ -172,12 +193,13 @@ A machine is the game or device the employee reads.
 
 1. On the **Select Store** screen, tap your assigned store.
 2. You see the store name and address.
-3. Pick the **Business date** for the visit. You can only pick today or the last 7 days.
+3. The **Business date** is today.
 4. You see the machines for that store with their **Last Settled IN** and **Last Settled OUT** values.
 
 **What you see:**
 
 - Only the stores you are allowed to visit are shown.
+- Machines are shown as `1 Front Machine` with no `#` or `Serial`.
 - The machine list shows the starting numbers, for example `IN $1,000.00` and `OUT $500.00`.
 
 ### 2.3 Enter the machine readings
@@ -212,8 +234,8 @@ A machine is the game or device the employee reads.
 ### 2.5 RUN the visit
 
 1. After all machines have valid readings, tap the **RUN** button.
-2. Wait for the message: **RUN Completed — Store visit has been recorded successfully**.
-3. Tap **View Results**.
+2. Watch the progress messages: preparing, uploading photos, recording, checking.
+3. Wait for the success or the **Check Status** option.
 
 **What you see:**
 
@@ -221,65 +243,19 @@ A machine is the game or device the employee reads.
 - The visit status is **not submitted**.
 - The print status is **not printed**.
 - The machine **Last Settled IN/OUT** numbers do **not** change.
-- You go to the **Comparison** screen.
 
-### 2.6 Review the comparison
+### 2.6 Settlement split
 
-1. The **Comparison** screen shows:
-   - Date and time of the visit
-   - Employee name
-   - Store name
-   - For each machine:
-     - Last Settled IN / OUT
-     - Present IN / OUT
-     - New IN / OUT
-     - Optional photo
-2. Check that the numbers match what you entered.
-3. Tap **Continue**.
+1. After a positive RUN, the **Settlement** screen shows the read-only store/games split.
+2. If the split is wrong, contact the owner.
+3. Tap **Save Split and Continue**.
 
 **What you see:**
 
-- You can go back once to fix mistakes, but after a RUN the visit is already saved.
-- The next screen is the **Calculation** screen.
+- The split comes from the store defaults.
+- The app shows **Store Amount**, **Vendor Amount**, and **Cash Due Location**.
 
-### 2.7 Check the calculation
-
-The **Calculation** screen shows the totals for the whole store:
-
-- **Total New IN** = sum of all `New IN`
-- **Total New OUT** = sum of all `New OUT`
-- **Total Net** = `Total New IN - Total New OUT`
-
-**Example:**
-
-| Value | Amount |
-|---|---:|
-| Total New IN | $200.00 |
-| Total New OUT | $100.00 |
-| Total Net | $100.00 |
-
-1. Review the numbers.
-2. Tap **Continue to Settlement Split**.
-
-**What you see:**
-
-- The calculations match the formulas in the UAT guide.
-- The amounts are shown with two decimal places.
-
-### 2.8 Enter the store/vendor split
-
-1. On the **Settlement Split** screen, type the **Store %** and **Vendor %**.
-2. The two numbers must add to `100`.
-3. Example: Store `40`, Vendor `60`.
-4. Tap **Save Split**.
-
-**What you see:**
-
-- If the split is not 100%, the **Continue** button is disabled.
-- When the split is valid, the app shows **Store Amount** and **Vendor Amount**.
-- The split is saved to the visit.
-
-### 2.9 Choose what to do next
+### 2.7 Choose what to do next
 
 On the **Outcome** screen you see different buttons based on the **Total Net**.
 
@@ -288,20 +264,20 @@ On the **Outcome** screen you see different buttons based on the **Total Net**.
 You see:
 
 - **Submit & Print** — finalizes the settlement and advances the machine baseline.
-- **Print** — only prints the receipt; does not advance the baseline.
+- **Print Receipt** — only prints the receipt; does not advance the baseline.
 - **Cancel** — goes back.
 
 #### If Total Net is $0 or less
 
 You see:
 
-- **Print** — prints the receipt.
+- **Print Receipt** — prints the receipt.
 - **Cancel** — goes back.
 - You do **not** see **Submit & Print**.
 
-### 2.10 PRINT only
+### 2.8 PRINT only
 
-1. Tap **Print**.
+1. Tap **Print Receipt**.
 2. The receipt opens.
 3. Use the system print dialog to print or save as PDF.
 
@@ -311,7 +287,7 @@ You see:
 - The settlement status stays **not submitted**.
 - The machine **Last Settled** numbers do **not** change.
 
-### 2.11 SUBMIT & PRINT
+### 2.9 SUBMIT & PRINT
 
 Use this only when the visit made money.
 
@@ -334,7 +310,7 @@ Use this only when the visit made money.
 | Last Settled IN | $1,000.00 | $1,200.00 |
 | Last Settled OUT | $500.00 | $600.00 |
 
-### 2.12 View employee history
+### 2.10 View employee history
 
 1. From the bottom tabs, tap **History**.
 2. You see only the visits for your assigned stores.
@@ -345,14 +321,14 @@ Use this only when the visit made money.
 - Positive, zero, and negative visits are shown.
 - You cannot see visits from stores you are not assigned to.
 
-### 2.13 Sign out
+### 2.11 Sign out
 
 1. Tap your profile or the menu.
 2. Tap **Sign Out**.
 
 **What you see:**
 
-- You return to the sign-in screen.
+- You return to the public home page.
 
 ---
 
@@ -367,7 +343,7 @@ Use this only when the visit made money.
 ### What happens with a negative or zero visit?
 
 - **Submit & Print** is hidden.
-- You can still **Print** the receipt.
+- You can still **Print Receipt**.
 - The machine baseline stays the same.
 
 ### What if I make a mistake after RUN?
@@ -384,6 +360,7 @@ Use this only when the visit made money.
 |---|---|
 | **Store** | The business location where machines are kept. |
 | **Machine** | The device with IN/OUT meters that the employee reads. |
+| **Machine number** | The plain `1`, `2`, `3` store-local number shown for each machine. |
 | **Last Settled IN/OUT** | The approved baseline numbers from the last submitted settlement. |
 | **Present IN/OUT** | The current numbers on the machine right now. |
 | **New IN** | `Present IN - Last Settled IN`. How much IN activity happened since the last settlement. |
@@ -391,7 +368,7 @@ Use this only when the visit made money.
 | **Machine Net** | `New IN - New OUT` for one machine. |
 | **Total Net** | `Total New IN - Total New OUT` for the whole store visit. |
 | **Store %** | The share of the net the store keeps. |
-| **Vendor %** | The share of the net the vendor/operator keeps. |
+| **Vendor/Games %** | The share of the net the vendor/operator keeps. |
 | **Store Amount** | `Total Net * Store %`. |
 | **Vendor Amount** | `Total Net - Store Amount`. |
 | **Cash Due Location** | `Total New OUT + Store Amount`. The cash the location keeps. |
@@ -409,8 +386,8 @@ This example uses the UAT test data.
 
 - Store: **UAT Store 1**
 - Store %: **50**
-- Vendor %: **50**
-- Machine: **UAT-001**
+- Vendor/Games %: **50**
+- Machine: **1 Front Machine**
 - Last Settled IN: **1000**
 - Last Settled OUT: **500**
 
@@ -430,9 +407,8 @@ This example uses the UAT test data.
 | Vendor Amount | $50.00 |
 | Cash Due Location | $150.00 |
 
-5. Employee enters split **Store 50 / Vendor 50**.
-6. Employee taps **Submit & Print**.
-7. The receipt prints and the machine baseline moves forward:
+5. Employee taps **Submit & Print**.
+6. The receipt prints and the machine baseline moves forward:
 
 | Value | Before | After |
 |---|---:|---:|
@@ -447,17 +423,17 @@ This example uses the UAT test data.
 
 - You typed a number lower than the baseline.
 - Check the machine again. The reading should always go up over time.
-- Fix the number and tap RUN again.
+- Fix the number and tap **RUN** again.
 
-### The Store % and Vendor % do not add to 100
+### The Store % and Vendor/Games % do not add to 100
 
-- Make sure both numbers total exactly 100.
-- Example: 40 + 60, 50 + 50, 30 + 70.
+- The split is read-only on the employee settlement screen.
+- Contact the owner to update the store defaults.
 
 ### The Submit & Print button is missing
 
 - The **Total Net** is zero or negative.
-- You can only **Print** the receipt.
+- You can only **Print Receipt**.
 - The next visit may be positive.
 
 ### I cannot see a store
@@ -469,9 +445,9 @@ This example uses the UAT test data.
 
 1. Tap **Forgot password?** on the sign-in screen.
 2. Enter your email.
-3. Follow the link in the email.
+3. Follow the link in the email to `https://skillrout.web.app/auth/action`.
 
-### The app is stuck on "Loading…"
+### The app is stuck on "Loading..."
 
 - Check your internet connection.
 - Close the app and open it again.

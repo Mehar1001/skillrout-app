@@ -104,7 +104,7 @@ export const generateReceiptHtml = (visit: Visit, lastCleared?: LastClearedInfo 
   const machineRows = lines.machines
     .map(
       machine => `
-        <div class="machine-title">${escapeHtml(machine.name)} <span class="machine-serial">#${escapeHtml(machine.machineNumber)}</span></div>
+        <div class="machine-title"><span class="machine-number">${escapeHtml(machine.machineNumber)}</span><span>${escapeHtml(machine.name)}</span></div>
         <div class="machine-reading"><span>In:</span><span>${machine.inRange}</span></div>
         <div class="machine-reading"><span>Out:</span><span>${machine.outRange}</span></div>
         <div class="row"><span>Cash</span><span>${machine.cash}</span></div>
@@ -142,8 +142,8 @@ export const generateReceiptHtml = (visit: Visit, lastCleared?: LastClearedInfo 
           .store { margin-top: 2px; text-align: center; }
           .divider { border-top: 1px dashed #171A20; margin: 6px 0; }
           .row { display: flex; justify-content: space-between; gap: 8px; }
-          .machine-title { font-weight: 700; margin: 10px 0 2px; }
-          .machine-serial { color: #555; font-size: 10px; font-weight: 400; }
+          .machine-title { display: flex; align-items: baseline; gap: 8px; font-weight: 700; margin: 10px 0 2px; }
+          .machine-number { min-width: 18px; color: #555; font-size: 10px; font-weight: 400; }
           .machine-reading { display: flex; gap: 4px; font-weight: 700; }
           .machine-reading span:last-child { margin-left: auto; text-align: right; }
           .pad { margin-bottom: 4px; }

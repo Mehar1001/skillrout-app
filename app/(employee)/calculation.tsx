@@ -31,7 +31,7 @@ export default function CalculationScreen() {
           <View key={machine.machineId} style={styles.machineRow}>
             <View style={styles.machineInfo}>
               <Text style={styles.machineName}>{machine.name || 'Unnamed machine'}</Text>
-              <Text style={styles.machineSubtitle}>#{machine.machineNumber}</Text>
+              <Text style={styles.machineSubtitle}>{machine.machineNumber}</Text>
             </View>
             <Amount label="New Credits In" value={machine.newIn} />
             <Amount label="New Total Paid" value={machine.newOut} />

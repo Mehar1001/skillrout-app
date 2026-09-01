@@ -3,80 +3,108 @@ agent: devin-local
 session: quasar-lasagna
 created: 2026-08-18T20:02:14Z
 ---
+
 # Skillrout — Architecture Document
 
 ## 1. Tech Stack
+
 - **Framework**: Expo SDK 53.0.20 + React Native 0.79.5
 - **Routing**: Expo Router (file-based)
-- **State Management**: React hooks + Firestore as source of truth; `AsyncStorage` offline cache is planned but not implemented
-- **Backend**: Firebase (Auth, Firestore, Storage, Cloud Functions)
-- **Authentication**: Firebase Auth email/password for owner and employees; a single `app/owner.tsx` screen detects role and routes employees to `/select-store`
+- **State Management**: React hooks + Firestore as source of truth
+- **Backend**: Firebase (Auth, Firestore, Storage, Cloud Functions v2, Cloud Vision)
+- **Authentication**: Firebase Auth email/password with role-gated routes
 - **Printing**: `expo-print` for thermal receipt HTML; `expo-sharing` for download/share
 - **Image Capture**: `expo-image-picker`
 - **Date/Time**: `dayjs`
 - **UI**: React Native components + design-token system in `constants/designTokens.ts`
+- **Cloud Functions region**: `us-central1`
+- **Firestore location**: `nam5` (multi-region)
 
 ## 2. High-Level App Structure
+
 ```
 app/
-  _layout.tsx                # Root Stack: registers index, owner, (owner), (employee)
-  index.tsx                  # Landing / intro screen
-  owner.tsx                  # Single sign-in screen; detects role and redirects
+  _layout.tsx                # Root Stack: registers all root routes
+  index.tsx                  # Public landing page
+  +not-found.tsx
+  owner/login.tsx            # Owner sign-in
+  owner/register.tsx         # Request owner access
+  employee/login.tsx         # Employee sign-in
+  auth/
+    action.tsx               # Handle password/verify action codes
   (owner)/
-    _layout.tsx              # Owner tab bar: dashboard, stores, machines, employees, history
+    _layout.tsx              # Owner tabs
     dashboard.tsx            # Owner home
     stores.tsx               # Store CRUD
-    machines.tsx             # Machine CRUD (per store)
-    employees.tsx            # Employee management (calls createEmployee directly)
+    machines.tsx             # Machine CRUD + renumber
+    employees.tsx            # Employee management
     history.tsx              # All visits/settlements
-    reports.tsx              # Planned — not yet created
-    settings.tsx             # Planned — not yet created
+    reports.tsx              # Date-range reports
+    settings.tsx             # Owner password/settings
   (employee)/
-    _layout.tsx              # Employee tab / stack layout
+    _layout.tsx              # Employee tabs
     select-store.tsx         # Employee store selection
     visit.tsx                # Run a visit / enter readings
-    results.tsx              # Review run result, %, submit/print
+    results.tsx              # Review run result
     calculation.tsx          # Calculation detail screen
-    settlement.tsx           # Settlement / split adjustment
-    outcome.tsx              # Outcome summary
+    settlement.tsx           # Read-only split display
+    outcome.tsx              # Positive / zero / negative outcome
     receipt.tsx              # Print / save receipt
-    employee-history.tsx     # Employee-visible history (not history.tsx)
+    employee-history.tsx     # Employee-visible history
+    add-machine.tsx          # Employee-initiated machine
+    onboard-store.tsx        # Employee-initiated store
+    store-detail.tsx         # Store detail
+    drafts.tsx               # Offline draft queue
+    change-password.tsx      # Forced first-time password change
   components/                # Reusable UI primitives
   constants/
     designTokens.ts          # Colors, spacing, typography, radii, shadows
   contexts/
-    AuthContext.tsx          # Current user + role
-  helpers/
-    calculations.ts          # round2, calculateMachine, calculateLiveReadings, calculateVisit
-    receiptTemplate.ts       # Thermal receipt HTML generation
-  services/
-    auth.ts                  # Auth helpers
-    stores.ts                # Store service
-    machines.ts              # Machine service
-    visits.ts                # Visit service
-    visitPhotos.ts           # Photo upload service
-    employees.ts             # Planned — not created; employees.tsx calls createEmployee directly
+    AuthContext.tsx          # Current user + role + routing guards
+  helpers/                   # Business logic
+  services/                  # Firebase interaction
   firebase/
     firebaseConfig.ts        # Firebase app setup
-  functions/src/
-    index.ts                 # createEmployee, runVisit, setVisitSplit, submitVisit
+  functions/
+    src/index.ts             # All Cloud Functions
+  tests/
+    securityRules.test.ts    # Firestore/Storage rules
+  types/index.ts             # Shared TypeScript types
 ```
 
 ## 3. Firestore Data Model
 
 ### Top-level `owners/{ownerId}`
+
 ```ts
 {
   id: string,
   email: string,
   name?: string,
+  businessName: string,
   subscriptionStatus: 'active' | 'inactive',
+  status: 'active' | 'inactive',
+  schemaVersion: number,
+  createdAt: Timestamp,
+  updatedAt: Timestamp
+}
+```
+
+### Top-level `pendingOwners/{uid}`
+
+```ts
+{
+  email: string,
+  businessName: string,
+  status: 'pending',
+  schemaVersion: number,
   createdAt: Timestamp,
   updatedAt: Timestamp
 }
 ```
 
 ### Top-level `employees/{employeeId}`
+
 ```ts
 {
   id: string,             // Firebase Auth UID
@@ -87,30 +115,41 @@ app/
   ownerId: string,
   businessName?: string,
   assignedStoreIds: string[],
+  mustChangePassword?: boolean,
+  deactivatedAt?: Timestamp,
+  reactivatedAt?: Timestamp,
+  schemaVersion: number,
   createdAt: Timestamp,
   updatedAt: Timestamp
 }
 ```
 
 ### `owners/{ownerId}/stores/{storeId}`
+
 ```ts
 {
   id: string,
   name: string,
   address: string,
+  phone?: string,
   active: boolean,
   defaultStorePercent: number,
   defaultVendorPercent: number,
+  deactivatedAt?: Timestamp,
+  reactivatedAt?: Timestamp,
+  schemaVersion: number,
   createdAt: Timestamp,
   updatedAt: Timestamp
 }
 ```
 
 ### `owners/{ownerId}/stores/{storeId}/machines/{machineId}`
+
 ```ts
 {
   id: string,
-  machineNumber: string,
+  machineNumber: string,          // plain '1', '2', '3', etc.
+  legacyMachineNumbers?: string[], // previous numbers kept for OCR/history
   name: string,
   storeId: string,
   lastSettledIn: number,
@@ -118,38 +157,30 @@ app/
   lastSubmittedVisitId: string | null,
   lastSubmittedAt: Timestamp | null,
   active: boolean,
+  baselineVersion?: number,
+  machineNumberRenumberedAt?: Timestamp,
+  deactivatedAt?: Timestamp,
+  reactivatedAt?: Timestamp,
+  schemaVersion: number,
   createdAt: Timestamp,
   updatedAt: Timestamp
 }
 ```
 
 ### `owners/{ownerId}/stores/{storeId}/visits/{visitId}`
+
 ```ts
 {
   id: string,
-  ownerId: string,                  // denormalized for collection-group queries
+  ownerId: string,
   storeId: string,
   storeName: string,
+  storeAddress?: string,
   employeeId: string,
   employeeName: string,
-  businessDate: string,            // YYYY-MM-DD
-  timestamp: Timestamp,            // exact time
-  machines: [
-    {
-      machineId: string,
-      machineNumber: string,
-      name: string,
-      lastSettledIn: number,
-      lastSettledOut: number,
-      presentIn: number,
-      presentOut: number,
-      newIn: number,
-      newOut: number,
-      machineNet: number,
-      photoUrl?: string,
-      photoPath?: string
-    }
-  ],
+  businessDate: string,           // YYYY-MM-DD
+  timestamp: Timestamp,
+  machines: VisitMachine[],
   totalNewIn: number,
   totalNewOut: number,
   totalNet: number,
@@ -164,87 +195,90 @@ app/
   printStatus: 'not_printed' | 'printed',
   printedAt?: Timestamp,
   printedBy?: string,
-  settlement?: {
-    submittedAt: Timestamp,
-    submittedBy: string,
-    storePercent: number,
-    vendorPercent: number,
-    storeAmount: number,
-    vendorAmount: number
-  },
-  voided?: {
-    voidedAt: Timestamp,
-    voidedBy: string,
-    reason: string
-  }
+  settlement?: { submittedAt, submittedBy, storePercent, vendorPercent, storeAmount, vendorAmount },
+  voided?: { voidedAt, voidedBy, reason },
+  adjustments?: Adjustment[],
+  schemaVersion: number,
+  createdAt: Timestamp,
+  updatedAt: Timestamp
 }
 ```
 
-### `owners/{ownerId}/auditLog/{logId}`
-Planned but not yet implemented:
+Each `VisitMachine` snapshot includes:
+
 ```ts
 {
-  type: 'run'|'print'|'submit'|'void'|'correct',
-  actor: string,
-  actorRole: string,
-  targetVisitId: string,
-  timestamp: Timestamp,
-  details: object
-}
-```
-
-## 4. Security Rules (Summary)
-- Owner can read/write everything under `owners/{ownerId}`.
-- Employee can only read `stores` and `machines` assigned to active stores.
-- Employee can create `visits` where `employeeId == auth.uid`.
-- Employee can read `visits` they created and `visits` for stores they are allowed to access.
-- Employee cannot update or delete `visits` after submission; only owner can.
-- Employee cannot modify `machines` master records.
-- `visits` settlement updates are performed by Cloud Functions to enforce server-side validation and concurrency.
-
-## 5. Cloud Functions
-All Cloud Functions live in `functions/src/index.ts`.
-
-1. **`createEmployee`**: Owner calls with `{email, name, password, assignedStoreIds}`. Creates a Firebase Auth user and writes a top-level `employees/{uid}` document.
-2. **`runVisit`**: Employee/owner calls with `{visitId, storeId, businessDate, readings}`. Records a permanent visit in `owners/{ownerId}/stores/{storeId}/visits/{visitId}` and never updates `machine.lastSettled`.
-3. **`setVisitSplit`**: Updates `storePercent`, `vendorPercent`, `storeAmount`, `vendorAmount`, and `cashDueLocation` on an unsubmitted visit. Enforces `storePercent + vendorPercent === 100`.
-4. **`submitVisit`**: Client passes `{ownerId, storeId, visitId, storePercent, vendorPercent}`. Runs a Firestore transaction that:
-   - Verifies `totalNet > 0`.
-   - Verifies `storePercent + vendorPercent === 100` and that the split matches the saved visit.
-   - Verifies each machine's current `lastSettledIn/Out` still matches the visit's `lastSettledIn/Out` (concurrency guard).
-   - Marks `visit.settlementStatus = 'submitted'`.
-   - Updates each `machine.lastSettledIn/Out = visit.presentIn/Out`.
-   - Updates `machine.lastSubmittedVisitId = visitId`.
-   - Returns success.
-
-> Note: `submitSettlement` and `voidSettlement` were earlier working names. The implemented function is `submitVisit`; `voidSettlement` is not yet implemented.
-
-## 6. Calculation Logic
-Client-side helpers in `helpers/calculations.ts`:
-```ts
-export const round2 = (value: number): number => Math.round(value * 100) / 100;
-
-export const calculateMachine = (
+  machineId: string,
+  machineNumber: string,
+  name: string,
   lastSettledIn: number,
   lastSettledOut: number,
   presentIn: number,
-  presentOut: number
-): { newIn: number; newOut: number; machineNet: number } => {
+  presentOut: number,
+  newIn: number,
+  newOut: number,
+  machineNet: number,
+  photoUrl?: string,
+  photoPath?: string,
+  readingSource?: 'manual' | 'ocr_reviewed',
+  ocrScanId?: string
+}
+```
+
+### Auxiliary collections
+
+- `ocrCache/{uid}_{imageHash}` — 365-day cache of OCR results.
+- `ocrUsage/{uid}_{today}` — daily scan counters.
+
+## 4. Security Rules (Summary)
+
+- Owner can read/write everything under `owners/{ownerId}`.
+- Employee can only read `stores` and `machines` assigned to active stores.
+- Employee can create `visits` where `employeeId == auth.uid`.
+- Employee can read `visits` they created and visits for stores they are allowed to access.
+- Employee cannot update or delete `visits` after submission; only owner can.
+- Employee cannot modify `machines` master records.
+- `visits` settlement updates are performed by Cloud Functions for server-side validation.
+
+## 5. Cloud Functions
+
+All Cloud Functions live in `functions/src/index.ts` and are deployed to `us-central1`.
+
+1. **`registerOwnerProfile`** — stores the initial owner request in `pendingOwners`.
+2. **`provisionOwner`** — creates the `owners/{uid}` document after approval.
+3. **`approveOwner`** — admin-only approval of a pending owner.
+4. **`createEmployee`** — creates an Auth user and a top-level `employees/{uid}` document.
+5. **`setEmployeeActive`** — activates/deactivates an employee.
+6. **`resetEmployeeTemporaryPassword`** — sets a new temporary password and forces a change.
+7. **`updateEmployeeAssignments`** — updates an employee's assigned stores.
+8. **`employeeOnboardStore`** — allows an employee to create a store.
+9. **`employeeAddMachine`** — allows an employee to add a machine with the next number.
+10. **`runVisit`** — records a permanent `visit` without updating `machine.lastSettled`.
+11. **`setVisitSplit`** — updates split on an unsubmitted visit.
+12. **`submitVisit`** — validates and advances `machine.lastSettled` in a transaction.
+13. **`adjustVisit`** — owner correction of an existing visit.
+14. **`extractReceiptReadings`** — Cloud Vision OCR with `ocrCache`.
+15. **`checkOcrUsage`** — daily-usage helper.
+16. **`completePasswordReset`** — reconciles emailed password resets with employee `mustChangePassword`.
+17. **`completeEmployeePasswordChange`** — clears `mustChangePassword` after first login.
+18. **`prepareEmployeeSession`** — marks employee email verified at login.
+19. **`renumberStoreMachines`** — owner-only renumber to `1…N` per store, preserving legacy numbers.
+
+## 6. Calculation Logic
+
+Client-side helpers in `helpers/calculations.ts`:
+
+```ts
+export const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+export const calculateMachine = (lastSettledIn, lastSettledOut, presentIn, presentOut) => {
   const newIn = round2(presentIn - lastSettledIn);
   const newOut = round2(presentOut - lastSettledOut);
   const machineNet = round2(newIn - newOut);
   return { newIn, newOut, machineNet };
 };
 
-export const calculateLiveReadings = (
-  machines: Machine[],
-  readings: Record<string, MachineReadingDraft>
-) => { /* running totals for the visit form */ };
-
-export const calculateVisit = (
-  machines: VisitMachine[],
-  storePercent: number
-) => {
+export const calculateVisit = (machines, storePercent) => {
   const totalNewIn = round2(machines.reduce((s, m) => s + (m.newIn || 0), 0));
   const totalNewOut = round2(machines.reduce((s, m) => s + (m.newOut || 0), 0));
   const totalNet = round2(totalNewIn - totalNewOut);
@@ -257,27 +291,44 @@ export const calculateVisit = (
 ```
 
 ## 7. Concurrency Strategy
-- The `submitVisit` function runs as a Firestore transaction.
+
+- `submitVisit` runs as a Firestore transaction.
 - It checks `machine.lastSettledIn/Out === visit.machines[i].lastSettledIn/Out` before updating.
-- If another submission changed the baseline in the meantime, the transaction aborts and the employee sees: "Machine X changed. Please run again."
+- If another submission changed the baseline, the transaction aborts and the employee sees: "Machine X changed. Please run again."
+- `runVisit` uses a deterministic `visitId` provided by the client; retries with the same ID are idempotent.
 
 ## 8. Image & Receipt
-- Machine photos: stored in `owners/{ownerId}/stores/{storeId}/visits/{visitId}/machines/{machineId}/`.
-- Thermal receipt: `expo-print` HTML with inline CSS for 80 mm width, plain text fallback, printable directly or saved as PDF.
-- Receipt data comes from the `visit` doc, including the `lastSettled` snapshot, so historical receipts stay accurate.
+
+- Machine photos: `owners/{ownerId}/stores/{storeId}/visits/{visitId}/machines/{machineId}/{file}`.
+- Receipt photos: `owners/{ownerId}/stores/{storeId}/visits/{visitId}/receipt/{file}`.
+- Thermal receipt: `expo-print` HTML for 80 mm width.
+- Receipt data comes from the `visit` document, including the `lastSettled` snapshot, so historical receipts stay accurate.
+- Receipts show the plain machine number on the left before the name: `1  Machine Name`.
 
 ## 9. Routing
-File-based routes mirror the screens in §2. Protected routes check `AuthContext` role. `app/_layout.tsx` registers the root routes as `index`, `owner`, `(owner)`, and `(employee)`.
+
+Public and auth routes:
+
+- `/` — public landing
+- `/owner/login` — owner sign-in
+- `/owner/register` — request owner access
+- `/employee/login` — employee sign-in
+- `/auth/action` — password/verify action code handler
+- `/select-store`, `/visit`, `/results`, `/calculation`, `/settlement`, `/outcome`, `/receipt`, `/employee-history`, `/drafts` — employee flow
+- `/dashboard`, `/stores`, `/machines`, `/employees`, `/history`, `/reports`, `/settings` — owner flow
 
 ## 10. Non-Functional Requirements
-- Offline support: not required for v1, but `AsyncStorage` can cache an in-progress visit form.
-- Must remain runnable on web for development/testing.
-- iOS and Android are the primary targets.
+
+- Mobile-first, fully runnable on web.
 - WCAG AA contrast, 44×44 px touch targets.
+- Plain `1…N` machine numbers in all UI and receipts.
+- No `#`, `Serial`, or `Machine Number` display prefix.
 
 ## 11. Current Drift & Gaps
-- `app/(owner)/reports.tsx` and `app/(owner)/settings.tsx` are planned but not created.
-- Planned components `Select.tsx`, `Badge.tsx`, `MachineRow.tsx`, `VisitSummary.tsx`, and `OwnerShell.tsx` do not exist; use `MachineReadingCard.tsx` instead of `MachineRow`.
-- `services/employees.ts` does not exist; employee creation calls `createEmployee` directly from `app/(owner)/employees.tsx`.
-- Color palette in `constants/designTokens.ts` (`#8C6E5F` / `#5F8C7B`) differs from the original PRD palette (`#6B7C59` / `#C46A3D`); do not change code colors.
-- Not yet implemented: audit log, void/correct flow, employee edit/disable/reassign, machine store reassignment, history pagination, `AsyncStorage` offline cache, 58 mm thermal receipt, Cloud Functions rate limiting.
+
+- Void/correct flow is not yet implemented.
+- Audit log is not yet implemented.
+- Employee edit/disable/reassign and machine store reassignment are partial.
+- 58 mm thermal receipt support is not yet implemented.
+- Cloud Functions rate limiting is not yet implemented.
+- History pagination is not yet implemented.

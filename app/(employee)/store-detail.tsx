@@ -93,7 +93,7 @@ export default function StoreDetailScreen() {
             <View style={styles.machineRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.machineName}>{machine.name}</Text>
-                <Text style={styles.machineNumber}>Serial #{machine.machineNumber}</Text>
+                <Text style={styles.machineNumber}>{machine.machineNumber}</Text>
               </View>
               <View style={styles.baselineGroup}>
                 <View style={styles.baselineBox}>

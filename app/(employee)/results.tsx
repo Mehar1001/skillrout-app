@@ -72,7 +72,7 @@ const ComparisonTable = ({
       <View key={machine.machineId} style={styles.tableRow}>
         <View style={styles.machineColumn}>
           <Text style={styles.machineName}>{machine.name || 'Unnamed machine'}</Text>
-          <Text style={styles.machineSubtitle}>#{machine.machineNumber}</Text>
+          <Text style={styles.machineSubtitle}>{machine.machineNumber}</Text>
           {mode === 'present' ? (
             machine.photoUrl ? (
               <Image

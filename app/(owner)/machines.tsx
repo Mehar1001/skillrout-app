@@ -131,7 +131,7 @@ export default function MachinesScreen() {
       </Text>
       <View style={styles.machineNumberField}>
         <Input
-          label="Serial #"
+          label="Number"
           value={form.machineNumber}
           placeholder="Auto"
           editable={false}
@@ -364,7 +364,7 @@ export default function MachinesScreen() {
                           >
                             {machine.name || 'Unnamed machine'}
                           </Text>
-                          <Text style={styles.machineSerial}>Serial #{machine.machineNumber}</Text>
+                          <Text style={styles.machineNumber}>{machine.machineNumber}</Text>
                           <View style={styles.machineReadings}>
                             <Text style={styles.readingsText}>
                               Last Settled IN: {formatCurrency(machine.lastSettledIn)} · OUT: {formatCurrency(machine.lastSettledOut)}
@@ -520,7 +520,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textPrimary,
     fontWeight: '700',
   },
-  machineSerial: {
+  machineNumber: {
     marginTop: spacing.xs,
     color: colors.textMuted,
     fontSize: fontSizes.caption,

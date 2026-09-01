@@ -123,8 +123,9 @@ const TOTALS_HEADER_PATTERN = /(?:machine\s+)?(?:totals?|summary)(?!\s+(?:paid|i
 
 const sectionHeader = (line: string) => {
   const patterns = [
+    /^\s*<\s*(\d{1,8})\s*>\s*(?:[:.\-])?\s*$/i,
+    /^\s*[<[{(#]?\s*(\d{1,8})\s*[>)\]}#]?\s*(?:[:.\-])?\s*$/i,
     /^\s*(?:machine\s*)?#?\s*(\d{1,8})\s*(?:[:.\-])?\s*$/i,
-    /^\s*#?\s*(\d{1,8})\s*(?:[:.\-])?\s*$/,
     /^\s*machine\s+#?\s*(\d{1,8})\b/i,
   ];
   for (const pattern of patterns) {

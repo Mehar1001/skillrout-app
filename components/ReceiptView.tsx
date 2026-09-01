@@ -30,8 +30,8 @@ export const ReceiptView = ({ visit, lastCleared }: { visit: Visit; lastCleared?
       {lines.machines.map((machine, index) => (
         <View key={index} style={styles.machineBlock}>
           <View style={styles.machineHeading}>
+            <Text style={styles.machineNumber}>{machine.machineNumber}</Text>
             <Text style={styles.machineTitle}>{machine.name}</Text>
-            <Text style={styles.machineSerial}>#{machine.machineNumber}</Text>
           </View>
           <ReceiptRow label="In:" value={machine.inRange} strong />
           <ReceiptRow label="Out:" value={machine.outRange} strong />
@@ -150,7 +150,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.body,
     fontWeight: '700',
   },
-  machineSerial: {
+  machineNumber: {
+    minWidth: 18,
     color: colors.textMuted,
     fontFamily: monoFont,
     fontSize: 10,

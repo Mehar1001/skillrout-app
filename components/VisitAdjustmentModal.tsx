@@ -120,7 +120,7 @@ export const VisitAdjustmentModal = ({ visit, onClose, onAdjusted }: VisitAdjust
           return (
             <Card key={r.machineId} style={styles.machineCard}>
               <Text style={styles.machineTitle}>
-                #{r.machineNumber} {vm?.name}
+                {r.machineNumber} {vm?.name}
               </Text>
               <Text style={styles.baseline}>
                 Last Settled: IN {formatCurrency(r.lastSettledIn)} · OUT {formatCurrency(r.lastSettledOut)}

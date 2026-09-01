@@ -189,8 +189,8 @@ export default function OnboardStoreScreen() {
               <View style={styles.machineNumberField}>
                 <Input
                   style={styles.machineInput}
-                  label={index === 0 ? 'Serial #' : undefined}
-                  placeholder="#"
+                  label={index === 0 ? 'Number' : undefined}
+                  placeholder="1"
                   value={String(index + 1)}
                   editable={false}
                 />
