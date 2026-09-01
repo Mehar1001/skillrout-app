@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, useRouter } from 'expo-router';
-import { Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Link, Redirect, useRouter } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useState } from 'react';
+import { BrandMark } from '../components/BrandMark';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../constants/designTokens';
@@ -382,11 +383,7 @@ export default function IndexScreen() {
   if (loading) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
-        <Image
-          source={require('../assets/images/skillrout-icon-green.png')}
-          style={styles.logoSmall}
-          accessibilityLabel="Skillrout"
-        />
+        <BrandMark size={spacing.xxl} style={styles.logoSmall} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading Skillrout…</Text>
       </View>
     );
@@ -402,11 +399,7 @@ export default function IndexScreen() {
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <View style={styles.brand}>
-          <Image
-            source={require('../assets/images/skillrout-icon-green.png')}
-            style={styles.logoSmall}
-            accessibilityLabel="Skillrout"
-          />
+          <BrandMark size={spacing.xxl} style={styles.logoSmall} />
           <View>
             <Text style={[styles.brandEyebrow, { color: colors.primary }]}>BOOKKEEPING BY</Text>
             <Text style={[styles.brandName, { color: colors.textPrimary }]}>Skillrout</Text>
@@ -426,22 +419,26 @@ export default function IndexScreen() {
             </Pressable>
             {signInOpen && (
               <View style={[styles.dropdownMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Pressable
-                  onPress={() => { setSignInOpen(false); router.push('/owner/login'); }}
-                  style={styles.dropdownItem}
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="briefcase-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.dropdownItemText, { color: colors.textPrimary }]}>Owner Sign In</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => { setSignInOpen(false); router.push('/employee/login'); }}
-                  style={styles.dropdownItem}
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="people-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.dropdownItemText, { color: colors.textPrimary }]}>Employee Sign In</Text>
-                </Pressable>
+                <Link href="/owner/login" asChild>
+                  <Pressable
+                    onPress={() => setSignInOpen(false)}
+                    style={styles.dropdownItem}
+                    accessibilityRole="link"
+                  >
+                    <Ionicons name="briefcase-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.dropdownItemText, { color: colors.textPrimary }]}>Owner Sign In</Text>
+                  </Pressable>
+                </Link>
+                <Link href="/employee/login" asChild>
+                  <Pressable
+                    onPress={() => setSignInOpen(false)}
+                    style={styles.dropdownItem}
+                    accessibilityRole="link"
+                  >
+                    <Ionicons name="people-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.dropdownItemText, { color: colors.textPrimary }]}>Employee Sign In</Text>
+                  </Pressable>
+                </Link>
               </View>
             )}
           </View>

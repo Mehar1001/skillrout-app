@@ -1,10 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import { Tabs, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { AppSidebar, type AppSidebarItem } from '../../components/AppSidebar';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+
+const ownerNavigation: AppSidebarItem[] = [
+  { key: 'dashboard', label: 'Dashboard', icon: 'grid-outline', activeIcon: 'grid' },
+  { key: 'stores', label: 'Stores', icon: 'storefront-outline', activeIcon: 'storefront' },
+  { key: 'machines', label: 'Machines', icon: 'hardware-chip-outline', activeIcon: 'hardware-chip' },
+  { key: 'employees', label: 'Employees', icon: 'people-outline', activeIcon: 'people' },
+  { key: 'history', label: 'History', icon: 'time-outline', activeIcon: 'time' },
+  { key: 'reports', label: 'Reports', icon: 'document-text-outline', activeIcon: 'document-text' },
+  { key: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
+];
 
 export default function OwnerLayout() {
   const colors = useColors();
@@ -28,42 +40,36 @@ export default function OwnerLayout() {
 
   return (
     <Tabs
+      tabBar={props =>
+        isDesktop ? (
+          <AppSidebar
+            items={ownerNavigation}
+            activeKey={props.state.routes[props.state.index]?.name ?? 'dashboard'}
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(value => !value)}
+            onNavigate={key => (props.navigation as any).navigate(key)}
+            onLogout={handleSignOut}
+          />
+        ) : (
+          <BottomTabBar {...props} />
+        )
+      }
       screenOptions={{
         headerStyle: styles.header,
         headerTitleStyle: styles.headerTitle,
-        headerLeft: isDesktop
-          ? () => (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-                onPress={() => setSidebarCollapsed(value => !value)}
-                style={styles.sidebarToggle}
-              >
-                <Ionicons
-                  name={sidebarCollapsed ? 'chevron-forward' : 'chevron-back'}
-                  size={22}
-                  color={colors.primary}
-                />
+        headerRight: isDesktop
+          ? undefined
+          : () => (
+              <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.logout}>
+                <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
+                <Text style={styles.logoutText}>Log out</Text>
               </Pressable>
-            )
-          : undefined,
-        headerRight: () => (
-          <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.logout}>
-            <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
-            <Text style={styles.logoutText}>Log out</Text>
-          </Pressable>
-        ),
+            ),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarHideOnKeyboard: true,
         tabBarPosition: isDesktop ? 'left' : 'bottom',
-        tabBarShowLabel: !isDesktop || !sidebarCollapsed,
-        tabBarStyle: [
-          styles.tabBar,
-          isDesktop && styles.sidebar,
-          isDesktop && { width: sidebarCollapsed ? 76 : 220 },
-        ],
-        tabBarItemStyle: isDesktop ? styles.sidebarItem : undefined,
+        tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
         tabBarIconStyle: styles.tabIcon,
       }}
@@ -143,13 +149,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textPrimary,
     fontWeight: '700',
   },
-  sidebarToggle: {
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: spacing.sm,
-  },
   logout: {
     minHeight: 44,
     flexDirection: 'row',
@@ -169,17 +168,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.background,
     borderTopColor: colors.border,
     borderTopWidth: 1,
-  },
-  sidebar: {
-    minHeight: '100%',
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
-    borderTopWidth: 0,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-  },
-  sidebarItem: {
-    minHeight: 54,
   },
   tabLabel: {
     fontSize: fontSizes.caption,

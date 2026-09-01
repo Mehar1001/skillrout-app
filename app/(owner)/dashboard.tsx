@@ -70,7 +70,7 @@ export default function OwnerDashboard() {
   };
 
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [storeCount, setStoreCount] = useState(0);
@@ -136,6 +136,10 @@ export default function OwnerDashboard() {
   };
 
   const displayName = user?.email ? user.email.split('@')[0] : 'Owner';
+  const handleStartVisit = async () => {
+    await signOut();
+    router.replace('/employee/login' as any);
+  };
 
   if (loading) {
     return (
@@ -193,7 +197,7 @@ export default function OwnerDashboard() {
         </View>
         <Button
           title="Start Visit"
-          onPress={() => router.push('/employee/login' as any)}
+          onPress={handleStartVisit}
           variant="accent"
           iconName="arrow-forward"
         />

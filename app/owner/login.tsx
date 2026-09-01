@@ -15,7 +15,6 @@ import { doc, getDoc, type DocumentSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import {
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -26,6 +25,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BrandMark } from '../../components/BrandMark';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../../constants/designTokens';
@@ -48,6 +48,13 @@ export default function OwnerScreen() {
   const scheme = useColorScheme() ?? 'light';
 
   const clearMessage = () => setMessage(null);
+  const handleBackHome = async () => {
+    try {
+      if (auth.currentUser) await firebaseSignOut(auth);
+    } finally {
+      router.replace('/');
+    }
+  };
   const ScreenContainer = Platform.OS === 'web' ? View : Pressable;
 
   const getDocOrNull = async (collection: string, id: string): Promise<DocumentSnapshot | null> => {
@@ -169,16 +176,12 @@ export default function OwnerScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          <Pressable onPress={() => router.replace('/')} style={styles.backHome} accessibilityRole="button">
+          <Pressable onPress={handleBackHome} style={styles.backHome} accessibilityRole="button">
             <Ionicons name="arrow-back" size={20} color={colors.primary} />
             <Text style={styles.backHomeText}>Back to home</Text>
           </Pressable>
           <View style={styles.header}>
-            <Image
-              source={require('../../assets/images/skillrout-icon-green.png')}
-              style={styles.logo}
-              accessibilityLabel="Skillrout"
-            />
+            <BrandMark size={spacing.xxl} style={styles.logo} />
             <Text style={styles.tagline}>Bookkeeping by</Text>
             <Text style={styles.title}>Skillrout</Text>
             <Text style={styles.subtitle}>Sign in to manage stores and visits</Text>
