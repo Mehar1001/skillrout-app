@@ -1,11 +1,10 @@
-import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { ReceiptView } from '../../components/ReceiptView';
+import { ShareOptions } from '../../components/ShareOptions';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,6 +12,7 @@ import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters
 import { generateReceiptHtml, type LastClearedInfo } from '../../helpers/receiptTemplate';
 import { useVisit } from '../../hooks/useVisit';
 import { listAssignedStoreVisits, markPrinted } from '../../services/visits';
+import { shareReceiptJpeg, shareReceiptPdf } from '../../helpers/shareReceipt';
 
 export default function ReceiptScreen() {
   const colors = useColors();
@@ -21,7 +21,9 @@ export default function ReceiptScreen() {
   const { user, ownerId } = useAuth();
   const router = useRouter();
   const { visit, loading, error, refresh } = useVisit(ownerId, storeId, visitId);
+  const receiptRef = useRef<View>(null);
   const [working, setWorking] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [lastCleared, setLastCleared] = useState<LastClearedInfo | null>(null);
 
   const fetchLastCleared = useCallback(async () => {
@@ -99,33 +101,15 @@ export default function ReceiptScreen() {
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = async (format: 'pdf' | 'jpeg') => {
     if (!visit || !user || !ownerId) return;
+    setShareOpen(false);
     setWorking(true);
     try {
-      await markPrinted(ownerId, visit.storeId, visit.id, user.uid);
-      const html = generateReceiptHtml(visit, lastCleared);
-      if (Platform.OS === 'web') {
-        if (typeof document === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined') return;
-        const blob = new Blob([html], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `skillrout-receipt-${visit.id}.html`;
-        a.click();
-        URL.revokeObjectURL(url);
-        return;
-      }
-      const { uri } = await Print.printToFileAsync({ html });
-      const pdfUri = `${FileSystem.cacheDirectory}skillrout-receipt-${visit.id}.pdf`;
-      await FileSystem.moveAsync({ from: uri, to: pdfUri });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(pdfUri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
-      } else {
-        Alert.alert('Sharing unavailable', 'Sharing is not available on this device.');
-      }
+      if (format === 'pdf') await shareReceiptPdf(ownerId, visit, user.uid, lastCleared);
+      else await shareReceiptJpeg(ownerId, visit, user.uid, receiptRef);
     } catch (e: any) {
-      Alert.alert('Save/Share Error', e.message || 'Receipt could not be saved or shared.');
+      Alert.alert('Share Error', e.message || 'Receipt could not be shared.');
     } finally {
       setWorking(false);
     }
@@ -135,12 +119,19 @@ export default function ReceiptScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>THERMAL RECEIPT PREVIEW</Text>
       <Text style={styles.title}>Review before printing</Text>
-      <ReceiptView visit={visit} lastCleared={lastCleared} />
+      <ReceiptView ref={receiptRef} visit={visit} lastCleared={lastCleared} />
       <View style={styles.actions}>
         <Button title="Print" onPress={handlePrint} loading={working} />
-        <Button title="Save / Share" onPress={handleShare} variant="secondary" loading={working} />
+        <Button title="Share" onPress={() => setShareOpen(true)} variant="secondary" loading={working} />
         <Button title="Done" onPress={() => router.replace('/select-store' as any)} variant="secondary" disabled={working} />
       </View>
+      <ShareOptions
+        visible={shareOpen}
+        loading={working}
+        onClose={() => setShareOpen(false)}
+        onSharePdf={() => handleShare('pdf')}
+        onShareJpeg={() => handleShare('jpeg')}
+      />
     </ScrollView>
   );
 }

@@ -100,3 +100,5 @@ firebase deploy --project production
 - `PRINT` only flips `printStatus`.
 - Plain `1…N` machine numbers are shown everywhere; receipts show `1  Machine Name`.
 - Existing production visit counts and baselines are unchanged except for deliberate canary submissions.
+- Receipt and report Share menus produce valid PDF and JPEG outputs on web and native targets.
+- PDF/JPEG sharing does not alter RUN/PRINT/SUBMIT settlement invariants.

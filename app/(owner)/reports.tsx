@@ -1,8 +1,6 @@
 import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -15,6 +13,8 @@ import { buildReportSummary, generateReportHtml, type ReportSummary } from '../.
 import { listVisits } from '../../services/visits';
 import { Visit } from '../../types';
 import { VisitAdjustmentModal } from '../../components/VisitAdjustmentModal';
+import { ShareOptions } from '../../components/ShareOptions';
+import { shareReportJpeg, shareReportPdf } from '../../helpers/shareReport';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const daysAgoIso = (days: number) => {
@@ -35,7 +35,9 @@ export default function ReportsScreen() {
   const [preset, setPreset] = useState<RangePreset>('30');
   const [startDate, setStartDate] = useState(daysAgoIso(30));
   const [endDate, setEndDate] = useState(todayIso());
+  const reportRef = useRef<ScrollView>(null);
   const [generating, setGenerating] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
 
@@ -95,29 +97,16 @@ export default function ReportsScreen() {
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = async (format: 'pdf' | 'jpeg') => {
     if (filteredVisits.length === 0) {
       Alert.alert('No data', 'There are no visits in the selected range to share.');
       return;
     }
+    setShareOpen(false);
     setGenerating(true);
     try {
-      const html = generateReportHtml(summary, startDate, endDate, businessName ?? undefined);
-      if (Platform.OS === 'web') {
-        await Print.printAsync({ html });
-        return;
-      }
-      const fileUri = `${FileSystem.cacheDirectory}skillrout-report-${startDate}-to-${endDate}.html`;
-      await FileSystem.writeAsStringAsync(fileUri, html, { encoding: FileSystem.EncodingType.UTF8 });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/html',
-          dialogTitle: 'Skillrout Report',
-          UTI: 'public.html',
-        });
-      } else {
-        Alert.alert('Sharing unavailable', 'Sharing is not available on this device.');
-      }
+      if (format === 'pdf') await shareReportPdf(summary, startDate, endDate, businessName ?? undefined);
+      else await shareReportJpeg(reportRef);
     } catch (e: any) {
       Alert.alert('Report Error', e.message || 'Report could not be generated.');
     } finally {
@@ -127,7 +116,7 @@ export default function ReportsScreen() {
 
   return (
     <View style={styles.screen}>
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <ScrollView ref={reportRef} style={styles.scroll} contentContainerStyle={styles.container}>
       <View style={styles.headingRow}>
         <View style={styles.headingText}>
           <Text style={styles.title}>Reports</Text>
@@ -312,7 +301,7 @@ export default function ReportsScreen() {
       {!loading && !error && filteredVisits.length > 0 && (
         <View style={styles.actions}>
           <Button title="Print Report" onPress={handlePrint} loading={generating} />
-          <Button title="Share / Save PDF" onPress={handleShare} variant="accent" loading={generating} />
+          <Button title="Share" onPress={() => setShareOpen(true)} variant="accent" loading={generating} />
         </View>
       )}
     </ScrollView>
@@ -326,6 +315,13 @@ export default function ReportsScreen() {
         }}
       />
     ) : null}
+    <ShareOptions
+      visible={shareOpen}
+      loading={generating}
+      onClose={() => setShareOpen(false)}
+      onSharePdf={() => handleShare('pdf')}
+      onShareJpeg={() => handleShare('jpeg')}
+    />
     </View>
   );
 }

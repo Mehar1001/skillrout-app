@@ -460,3 +460,14 @@ This example uses the UAT test data.
 - Read the **UAT.md** file for the full tester guide and acceptance tests.
 - Read the **PRD.md** file for detailed product rules.
 - Ask the owner or project admin for support.
+
+## Part 8 — Share a receipt or report
+
+The **Print** button opens the normal print dialog. To create a file instead:
+
+1. Tap **Share**.
+2. Choose **Share as PDF** or **Share as JPEG**.
+3. On a phone or tablet, choose an app from the system share sheet.
+4. On the web, the file is shared when the browser supports file sharing; otherwise it downloads automatically.
+
+PDF is best for printing and business records. JPEG is best for sending as an image in a message. Sharing a receipt also records it as printed.

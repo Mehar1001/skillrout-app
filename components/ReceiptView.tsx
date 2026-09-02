@@ -1,3 +1,4 @@
+import React from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { type Colors, fontSizes, spacing } from '../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
@@ -6,12 +7,17 @@ import { Visit } from '../types';
 
 const monoFont = Platform.select({ ios: 'Courier New', android: 'monospace', default: 'Courier New' });
 
-export const ReceiptView = ({ visit, lastCleared }: { visit: Visit; lastCleared?: LastClearedInfo | null }) => {
+interface ReceiptViewProps {
+  visit: Visit;
+  lastCleared?: LastClearedInfo | null;
+}
+
+export const ReceiptView = React.forwardRef<View, ReceiptViewProps>(({ visit, lastCleared }, ref) => {
   const colors = useColors();
   const styles = makeStyles(colors);
   const lines = buildReceiptLines(visit, lastCleared);
   return (
-    <View style={styles.receipt}>
+    <View ref={ref} collapsable={false} style={styles.receipt}>
       <Text style={styles.brand}>{lines.title}</Text>
       <Text style={styles.store}>{lines.storeName}</Text>
       {lines.storeAddress ? <Text style={styles.storeAddress}>{lines.storeAddress}</Text> : null}
@@ -72,7 +78,9 @@ export const ReceiptView = ({ visit, lastCleared }: { visit: Visit; lastCleared?
       <Text style={styles.status}>{lines.status}</Text>
     </View>
   );
-};
+});
+
+ReceiptView.displayName = 'ReceiptView';
 
 const ReceiptRow = ({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) => { const colors = useColors(); const styles = makeStyles(colors); return (
   <View style={styles.row}>

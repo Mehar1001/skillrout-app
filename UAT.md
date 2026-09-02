@@ -318,3 +318,19 @@ Expected:
 | Zero/negative visit (no submit) | |
 | History and reports | |
 | Console / Firebase health | |
+
+### Test 7.3 — Share receipt and report files
+
+1. Open a completed visit's receipt screen.
+2. Select **Share** and confirm the menu shows **Share as PDF** and **Share as JPEG**.
+3. Select PDF and confirm a readable PDF is shared or downloaded.
+4. Repeat with JPEG and confirm an image file is shared or downloaded.
+5. Open the owner Reports screen and repeat both formats.
+6. Confirm the existing **Print** action still opens the print dialog.
+
+Expected:
+
+- PDF filenames end in `.pdf`; JPEG filenames end in `.jpg`.
+- Receipt output shows the plain number before the machine name, for example `1  Front Machine`.
+- The receipt remains based on the immutable visit snapshot.
+- Sharing a receipt marks `printStatus` as `printed`; it does not alter machine baselines.

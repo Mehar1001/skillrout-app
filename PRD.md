@@ -175,3 +175,11 @@ A centralized Expo + Firebase app with role-based access that records every stor
 - History pagination
 - 58 mm thermal receipt support
 - Cloud Functions rate limiting
+
+## 12. Receipt and report output formats
+
+- The receipt and owner report screens retain a dedicated **Print** action for the normal browser or native print dialog.
+- A **Share** action opens a format menu with **Share as PDF** and **Share as JPEG**.
+- Native devices create a PDF or JPEG file and open the operating system share sheet.
+- Web browsers use the Web Share API when file sharing is supported and otherwise download the selected file.
+- Sharing a receipt marks it as printed, consistent with the existing print-status rule.
