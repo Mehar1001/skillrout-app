@@ -9,7 +9,7 @@ import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStore } from '../../services/stores';
-import { employeeAddMachine, getNextMachineNumber } from '../../services/machines';
+import { employeeAddMachine, getNextMachineNumber, validateMachineNumberFormat, validateMachineNumberUnique } from '../../services/machines';
 import { Store } from '../../types';
 
 export default function AddMachineScreen() {
@@ -38,21 +38,39 @@ export default function AddMachineScreen() {
       .catch(() => {});
   }, [ownerId, storeId]);
 
-  const validate = () => {
+  const validate = async () => {
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = 'Machine name is required.';
+
+    const formatCheck = validateMachineNumberFormat(machineNumber);
+    if (!formatCheck.valid) {
+      next.machineNumber = formatCheck.error || 'Invalid machine number.';
+    }
+
     if (lastSettledIn === null || lastSettledIn <= 0) {
       next.lastSettledIn = 'Initial IN must be greater than $0.00.';
     }
     if (lastSettledOut === null || lastSettledOut <= 0) {
       next.lastSettledOut = 'Initial OUT must be greater than $0.00.';
     }
+
     setErrors(next);
-    return Object.keys(next).length === 0;
+    if (Object.keys(next).length > 0) return false;
+
+    if (ownerId && storeId) {
+      const uniquenessCheck = await validateMachineNumberUnique(ownerId, storeId, machineNumber);
+      if (!uniquenessCheck.valid) {
+        setErrors({ machineNumber: uniquenessCheck.error || 'Machine number already in use.' });
+        return false;
+      }
+    }
+
+    return true;
   };
 
   const handleSave = async () => {
-    if (!validate() || !ownerId || !storeId || !store) return;
+    const isValid = await validate();
+    if (!isValid || !ownerId || !storeId || !store) return;
     setSaving(true);
     try {
       await employeeAddMachine(ownerId, storeId, {
@@ -85,7 +103,7 @@ export default function AddMachineScreen() {
       <Text style={styles.eyebrow}>ADD MACHINE</Text>
       <Text style={styles.title}>{store ? store.name : 'Store'}</Text>
       <Text style={styles.subtitle}>
-        The machine number is generated automatically. Enter a name and the starting initial IN/OUT values.
+        Enter a machine number (positive integer), name, and the starting initial IN/OUT values.
       </Text>
 
       <Card style={styles.form}>
@@ -94,8 +112,10 @@ export default function AddMachineScreen() {
             label="Number"
             value={machineNumber}
             error={errors.machineNumber}
-            placeholder="Auto-generated"
-            editable={false}
+            placeholder="1"
+            editable={true}
+            keyboardType="numeric"
+            onChangeText={setMachineNumber}
           />
         </View>
         <Input

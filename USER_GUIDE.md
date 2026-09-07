@@ -94,7 +94,7 @@ A machine is the game or device the employee reads.
 1. From the **Owner Dashboard**, tap **Machines**.
 2. Select the store where the machine is.
 3. Tap the button to add a new machine.
-4. The **Number** is auto-assigned `1`, `2`, `3`, etc. Do not type it.
+4. Type the **Number** as a positive integer (e.g., `1`, `2`, `3`). The number must be unique within the store.
 5. Type the **Machine name**. Example: `Front Machine`.
 6. Type the **Last Settled IN** value. Example: `1000`.
 7. Type the **Last Settled OUT** value. Example: `500`.
@@ -107,16 +107,17 @@ A machine is the game or device the employee reads.
 - The machine keeps the `Last Settled IN` and `Last Settled OUT` values you entered.
 - These numbers are the starting point for the first employee visit.
 
-### 1.6 Renumber machines
+### 1.6 Edit or delete a machine
 
 1. Open **Machines** and select the store.
-2. Expand the renumber preview.
-3. Confirm the new order `1`, `2`, `3`.
-4. Tap **Apply renumbering**.
+2. Find the machine you want to change.
+3. Tap **Edit** to change the machine number, name, or other details.
+4. Tap the trash icon to delete the machine.
 
 **What you see:**
 
-- Old numbers are saved as **legacy numbers** for OCR/history.
+- When editing, you can change the machine number to any unique positive integer.
+- Deleting a machine removes it from the store but does not affect historical visit data.
 - Existing visit records keep the number they had at the time.
 
 ### 1.7 Create an employee
@@ -360,7 +361,7 @@ Use this only when the visit made money.
 |---|---|
 | **Store** | The business location where machines are kept. |
 | **Machine** | The device with IN/OUT meters that the employee reads. |
-| **Machine number** | The plain `1`, `2`, `3` store-local number shown for each machine. |
+| **Machine number** | The user-editable positive integer (e.g., `1`, `2`, `3`) that identifies each machine within a store. Must be unique within the store. |
 | **Last Settled IN/OUT** | The approved baseline numbers from the last submitted settlement. |
 | **Present IN/OUT** | The current numbers on the machine right now. |
 | **New IN** | `Present IN - Last Settled IN`. How much IN activity happened since the last settlement. |

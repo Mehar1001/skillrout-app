@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { httpsCallable } from 'firebase/functions';
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { listStores } from '../../services/stores';
-import { getNextMachineNumber, listMachines, saveMachine, setMachineActive } from '../../services/machines';
+import { getNextMachineNumber, listMachines, saveMachine, setMachineActive, deleteMachine } from '../../services/machines';
 import { Store, Machine } from '../../types';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
@@ -15,19 +14,6 @@ import { type Colors, fontSizes, radii, spacing } from '../../constants/designTo
 import { useColors } from '@/hooks/useColors';
 import { confirm } from '../../helpers/alert';
 import { formatCurrency } from '../../helpers/formatters';
-import { functions } from '../../firebaseConfig';
-
-interface MachineNumberMapping {
-  machineId: string;
-  name: string;
-  previousNumber: string;
-  nextNumber: string;
-}
-
-const renumberStoreMachines = httpsCallable<
-  { storeId: string; apply: boolean },
-  { applied: boolean; mapping: MachineNumberMapping[] }
->(functions, 'renumberStoreMachines');
 
 export default function MachinesScreen() {
   const colors = useColors();
@@ -40,8 +26,6 @@ export default function MachinesScreen() {
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
-  const [numberMapping, setNumberMapping] = useState<MachineNumberMapping[] | null>(null);
-  const [renumbering, setRenumbering] = useState(false);
   const [form, setForm] = useState<Partial<Machine>>({
     id: '',
     machineNumber: '',
@@ -58,7 +42,6 @@ export default function MachinesScreen() {
 
   useEffect(() => {
     if (!user || !ownerId || !selectedStoreId) return;
-    setNumberMapping(null);
     listMachines(ownerId, selectedStoreId).then(setMachines);
     if (!form.id) {
       getNextMachineNumber(ownerId, selectedStoreId).then(nextNumber =>
@@ -87,38 +70,22 @@ export default function MachinesScreen() {
     setForm({ ...machine });
   };
 
-  const previewRenumbering = async () => {
-    if (!selectedStoreId) return;
-    setRenumbering(true);
+  const handleDelete = (machine: Machine) => {
+    if (!user || !ownerId || !selectedStoreId) return;
     setMessage(null);
-    try {
-      const result = await renumberStoreMachines({ storeId: selectedStoreId, apply: false });
-      setNumberMapping(result.data.mapping);
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Could not preview machine numbering.' });
-    } finally {
-      setRenumbering(false);
-    }
-  };
-
-  const applyRenumbering = () => {
-    if (!selectedStoreId || !numberMapping) return;
-    const changed = numberMapping.filter(item => item.previousNumber !== item.nextNumber);
     confirm(
-      'Renumber Machines',
-      `${changed.length} machine number${changed.length === 1 ? '' : 's'} will change to a 1…${numberMapping.length} sequence. Historical visits will keep their original snapshot numbers. Continue?`,
+      'Delete Machine',
+      `Delete machine ${machine.machineNumber} (${machine.name || 'Unnamed'})? Historical visits and data will remain unchanged.`,
       async () => {
-        setRenumbering(true);
         try {
-          await renumberStoreMachines({ storeId: selectedStoreId, apply: true });
-          setMessage({ type: 'success', text: 'Machines renumbered in ascending order.' });
-          setNumberMapping(null);
-          setMachines(await listMachines(ownerId!, selectedStoreId));
-          resetForm();
-        } catch (error: any) {
-          setMessage({ type: 'error', text: error.message || 'Could not renumber machines.' });
-        } finally {
-          setRenumbering(false);
+          await deleteMachine(ownerId, selectedStoreId, machine.id);
+          setMessage({ type: 'success', text: 'Machine deleted.' });
+          listMachines(ownerId, selectedStoreId).then(setMachines);
+          if (form.id === machine.id) {
+            resetForm();
+          }
+        } catch (e: any) {
+          setMessage({ type: 'error', text: e.message || 'Failed to delete machine.' });
         }
       }
     );
@@ -134,7 +101,9 @@ export default function MachinesScreen() {
           label="Number"
           value={form.machineNumber}
           placeholder="Auto"
-          editable={false}
+          editable={true}
+          keyboardType="numeric"
+          onChangeText={text => setForm(prev => ({ ...prev, machineNumber: text }))}
         />
       </View>
       <Input
@@ -324,32 +293,7 @@ export default function MachinesScreen() {
                 <View style={styles.storeBody}>
                   {!form.id ? machineForm : null}
 
-                  <View style={styles.machineSectionHeader}>
-                    <Text style={styles.sectionTitle}>Machines at this Store</Text>
-                    <Button
-                      title="Preview 1…N"
-                      onPress={previewRenumbering}
-                      variant="secondary"
-                      compact
-                      disabled={renumbering || machines.length === 0}
-                      loading={renumbering}
-                    />
-                  </View>
-                  {numberMapping ? (
-                    <Card style={styles.renumberPreview}>
-                      <Text style={styles.renumberTitle}>Numbering preview</Text>
-                      {numberMapping.map(item => (
-                        <View key={item.machineId} style={styles.renumberRow}>
-                          <Text style={styles.renumberName}>{item.name || 'Unnamed machine'}</Text>
-                          <Text style={styles.renumberValue}>{item.previousNumber} → {item.nextNumber}</Text>
-                        </View>
-                      ))}
-                      <View style={styles.renumberActions}>
-                        <Button title="Apply Renumbering" onPress={applyRenumbering} disabled={renumbering} />
-                        <Button title="Cancel" onPress={() => setNumberMapping(null)} variant="secondary" disabled={renumbering} />
-                      </View>
-                    </Card>
-                  ) : null}
+                  <Text style={styles.sectionTitle}>Machines at this Store</Text>
                   {machines.length === 0 ? (
                     <Text style={styles.empty}>No machines yet. Add the first one above.</Text>
                   ) : (
@@ -373,6 +317,17 @@ export default function MachinesScreen() {
                           </View>
                           <View style={styles.actions}>
                             <Button title="Edit" onPress={() => handleEdit(machine)} variant="secondary" />
+                            <Pressable
+                              onPress={() => handleDelete(machine)}
+                              style={({ pressed }) => [
+                                styles.deleteButton,
+                                { opacity: pressed ? 0.6 : 1 },
+                              ]}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Delete machine ${machine.machineNumber}`}
+                            >
+                              <Ionicons name="trash-outline" size={20} color={colors.error} />
+                            </Pressable>
                             <Button
                               title={machine.active ? 'Deactivate' : 'Reactivate'}
                               onPress={() => handleActiveChange(machine)}
@@ -471,42 +426,18 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
+  deleteButton: {
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   machineSectionHeader: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
-  },
-  renumberPreview: {
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  renumberTitle: {
-    color: colors.textPrimary,
-    fontSize: fontSizes.h3,
-    fontWeight: '700',
-  },
-  renumberRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  renumberName: {
-    flex: 1,
-    color: colors.textPrimary,
-    fontSize: fontSizes.body,
-  },
-  renumberValue: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.body,
-    fontWeight: '700',
-  },
-  renumberActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
   },
   machineCard: {
     marginBottom: spacing.md,

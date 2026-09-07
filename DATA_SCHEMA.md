@@ -70,7 +70,7 @@
 | Field | Type | Notes |
 |---|---|---|
 | `id` | string | |
-| `machineNumber` | string | Plain `1`, `2`, etc. |
+| `machineNumber` | string | User-editable positive integer (e.g., `1`, `2`, `3`). Must be unique within the store. |
 | `legacyMachineNumbers` | string[]? | Previous numbers for OCR/history |
 | `name` | string | |
 | `storeId` | string | Denormalized |
@@ -169,7 +169,8 @@
 
 ## 3. Important Schema Rules
 
-- Machine numbers are strings. The UI displays them as plain positive integers, but they are not guaranteed to be fixed integers across renumbering.
-- `legacyMachineNumbers` is an unordered list of previous string numbers.
+- Machine numbers are user-editable positive integers (e.g., `1`, `2`, `3`). They must be unique within a store.
+- `legacyMachineNumbers` is an unordered list of previous string numbers for OCR/history matching.
 - Historical visits keep the `machineNumber` that existed at `runVisit`.
 - `visit.machines` is the source of truth for receipts and reports.
+- Machine deletion does not affect historical visit data (visits have snapshots).

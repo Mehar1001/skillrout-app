@@ -81,7 +81,7 @@ A centralized Expo + Firebase app with role-based access that records every stor
 
 `owners/{ownerId}/stores/{storeId}/machines/{machineId}`
 
-- `id`, `machineNumber` (plain `1`, `2`, `3`, etc.), `legacyMachineNumbers`, `name`, `storeId`, `lastSettledIn`, `lastSettledOut`, `lastSubmittedVisitId`, `lastSubmittedAt`, `active`, `createdAt`, `updatedAt`
+- `id`, `machineNumber` (user-editable positive integer, unique within store), `legacyMachineNumbers`, `name`, `storeId`, `lastSettledIn`, `lastSettledOut`, `lastSubmittedVisitId`, `lastSubmittedAt`, `active`, `createdAt`, `updatedAt`
 
 ### Visit
 
@@ -148,8 +148,9 @@ A centralized Expo + Firebase app with role-based access that records every stor
 8. Thermal receipt supports 80 mm.
 9. Submitted settlements are locked from normal employee editing.
 10. Photos belong to `RUN`, not the machine master record.
-11. Machine numbers are plain `1…N` per store; no `#`, `Serial`, or free-text prefix is displayed.
+11. Machine numbers are user-editable positive integers (e.g., `1`, `2`, `3`) and must be unique within a store. No `#`, `Serial`, or free-text prefix is displayed.
 12. Historical visits preserve the `machineNumber` value that was current at the time of the visit.
+13. Machine deletion does not affect historical visit data (visits have snapshots).
 
 ## 9. UI/UX Direction
 

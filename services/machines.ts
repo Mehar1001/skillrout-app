@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebaseConfig';
 import { Machine } from '../types';
@@ -24,6 +24,45 @@ export const getNextMachineNumber = async (
   return String(max + 1);
 };
 
+export const validateMachineNumberFormat = (machineNumber: string): { valid: boolean; error?: string } => {
+  const trimmed = machineNumber.trim();
+  if (!trimmed) {
+    return { valid: false, error: 'Machine number is required.' };
+  }
+  if (!/^\d+$/.test(trimmed)) {
+    return { valid: false, error: 'Machine number must be a positive integer.' };
+  }
+  const value = Number(trimmed);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    return { valid: false, error: 'Machine number must be a positive integer.' };
+  }
+  return { valid: true };
+};
+
+export const validateMachineNumberUnique = async (
+  ownerId: string,
+  storeId: string,
+  machineNumber: string,
+  excludeMachineId?: string
+): Promise<{ valid: boolean; error?: string }> => {
+  const formatCheck = validateMachineNumberFormat(machineNumber);
+  if (!formatCheck.valid) {
+    return formatCheck;
+  }
+
+  const machines = await listMachines(ownerId, storeId);
+  const trimmedNumber = machineNumber.trim();
+  const duplicate = machines.find(
+    m => m.machineNumber === trimmedNumber && m.id !== excludeMachineId
+  );
+
+  if (duplicate) {
+    return { valid: false, error: `Machine number ${trimmedNumber} is already in use.` };
+  }
+
+  return { valid: true };
+};
+
 export const saveMachine = async (
   ownerId: string,
   storeId: string,
@@ -34,9 +73,21 @@ export const saveMachine = async (
   if (!machine.id && (Number(machine.lastSettledIn) <= 0 || Number(machine.lastSettledOut) <= 0)) {
     throw new Error('Initial IN and OUT must be greater than 0.');
   }
+
+  const machineNumber = machine.machineNumber?.trim() || '';
+  const uniquenessCheck = await validateMachineNumberUnique(
+    ownerId,
+    storeId,
+    machineNumber,
+    machine.id
+  );
+  if (!uniquenessCheck.valid) {
+    throw new Error(uniquenessCheck.error);
+  }
+
   if (!machine.id) {
     const result = await employeeAddMachine(ownerId, storeId, {
-      machineNumber: machine.machineNumber?.trim() || '',
+      machineNumber,
       name,
       lastSettledIn: machine.lastSettledIn ?? 0,
       lastSettledOut: machine.lastSettledOut ?? 0,
@@ -46,7 +97,7 @@ export const saveMachine = async (
 
   const ref = doc(db, `owners/${ownerId}/stores/${storeId}/machines`, machine.id);
   await setDoc(ref, {
-    machineNumber: machine.machineNumber?.trim(),
+    machineNumber,
     name,
     storeId,
     active: machine.active ?? true,
@@ -88,4 +139,13 @@ export const employeeAddMachine = async (
   const addMachine = httpsCallable(functions, 'employeeAddMachine');
   const response = await addMachine({ ownerId, storeId, ...payload });
   return response.data as { machineId: string; machineNumber: string };
+};
+
+export const deleteMachine = async (
+  ownerId: string,
+  storeId: string,
+  machineId: string
+): Promise<void> => {
+  const ref = doc(db, `owners/${ownerId}/stores/${storeId}/machines`, machineId);
+  await deleteDoc(ref);
 };

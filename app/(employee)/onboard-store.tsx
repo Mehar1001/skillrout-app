@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { functions } from '../../firebaseConfig';
 import { useColors } from '@/hooks/useColors';
 import { validatePercentages } from '../../helpers/validators';
+import { validateMachineNumberFormat } from '../../services/machines';
 
 interface MachineRow {
   id: string;
@@ -33,7 +34,7 @@ export default function OnboardStoreScreen() {
   const [storePercent, setStorePercent] = useState('50');
   const [gamesPercent, setGamesPercent] = useState('50');
   const [machines, setMachines] = useState<MachineRow[]>([
-    { id: '1', machineNumber: '1', name: '', lastSettledIn: '', lastSettledOut: '' },
+    { id: '1', machineNumber: '', name: '', lastSettledIn: '', lastSettledOut: '' },
   ]);
   const [nextId, setNextId] = useState(2);
   const [submitted, setSubmitted] = useState(false);
@@ -52,10 +53,21 @@ export default function OnboardStoreScreen() {
     const pctError = validatePercentages(store, games);
     if (pctError) next.percent = pctError;
 
+    const machineNumbers = new Set<string>();
     machines.forEach((machine, index) => {
       if (!machine.name.trim()) {
         next[`machineName_${index}`] = 'Machine name is required.';
       }
+
+      const formatCheck = validateMachineNumberFormat(machine.machineNumber);
+      if (!formatCheck.valid) {
+        next[`machineNumber_${index}`] = formatCheck.error || 'Invalid machine number.';
+      } else if (machineNumbers.has(machine.machineNumber.trim())) {
+        next[`machineNumber_${index}`] = 'Machine number must be unique.';
+      } else {
+        machineNumbers.add(machine.machineNumber.trim());
+      }
+
       const lastIn = Number(machine.lastSettledIn);
       const lastOut = Number(machine.lastSettledOut);
       if (machine.lastSettledIn.trim() === '' || isNaN(lastIn) || lastIn <= 0) {
@@ -72,11 +84,17 @@ export default function OnboardStoreScreen() {
   const hasErrors = (): boolean => {
     const store = Number(storePercent);
     const games = Number(gamesPercent);
+    const machineNumbers = new Set<string>();
     return (
       !storeName.trim() ||
       !address.trim() ||
       !!validatePercentages(store, games) ||
       machines.some(m => {
+        const formatCheck = validateMachineNumberFormat(m.machineNumber);
+        if (!formatCheck.valid) return true;
+        if (machineNumbers.has(m.machineNumber.trim())) return true;
+        machineNumbers.add(m.machineNumber.trim());
+
         const lastIn = Number(m.lastSettledIn);
         const lastOut = Number(m.lastSettledOut);
         return (
@@ -101,7 +119,7 @@ export default function OnboardStoreScreen() {
   const addMachine = () => {
     setMachines(prev => [
       ...prev,
-      { id: String(nextId), machineNumber: String(prev.length + 1), name: '', lastSettledIn: '', lastSettledOut: '' },
+      { id: String(nextId), machineNumber: '', name: '', lastSettledIn: '', lastSettledOut: '' },
     ]);
     setNextId(n => n + 1);
   };
@@ -109,7 +127,7 @@ export default function OnboardStoreScreen() {
   const removeMachine = (id: string) => {
     setMachines(prev =>
       prev.length > 1
-        ? prev.filter(machine => machine.id !== id).map((machine, index) => ({ ...machine, machineNumber: String(index + 1) }))
+        ? prev.filter(machine => machine.id !== id)
         : prev
     );
   };
@@ -127,8 +145,8 @@ export default function OnboardStoreScreen() {
         address: address.trim(),
         defaultStorePercent: Number(storePercent),
         defaultVendorPercent: Number(gamesPercent),
-        machines: machines.map((m, index) => ({
-          machineNumber: String(index + 1),
+        machines: machines.map(m => ({
+          machineNumber: m.machineNumber.trim(),
           name: m.name.trim(),
           lastSettledIn: Number(m.lastSettledIn),
           lastSettledOut: Number(m.lastSettledOut),
@@ -191,8 +209,10 @@ export default function OnboardStoreScreen() {
                   style={styles.machineInput}
                   label={index === 0 ? 'Number' : undefined}
                   placeholder="1"
-                  value={String(index + 1)}
-                  editable={false}
+                  value={machine.machineNumber}
+                  onChangeText={text => updateMachine(machine.id, 'machineNumber', text)}
+                  keyboardType="numeric"
+                  error={errors[`machineNumber_${index}`]}
                 />
               </View>
               <Input

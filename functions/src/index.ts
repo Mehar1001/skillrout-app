@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { initializeApp } from 'firebase-admin/app'; // Corrected: Import initializeApp directly
 import { getAuth } from 'firebase-admin/auth';
-import { DocumentReference, FieldValue, getFirestore, QueryDocumentSnapshot } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
+import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
 import { logger } from 'firebase-functions';
 import { setGlobalOptions } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
@@ -904,65 +904,6 @@ export const employeeAddMachine = onCall(async (request: CallableRequest) => {
   });
 
   return { machineId: machineRef.id, machineNumber };
-});
-
-export const renumberStoreMachines = onCall(async (request: CallableRequest) => {
-  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in to renumber machines.');
-  await requireActiveOwner(request.auth.uid, request.auth.token.email_verified === true);
-  const storeId = typeof request.data?.storeId === 'string' ? request.data.storeId : '';
-  const apply = request.data?.apply === true;
-  if (!storeId) throw new HttpsError('invalid-argument', 'Store is required.');
-
-  const storeRef = db.doc(`owners/${request.auth.uid}/stores/${storeId}`);
-  const machinesRef = db.collection(`owners/${request.auth.uid}/stores/${storeId}/machines`);
-  const buildMapping = (docs: QueryDocumentSnapshot[]) =>
-    docs
-      .map(machine => ({ id: machine.id, ...machine.data() }))
-      .sort((left: any, right: any) => {
-        const leftNumber = Number(left.machineNumber);
-        const rightNumber = Number(right.machineNumber);
-        const leftValid = Number.isSafeInteger(leftNumber) && leftNumber > 0;
-        const rightValid = Number.isSafeInteger(rightNumber) && rightNumber > 0;
-        if (leftValid && rightValid && leftNumber !== rightNumber) return leftNumber - rightNumber;
-        if (leftValid !== rightValid) return leftValid ? -1 : 1;
-        const leftCreated = left.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER;
-        const rightCreated = right.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER;
-        if (leftCreated !== rightCreated) return leftCreated - rightCreated;
-        return left.id.localeCompare(right.id);
-      })
-      .map((machine: any, index: number) => ({
-        machineId: machine.id as string,
-        name: String(machine.name || ''),
-        previousNumber: String(machine.machineNumber || ''),
-        nextNumber: String(index + 1),
-      }));
-
-  if (!apply) {
-    const [store, machines] = await Promise.all([storeRef.get(), machinesRef.get()]);
-    if (!store.exists) throw new HttpsError('not-found', 'Store not found.');
-    if (machines.size > 400) throw new HttpsError('resource-exhausted', 'Contact support to renumber more than 400 machines.');
-    return { applied: false, mapping: buildMapping(machines.docs) };
-  }
-
-  let mapping: ReturnType<typeof buildMapping> = [];
-  await db.runTransaction(async transaction => {
-    const store = await transaction.get(storeRef);
-    const machines = await transaction.get(machinesRef);
-    if (!store.exists) throw new HttpsError('not-found', 'Store not found.');
-    if (machines.size > 400) throw new HttpsError('resource-exhausted', 'Contact support to renumber more than 400 machines.');
-    mapping = buildMapping(machines.docs);
-    mapping.forEach(item => {
-      if (item.previousNumber === item.nextNumber) return;
-      transaction.update(machinesRef.doc(item.machineId), {
-        machineNumber: item.nextNumber,
-        ...(item.previousNumber ? { legacyMachineNumbers: FieldValue.arrayUnion(item.previousNumber) } : {}),
-        machineNumberRenumberedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-    });
-    transaction.update(storeRef, { updatedAt: FieldValue.serverTimestamp() });
-  });
-  return { applied: true, mapping };
 });
 
 interface MachineChange {
