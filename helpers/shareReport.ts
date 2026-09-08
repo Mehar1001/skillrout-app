@@ -1,12 +1,21 @@
-import { Platform } from 'react-native';
 import type { RefObject } from 'react';
 import { ScrollView } from 'react-native';
 import { Visit } from '../types';
 import { ReportSummary } from './reportTemplate';
 
-// Import platform-specific implementations
-import { shareReportJpeg as nativeShareReportJpeg, shareReportPdf as nativeShareReportPdf } from './shareReport.native';
-import { shareReportJpeg as webShareReportJpeg, shareReportPdf as webShareReportPdf } from './shareReport.web';
+// Check if we're on web platform
+const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+
+// Dynamic imports based on platform to avoid loading native modules on web
+const loadNativeImplementation = async () => {
+  if (isWeb) return null;
+  return (await import('./shareReport.native'));
+};
+
+const loadWebImplementation = async () => {
+  if (!isWeb) return null;
+  return (await import('./shareReport.web'));
+};
 
 // Platform-aware wrapper for JPEG sharing
 export const shareReportJpeg = async (
@@ -16,13 +25,20 @@ export const shareReportJpeg = async (
   endDate?: string,
   businessName?: string
 ) => {
-  if (Platform.OS === 'web') {
+  if (isWeb) {
     if (!summary || !startDate || !endDate) {
       throw new Error('Summary, start date, and end date are required for web JPEG sharing.');
     }
-    return webShareReportJpeg(summary, startDate, endDate, businessName);
+    const webImpl = await loadWebImplementation();
+    if (webImpl) {
+      return webImpl.shareReportJpeg(summary, startDate, endDate, businessName);
+    }
   }
-  return nativeShareReportJpeg(reportRef);
+  const nativeImpl = await loadNativeImplementation();
+  if (nativeImpl) {
+    return nativeImpl.shareReportJpeg(reportRef, summary, startDate, endDate, businessName);
+  }
+  throw new Error('No platform implementation available for JPEG sharing');
 };
 
 // Platform-aware wrapper for PDF sharing
@@ -32,8 +48,15 @@ export const shareReportPdf = async (
   endDate: string,
   businessName?: string
 ) => {
-  if (Platform.OS === 'web') {
-    return webShareReportPdf(summary, startDate, endDate, businessName);
+  if (isWeb) {
+    const webImpl = await loadWebImplementation();
+    if (webImpl) {
+      return webImpl.shareReportPdf(summary, startDate, endDate, businessName);
+    }
   }
-  return nativeShareReportPdf(summary, startDate, endDate, businessName);
+  const nativeImpl = await loadNativeImplementation();
+  if (nativeImpl) {
+    return nativeImpl.shareReportPdf(summary, startDate, endDate, businessName);
+  }
+  throw new Error('No platform implementation available for PDF sharing');
 };
