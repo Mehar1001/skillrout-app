@@ -24,6 +24,7 @@ export default function ReceiptScreen() {
   const receiptRef = useRef<View>(null);
   const [working, setWorking] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareMessage, setShareMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [lastCleared, setLastCleared] = useState<LastClearedInfo | null>(null);
 
   const fetchLastCleared = useCallback(async () => {
@@ -104,12 +105,19 @@ export default function ReceiptScreen() {
   const handleShare = async (format: 'pdf' | 'jpeg') => {
     if (!visit || !user || !ownerId) return;
     setShareOpen(false);
+    setShareMessage(null);
     setWorking(true);
     try {
-      if (format === 'pdf') await shareReceiptPdf(ownerId, visit, user.uid, lastCleared);
-      else await shareReceiptJpeg(ownerId, visit, user.uid, receiptRef, lastCleared);
+      const result: unknown = format === 'pdf'
+        ? await shareReceiptPdf(ownerId, visit, user.uid, lastCleared)
+        : await shareReceiptJpeg(ownerId, visit, user.uid, receiptRef, lastCleared);
+      if (Platform.OS === 'web') {
+        setShareMessage({ text: result === 'shared' ? 'Receipt shared.' : 'Receipt downloaded. Open the file to send it with another app.', error: false });
+      }
     } catch (e: any) {
-      Alert.alert('Share Error', e.message || 'Receipt could not be shared.');
+      const message = e.message || 'Receipt could not be shared.';
+      if (Platform.OS === 'web') setShareMessage({ text: message, error: true });
+      else Alert.alert('Share Error', message);
     } finally {
       setWorking(false);
     }
@@ -120,6 +128,11 @@ export default function ReceiptScreen() {
       <Text style={styles.eyebrow}>THERMAL RECEIPT PREVIEW</Text>
       <Text style={styles.title}>Review before printing</Text>
       <ReceiptView ref={receiptRef} visit={visit} lastCleared={lastCleared} />
+      {shareMessage ? (
+        <Text accessibilityLiveRegion="polite" style={shareMessage.error ? styles.shareError : styles.shareSuccess}>
+          {shareMessage.text}
+        </Text>
+      ) : null}
       <View style={styles.actions}>
         <Button title="Print" onPress={handlePrint} loading={working} />
         <Button title="Share" onPress={() => setShareOpen(true)} variant="secondary" loading={working} />
@@ -163,6 +176,24 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textPrimary,
     fontSize: fontSizes.h1,
     fontWeight: '700',
+  },
+  shareSuccess: {
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    color: colors.success,
+    fontSize: fontSizes.body,
+    textAlign: 'center',
+  },
+  shareError: {
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    color: colors.error,
+    fontSize: fontSizes.body,
+    textAlign: 'center',
   },
   actions: {
     width: '100%',

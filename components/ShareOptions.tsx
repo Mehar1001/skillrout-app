@@ -20,8 +20,8 @@ export const ShareOptions = ({ visible, loading = false, onClose, onSharePdf, on
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose} accessibilityLabel="Close share options">
         <Pressable style={styles.card} onPress={event => event.stopPropagation()}>
-          <Text style={styles.title}>Share or download</Text>
-          <Text style={styles.subtitle}>Choose a file format.</Text>
+          <Text style={styles.title}>Share receipt</Text>
+          <Text style={styles.subtitle}>Choose PDF or JPEG, then select WhatsApp, Mail, Messages, or another app from your device’s share sheet.</Text>
 
           <Pressable
             accessibilityRole="button"

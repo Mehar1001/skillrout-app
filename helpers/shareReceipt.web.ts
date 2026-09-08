@@ -1,29 +1,20 @@
 import { generateReceiptHtml, type LastClearedInfo } from './receiptTemplate';
 import { markPrinted } from '../services/visits';
 import { Visit } from '../types';
+import { toJpeg } from 'html-to-image';
+import { jsPDF } from 'jspdf/dist/jspdf.es.min.js';
 
-const shareOrDownload = async (dataUrl: string, mimeType: string, filename: string) => {
+export type BrowserShareResult = 'shared' | 'downloaded';
+
+const shareOrDownload = async (dataUrl: string, mimeType: string, filename: string): Promise<BrowserShareResult> => {
   // Convert data URL to blob
-  let blob: Blob;
-  if (dataUrl.startsWith('data:')) {
-    const [header, base64] = dataUrl.split(',');
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    blob = new Blob([byteArray], { type: mimeType });
-  } else {
-    const response = await fetch(dataUrl);
-    blob = await response.blob();
-  }
-  
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
   const file = new File([blob], filename, { type: mimeType });
   const browser = navigator as Navigator & { share?: (data: ShareData) => Promise<void>; canShare?: (data: ShareData) => boolean };
   if (browser.share && browser.canShare?.({ files: [file] })) {
     await browser.share({ files: [file], title: filename });
-    return;
+    return 'shared';
   }
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -32,42 +23,47 @@ const shareOrDownload = async (dataUrl: string, mimeType: string, filename: stri
   anchor.style.display = 'none';
   document.body.appendChild(anchor);
   anchor.click();
-  document.body.removeChild(anchor);
-  setTimeout(() => URL.revokeObjectURL(url), 100);
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  return 'downloaded';
 };
 
 const renderCapture = async (html: string, width: string) => {
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
   const container = document.createElement('div');
-  container.style.cssText = `position: fixed; left: -10000px; top: 0; width: ${width}; background: #fff; z-index: -1;`;
-  container.innerHTML = html;
+  container.style.cssText = `position: fixed; left: -10000px; top: 0; width: ${width}; padding: 0; background: #fff; color: #171A20; z-index: -1;`;
+  parsed.head.querySelectorAll('style').forEach(style => container.appendChild(style.cloneNode(true)));
+  const receipt = document.createElement('div');
+  receipt.style.cssText = `box-sizing: border-box; width: ${width}; margin: 0; padding: 4mm; overflow: visible; background: #fff; color: #171A20; font-family: 'Courier New', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5;`;
+  receipt.innerHTML = parsed.body.innerHTML;
+  container.appendChild(receipt);
   document.body.appendChild(container);
-  await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
-  return container;
+  await document.fonts?.ready;
+  await Promise.all(Array.from(container.querySelectorAll('img')).map(image => image.complete
+    ? Promise.resolve()
+    : new Promise<void>(resolve => {
+        image.addEventListener('load', () => resolve(), { once: true });
+        image.addEventListener('error', () => resolve(), { once: true });
+      })));
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  if (receipt.scrollWidth <= 0 || receipt.scrollHeight <= 0) throw new Error('Receipt preview has no printable content.');
+  return { container, receipt };
 };
 
-const createPdf = async (dataUrl: string, filename: string, pageFormat: 'receipt' | 'report') => {
-  console.log('Creating PDF, format:', pageFormat);
-  const { jsPDF } = await import('jspdf/dist/jspdf.es.min.js');
+const createPdf = async (dataUrl: string, filename: string, pageFormat: 'receipt' | 'report'): Promise<BrowserShareResult> => {
   const image = new Image();
   image.src = dataUrl;
-  await new Promise<void>((resolve, reject) => { 
-    image.onload = () => {
-      console.log('Image loaded, dimensions:', image.width, 'x', image.height);
-      resolve(); 
-    }; 
-    image.onerror = (e) => {
-      console.error('Image load error:', e);
-      reject(e);
-    }; 
-  });
+  await image.decode();
+  if (image.naturalWidth <= 0 || image.naturalHeight <= 0) throw new Error('Receipt image could not be prepared for PDF.');
   if (pageFormat === 'receipt') {
-    const width = 80;
-    const height = Math.max(80, (image.height / image.width) * width);
-    console.log('Receipt PDF dimensions:', width, 'x', height);
-    const pdf = new jsPDF({ unit: 'mm', format: [width, height], orientation: 'portrait' });
-    pdf.addImage(dataUrl, 'JPEG', 0, 0, width, height, undefined, 'FAST');
-    await shareOrDownload(pdf.output('datauristring'), 'application/pdf', filename);
-    return;
+    const pageWidth = 80;
+    const margin = 4;
+    const contentWidth = pageWidth - margin * 2;
+    const imageHeight = (image.naturalHeight / image.naturalWidth) * contentWidth;
+    const pageHeight = Math.max(80, imageHeight + margin * 2);
+    const pdf = new jsPDF({ unit: 'mm', format: [pageWidth, pageHeight], orientation: 'portrait' });
+    pdf.addImage(dataUrl, 'JPEG', margin, margin, contentWidth, imageHeight, undefined, 'FAST');
+    return shareOrDownload(pdf.output('datauristring'), 'application/pdf', filename);
   }
   const pageWidth = 210;
   const pageHeight = 297;
@@ -81,51 +77,40 @@ const createPdf = async (dataUrl: string, filename: string, pageFormat: 'receipt
     pdf.addImage(dataUrl, 'JPEG', margin, margin - offset, contentWidth, imageHeight, undefined, 'FAST');
     offset += pageHeight - margin * 2;
   }
-  await shareOrDownload(pdf.output('datauristring'), 'application/pdf', filename);
+  return shareOrDownload(pdf.output('datauristring'), 'application/pdf', filename);
 };
 
 export const shareReceiptPdf = async (ownerId: string, visit: Visit, userId: string, lastCleared?: LastClearedInfo | null) => {
-  await markPrinted(ownerId, visit.storeId, visit.id, userId);
   const html = generateReceiptHtml(visit, lastCleared);
-  if (!html || html.length === 0) {
-    throw new Error('Failed to generate receipt HTML');
-  }
-  const container = await renderCapture(html, '72mm');
+  if (!html) throw new Error('Failed to generate receipt HTML.');
+  const { container, receipt } = await renderCapture(html, '80mm');
   try {
-    const { toJpeg } = await import('html-to-image');
-    const dataUrl = await toJpeg(container, { quality: 0.92, backgroundColor: '#FFFFFF', pixelRatio: 2 });
-    if (!dataUrl || dataUrl.length === 0) {
-      throw new Error('Failed to generate JPEG from HTML');
-    }
-    await createPdf(dataUrl, `skillrout-receipt-${visit.id}.pdf`, 'receipt');
+    const dataUrl = await toJpeg(receipt, { quality: 0.96, backgroundColor: '#FFFFFF', pixelRatio: 2 });
+    if (!dataUrl) throw new Error('Failed to generate receipt image.');
+    const result = await createPdf(dataUrl, `skillrout-receipt-${visit.id}.pdf`, 'receipt');
+    await markPrinted(ownerId, visit.storeId, visit.id, userId).catch(() => undefined);
+    return result;
   } finally {
     container.remove();
   }
 };
 
-export const shareReceiptJpeg = async (ownerId: string, visit: Visit, userId: string, lastCleared?: LastClearedInfo | null) => {
-  console.log('Starting JPEG share for visit:', visit.id);
-  await markPrinted(ownerId, visit.storeId, visit.id, userId);
+export const shareReceiptJpeg = async (
+  ownerId: string,
+  visit: Visit,
+  userId: string,
+  _receiptRef: unknown,
+  lastCleared?: LastClearedInfo | null
+) => {
   const html = generateReceiptHtml(visit, lastCleared);
-  console.log('HTML generated, length:', html.length);
-  if (!html || html.length === 0) {
-    throw new Error('Failed to generate receipt HTML');
-  }
-  const container = await renderCapture(html, '72mm');
-  console.log('Container rendered');
+  if (!html) throw new Error('Failed to generate receipt HTML.');
+  const { container, receipt } = await renderCapture(html, '80mm');
   try {
-    const { toJpeg } = await import('html-to-image');
-    console.log('html-to-image imported');
-    const dataUrl = await toJpeg(container, { quality: 0.92, backgroundColor: '#FFFFFF', pixelRatio: 2 });
-    console.log('JPEG generated, length:', dataUrl.length);
-    if (!dataUrl || dataUrl.length === 0) {
-      throw new Error('Failed to generate JPEG from HTML');
-    }
-    await shareOrDownload(dataUrl, 'image/jpeg', `skillrout-receipt-${visit.id}.jpg`);
-    console.log('JPEG share/download completed');
-  } catch (error) {
-    console.error('JPEG share error:', error);
-    throw error;
+    const dataUrl = await toJpeg(receipt, { quality: 0.96, backgroundColor: '#FFFFFF', pixelRatio: 2 });
+    if (!dataUrl) throw new Error('Failed to generate receipt image.');
+    const result = await shareOrDownload(dataUrl, 'image/jpeg', `skillrout-receipt-${visit.id}.jpg`);
+    await markPrinted(ownerId, visit.storeId, visit.id, userId).catch(() => undefined);
+    return result;
   } finally {
     container.remove();
   }
