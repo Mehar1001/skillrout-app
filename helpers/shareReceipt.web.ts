@@ -3,8 +3,22 @@ import { markPrinted } from '../services/visits';
 import { Visit } from '../types';
 
 const shareOrDownload = async (dataUrl: string, mimeType: string, filename: string) => {
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
+  // Convert data URL to blob
+  let blob: Blob;
+  if (dataUrl.startsWith('data:')) {
+    const [header, base64] = dataUrl.split(',');
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    blob = new Blob([byteArray], { type: mimeType });
+  } else {
+    const response = await fetch(dataUrl);
+    blob = await response.blob();
+  }
+  
   const file = new File([blob], filename, { type: mimeType });
   const browser = navigator as Navigator & { share?: (data: ShareData) => Promise<void>; canShare?: (data: ShareData) => boolean };
   if (browser.share && browser.canShare?.({ files: [file] })) {
@@ -15,8 +29,11 @@ const shareOrDownload = async (dataUrl: string, mimeType: string, filename: stri
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(anchor);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 };
 
 const renderCapture = async (html: string, width: string) => {
@@ -58,10 +75,17 @@ const createPdf = async (dataUrl: string, filename: string, pageFormat: 'receipt
 
 export const shareReceiptPdf = async (ownerId: string, visit: Visit, userId: string, lastCleared?: LastClearedInfo | null) => {
   await markPrinted(ownerId, visit.storeId, visit.id, userId);
-  const container = await renderCapture(generateReceiptHtml(visit, lastCleared), '72mm');
+  const html = generateReceiptHtml(visit, lastCleared);
+  if (!html || html.length === 0) {
+    throw new Error('Failed to generate receipt HTML');
+  }
+  const container = await renderCapture(html, '72mm');
   try {
     const { toJpeg } = await import('html-to-image');
     const dataUrl = await toJpeg(container, { quality: 0.92, backgroundColor: '#FFFFFF', pixelRatio: 2 });
+    if (!dataUrl || dataUrl.length === 0) {
+      throw new Error('Failed to generate JPEG from HTML');
+    }
     await createPdf(dataUrl, `skillrout-receipt-${visit.id}.pdf`, 'receipt');
   } finally {
     container.remove();
@@ -70,10 +94,17 @@ export const shareReceiptPdf = async (ownerId: string, visit: Visit, userId: str
 
 export const shareReceiptJpeg = async (ownerId: string, visit: Visit, userId: string, lastCleared?: LastClearedInfo | null) => {
   await markPrinted(ownerId, visit.storeId, visit.id, userId);
-  const container = await renderCapture(generateReceiptHtml(visit, lastCleared), '72mm');
+  const html = generateReceiptHtml(visit, lastCleared);
+  if (!html || html.length === 0) {
+    throw new Error('Failed to generate receipt HTML');
+  }
+  const container = await renderCapture(html, '72mm');
   try {
     const { toJpeg } = await import('html-to-image');
     const dataUrl = await toJpeg(container, { quality: 0.92, backgroundColor: '#FFFFFF', pixelRatio: 2 });
+    if (!dataUrl || dataUrl.length === 0) {
+      throw new Error('Failed to generate JPEG from HTML');
+    }
     await shareOrDownload(dataUrl, 'image/jpeg', `skillrout-receipt-${visit.id}.jpg`);
   } finally {
     container.remove();

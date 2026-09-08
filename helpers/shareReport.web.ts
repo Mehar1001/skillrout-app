@@ -1,8 +1,22 @@
 import { generateReportHtml, ReportSummary } from './reportTemplate';
 
 const shareOrDownload = async (dataUrl: string, mimeType: string, filename: string) => {
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
+  // Convert data URL to blob
+  let blob: Blob;
+  if (dataUrl.startsWith('data:')) {
+    const [header, base64] = dataUrl.split(',');
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    blob = new Blob([byteArray], { type: mimeType });
+  } else {
+    const response = await fetch(dataUrl);
+    blob = await response.blob();
+  }
+  
   const file = new File([blob], filename, { type: mimeType });
   const browser = navigator as Navigator & { share?: (data: ShareData) => Promise<void>; canShare?: (data: ShareData) => boolean };
   if (browser.share && browser.canShare?.({ files: [file] })) {
@@ -13,8 +27,11 @@ const shareOrDownload = async (dataUrl: string, mimeType: string, filename: stri
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(anchor);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 };
 
 const renderCapture = async (html: string) => {
@@ -27,10 +44,17 @@ const renderCapture = async (html: string) => {
 };
 
 export const shareReportPdf = async (summary: ReportSummary, startDate: string, endDate: string, businessName?: string) => {
-  const container = await renderCapture(generateReportHtml(summary, startDate, endDate, businessName));
+  const html = generateReportHtml(summary, startDate, endDate, businessName);
+  if (!html || html.length === 0) {
+    throw new Error('Failed to generate report HTML');
+  }
+  const container = await renderCapture(html);
   try {
     const { toJpeg } = await import('html-to-image');
     const dataUrl = await toJpeg(container, { quality: 0.92, backgroundColor: '#FFFFFF', pixelRatio: 2 });
+    if (!dataUrl || dataUrl.length === 0) {
+      throw new Error('Failed to generate JPEG from HTML');
+    }
     const { jsPDF } = await import('jspdf/dist/jspdf.es.min.js');
     const image = new Image();
     image.src = dataUrl;
@@ -53,10 +77,17 @@ export const shareReportPdf = async (summary: ReportSummary, startDate: string, 
 };
 
 export const shareReportJpeg = async (summary: ReportSummary, startDate: string, endDate: string, businessName?: string) => {
-  const container = await renderCapture(generateReportHtml(summary, startDate, endDate, businessName));
+  const html = generateReportHtml(summary, startDate, endDate, businessName);
+  if (!html || html.length === 0) {
+    throw new Error('Failed to generate report HTML');
+  }
+  const container = await renderCapture(html);
   try {
     const { toJpeg } = await import('html-to-image');
     const dataUrl = await toJpeg(container, { quality: 0.92, backgroundColor: '#FFFFFF', pixelRatio: 2 });
+    if (!dataUrl || dataUrl.length === 0) {
+      throw new Error('Failed to generate JPEG from HTML');
+    }
     await shareOrDownload(dataUrl, 'image/jpeg', `skillrout-report-${startDate}-to-${endDate}.jpg`);
   } finally {
     container.remove();
