@@ -107,7 +107,7 @@ export default function ReceiptScreen() {
     setWorking(true);
     try {
       if (format === 'pdf') await shareReceiptPdf(ownerId, visit, user.uid, lastCleared);
-      else await shareReceiptJpeg(ownerId, visit, user.uid, receiptRef);
+      else await shareReceiptJpeg(ownerId, visit, user.uid, receiptRef, lastCleared);
     } catch (e: any) {
       Alert.alert('Share Error', e.message || 'Receipt could not be shared.');
     } finally {

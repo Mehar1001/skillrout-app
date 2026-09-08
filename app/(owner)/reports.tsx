@@ -106,7 +106,7 @@ export default function ReportsScreen() {
     setGenerating(true);
     try {
       if (format === 'pdf') await shareReportPdf(summary, startDate, endDate, businessName ?? undefined);
-      else await shareReportJpeg(reportRef);
+      else await shareReportJpeg(reportRef, summary, startDate, endDate, businessName ?? undefined);
     } catch (e: any) {
       Alert.alert('Report Error', e.message || 'Report could not be generated.');
     } finally {
