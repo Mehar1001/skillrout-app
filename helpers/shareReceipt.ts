@@ -25,13 +25,18 @@ export const shareReceiptJpeg = async (
   receiptRef: RefObject<View | null>,
   lastCleared?: LastClearedInfo | null
 ) => {
+  console.log('shareReceiptJpeg called, isWeb:', isWeb, 'visitId:', visit.id);
   if (isWeb) {
+    console.log('Loading web implementation');
     const webImpl = await loadWebImplementation();
+    console.log('Web implementation loaded:', !!webImpl);
     if (webImpl) {
       return webImpl.shareReceiptJpeg(ownerId, visit, userId, lastCleared);
     }
   }
+  console.log('Loading native implementation');
   const nativeImpl = await loadNativeImplementation();
+  console.log('Native implementation loaded:', !!nativeImpl);
   if (nativeImpl) {
     return nativeImpl.shareReceiptJpeg(ownerId, visit, userId, receiptRef, lastCleared);
   }
@@ -45,13 +50,18 @@ export const shareReceiptPdf = async (
   userId: string,
   lastCleared?: LastClearedInfo | null
 ) => {
+  console.log('shareReceiptPdf called, isWeb:', isWeb, 'visitId:', visit.id);
   if (isWeb) {
+    console.log('Loading web implementation');
     const webImpl = await loadWebImplementation();
+    console.log('Web implementation loaded:', !!webImpl);
     if (webImpl) {
       return webImpl.shareReceiptPdf(ownerId, visit, userId, lastCleared);
     }
   }
+  console.log('Loading native implementation');
   const nativeImpl = await loadNativeImplementation();
+  console.log('Native implementation loaded:', !!nativeImpl);
   if (nativeImpl) {
     return nativeImpl.shareReceiptPdf(ownerId, visit, userId, lastCleared);
   }
