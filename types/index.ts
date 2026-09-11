@@ -172,8 +172,10 @@ export interface Visit {
     totalNewIn: number;
     totalNewOut: number;
     totalNet: number;
+    result?: 'positive' | 'zero' | 'negative';
     storeAmount: number;
     vendorAmount: number;
+    cashDueLocation?: number;
   };
   lastAdjustedAt?: Timestamp;
   lastAdjustedBy?: string;

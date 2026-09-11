@@ -77,33 +77,49 @@ export interface LockedFinancialSnapshot {
 export const resultFromNet = (net: number): 'positive' | 'zero' | 'negative' =>
   net > 0 ? 'positive' : net < 0 ? 'negative' : 'zero';
 
+const safeNumber = (value: number | undefined | null): number => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
 export const getLockedFinancialSnapshot = (visit: Visit): LockedFinancialSnapshot => {
   const percentFallback = {
-    storePercent: visit.storePercent,
-    vendorPercent: visit.vendorPercent,
+    storePercent: safeNumber(visit.storePercent),
+    vendorPercent: safeNumber(visit.vendorPercent),
   };
 
-  if (visit.settlementStatus === 'submitted' && visit.settlement) {
+  if (visit.settlementStatus === 'submitted') {
+    const settlement = visit.settlement;
+    const original = visit.originalTotals;
+
+    const totalNet = safeNumber(settlement?.totalNet ?? original?.totalNet ?? visit.totalNet);
+    const totalNewIn = safeNumber(settlement?.totalNewIn ?? original?.totalNewIn ?? visit.totalNewIn);
+    const totalNewOut = safeNumber(settlement?.totalNewOut ?? original?.totalNewOut ?? visit.totalNewOut);
+    const storeAmount = safeNumber(settlement?.storeAmount ?? original?.storeAmount ?? visit.storeAmount);
+    const vendorAmount = safeNumber(settlement?.vendorAmount ?? original?.vendorAmount ?? visit.vendorAmount);
+    const cashDueLocation = safeNumber(settlement?.cashDueLocation ?? visit.cashDueLocation);
+
     return {
-      totalNewIn: visit.settlement.totalNewIn,
-      totalNewOut: visit.settlement.totalNewOut,
-      totalNet: visit.settlement.totalNet,
-      result: visit.settlement.result,
+      totalNewIn,
+      totalNewOut,
+      totalNet,
+      result: settlement?.result ?? original?.result ?? resultFromNet(totalNet),
       ...percentFallback,
-      storeAmount: visit.settlement.storeAmount,
-      vendorAmount: visit.settlement.vendorAmount,
-      cashDueLocation: visit.settlement.cashDueLocation,
+      storeAmount,
+      vendorAmount,
+      cashDueLocation,
     };
   }
 
+  const totalNet = safeNumber(visit.totalNet);
   return {
-    totalNewIn: visit.totalNewIn,
-    totalNewOut: visit.totalNewOut,
-    totalNet: visit.totalNet,
-    result: resultFromNet(visit.totalNet),
+    totalNewIn: safeNumber(visit.totalNewIn),
+    totalNewOut: safeNumber(visit.totalNewOut),
+    totalNet,
+    result: resultFromNet(totalNet),
     ...percentFallback,
-    storeAmount: visit.storeAmount,
-    vendorAmount: visit.vendorAmount,
-    cashDueLocation: visit.cashDueLocation,
+    storeAmount: safeNumber(visit.storeAmount),
+    vendorAmount: safeNumber(visit.vendorAmount),
+    cashDueLocation: safeNumber(visit.cashDueLocation),
   };
 };

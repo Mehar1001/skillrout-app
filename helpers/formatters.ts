@@ -1,6 +1,8 @@
-export const formatCurrency = (value: number): string => {
-  const isNegative = value < 0;
-  const absValue = Math.abs(value);
+export const formatCurrency = (value: number | undefined | null): string => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '$—';
+  const isNegative = numeric < 0;
+  const absValue = Math.abs(numeric);
   const parts = absValue.toFixed(2).split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `${isNegative ? '-' : ''}$${parts[0]}.${parts[1]}`;
