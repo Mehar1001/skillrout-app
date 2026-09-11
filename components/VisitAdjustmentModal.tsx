@@ -7,11 +7,11 @@ import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } f
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../contexts/AuthContext';
 import { alert } from '../helpers/alert';
-import { calculateMachine, calculateVisit, round2 } from '../helpers/calculations';
+import { calculateMachine, getLockedFinancialSnapshot, round2 } from '../helpers/calculations';
 import { formatCurrency } from '../helpers/formatters';
 import { sortMachinesByNumber } from '../helpers/machineOrdering';
 import { adjustVisit } from '../services/visits';
-import { Visit, VisitMachine } from '../types';
+import { Visit } from '../types';
 
 interface VisitAdjustmentModalProps {
   visit: Visit;
@@ -22,12 +22,13 @@ interface VisitAdjustmentModalProps {
 }
 
 const READING_WARNING =
-  'Adjusting these readings will change the closing numbers for this visit. Please make sure the corrected IN/OUT readings match the actual machine readings and properly close out the previous readings before saving. Incorrect adjustments may affect the next RUN and future machine calculations.';
+  'Machine Reading Adjustment: this adjustment will update the machine readings and, if selected, the closing baseline used for future RUNs. It will NOT change the previously submitted Profit/Loss, Store Amount, Vendor Amount, or other historical financial totals.';
 
 const BASELINE_WARNING =
   'This will replace the machine\u2019s current closing/baseline readings with the corrected readings. The next RUN will calculate from these numbers. Only continue if these are the correct final machine readings.';
 
-const CONFIRM_LABEL = 'I confirm these adjusted readings are correct and should be used to close out this visit.';
+const CONFIRM_LABEL =
+  'I understand that this changes machine readings only and does not change the submitted financial totals.';
 
 const baselineInfo = `Enable it ONLY if this is the most recent submitted visit for these machines and you need future visits to start counting from these newly adjusted numbers.\n\nKeep it disabled if there have already been newer visits submitted after this one, or if you are simply correcting a past record without changing the current baseline for future readings.`;
 
@@ -40,8 +41,6 @@ const toAmount = (value: string) => {
 };
 
 const formatTwoDecimals = (value: string) => toAmount(value).toFixed(2);
-
-const signed = (value: number) => `${value > 0 ? '+' : ''}${formatCurrency(value)}`;
 
 export const VisitAdjustmentModal = ({
   visit,
@@ -84,7 +83,7 @@ export const VisitAdjustmentModal = ({
   const [error, setError] = useState('');
   const submitting = useRef(false);
 
-  const originalTotalNet = visit.originalTotals?.totalNet ?? (Number(visit.totalNet) || 0);
+  const submittedSnapshot = useMemo(() => getLockedFinancialSnapshot(visit), [visit]);
 
   const rows = readings.map(r => {
     const original = originalMachines.get(r.machineId);
@@ -104,11 +103,6 @@ export const VisitAdjustmentModal = ({
     };
   });
 
-  const computed = calculateVisit(
-    rows.map(r => ({ newIn: r.newIn, newOut: r.newOut }) as VisitMachine),
-    visit.storePercent
-  );
-  const netDifference = round2(computed.totalNet - originalTotalNet);
   const changedCount = rows.filter(r => r.changed).length;
 
   const updatePresent = (machineId: string, field: 'presentIn' | 'presentOut', value: string) => {
@@ -153,8 +147,8 @@ export const VisitAdjustmentModal = ({
       });
 
       const lines = [
-        `Net is now ${formatCurrency(result.totalNet)} (${signed(result.netDifference)} vs before).`,
-        `Store ${formatCurrency(result.storeAmount)} · Games ${formatCurrency(result.vendorAmount)}.`,
+        `Submitted Net remains ${formatCurrency(result.totalNet)}. Machine readings only were updated.`,
+        `Store ${formatCurrency(result.storeAmount)} · Games ${formatCurrency(result.vendorAmount)} · unchanged.`,
       ];
       if (rewriteBaselines) {
         lines.push(
@@ -265,47 +259,18 @@ export const VisitAdjustmentModal = ({
         ))}
 
         <Card style={styles.computedCard}>
-          <Text style={styles.sectionTitle}>Before you save</Text>
-          <CompareRow
-            styles={styles}
-            label="Money In"
-            before={visit.originalTotals?.totalNewIn ?? visit.totalNewIn}
-            after={computed.totalNewIn}
-          />
-          <CompareRow
-            styles={styles}
-            label="Money Out"
-            before={visit.originalTotals?.totalNewOut ?? visit.totalNewOut}
-            after={computed.totalNewOut}
-          />
-          <CompareRow styles={styles} label="Net" before={originalTotalNet} after={computed.totalNet} strong />
-          <CompareRow
-            styles={styles}
-            label={`Store (${visit.storePercent}%)`}
-            before={visit.originalTotals?.storeAmount ?? visit.storeAmount}
-            after={computed.storeAmount}
-          />
-          <CompareRow
-            styles={styles}
-            label={`Games (${visit.vendorPercent}%)`}
-            before={visit.originalTotals?.vendorAmount ?? visit.vendorAmount}
-            after={computed.vendorAmount}
-          />
-          <View style={styles.differenceRow}>
-            <Text style={styles.differenceLabel}>Difference caused by adjustment</Text>
-            <Text
-              style={[
-                styles.differenceValue,
-                netDifference > 0 ? styles.positive : netDifference < 0 ? styles.negative : null,
-              ]}
-            >
-              {signed(netDifference)}
-            </Text>
-          </View>
+          <Text style={styles.sectionTitle}>Submitted financial snapshot (unchanged)</Text>
+          <SnapshotRow styles={styles} label="Net" value={submittedSnapshot.totalNet} strong />
+          <SnapshotRow styles={styles} label="Store" value={submittedSnapshot.storeAmount} />
+          <SnapshotRow styles={styles} label="Games" value={submittedSnapshot.vendorAmount} />
+          <SnapshotRow styles={styles} label="New IN" value={submittedSnapshot.totalNewIn} />
+          <SnapshotRow styles={styles} label="New OUT" value={submittedSnapshot.totalNewOut} />
+          <SnapshotRow styles={styles} label="Store %" value={`${submittedSnapshot.storePercent}%`} />
+          <SnapshotRow styles={styles} label="Games %" value={`${submittedSnapshot.vendorPercent}%`} />
           <Text style={styles.differenceHint}>
             {changedCount === 0
               ? 'No readings changed yet.'
-              : `${changedCount} machine${changedCount === 1 ? '' : 's'} will be corrected.`}
+              : `${changedCount} machine${changedCount === 1 ? '' : 's'} will have corrected readings. The submitted financial totals will not change.`}
           </Text>
         </Card>
 
@@ -440,26 +405,22 @@ const ReadingLine = ({
   </View>
 );
 
-const CompareRow = ({
+const SnapshotRow = ({
   styles,
   label,
-  before,
-  after,
+  value,
   strong = false,
 }: {
   styles: ReturnType<typeof makeStyles>;
   label: string;
-  before: number;
-  after: number;
+  value: string | number;
   strong?: boolean;
 }) => (
   <View style={styles.computedRow}>
     <Text style={styles.computedLabel}>{label}</Text>
-    <View style={styles.computedValues}>
-      <Text style={styles.beforeValue}>{formatCurrency(Number(before) || 0)}</Text>
-      <Text style={styles.arrow}>→</Text>
-      <Text style={[styles.computedValue, strong && styles.computedValueStrong]}>{formatCurrency(after)}</Text>
-    </View>
+    <Text style={[styles.computedValue, strong && styles.computedValueStrong]}>
+      {typeof value === 'number' ? formatCurrency(value) : value}
+    </Text>
   </View>
 );
 

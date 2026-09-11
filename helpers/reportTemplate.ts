@@ -1,4 +1,5 @@
 import { Visit } from '../types';
+import { getLockedFinancialSnapshot } from './calculations';
 import { compareMachineNumbers } from './machineOrdering';
 import { formatCurrency, formatDate, formatTime } from './formatters';
 
@@ -84,9 +85,10 @@ export const buildReportSummary = (visits: Visit[]): ReportSummary => {
   };
 
   for (const visit of visits) {
-    totalNet += visit.totalNet;
-    totalStoreAmount += visit.storeAmount;
-    totalVendorAmount += visit.vendorAmount;
+    const snapshot = getLockedFinancialSnapshot(visit);
+    totalNet += snapshot.totalNet;
+    totalStoreAmount += snapshot.storeAmount;
+    totalVendorAmount += snapshot.vendorAmount;
 
     const store = storeMap.get(visit.storeId) ?? {
       storeId: visit.storeId,
@@ -99,11 +101,11 @@ export const buildReportSummary = (visits: Visit[]): ReportSummary => {
       vendorAmount: 0,
     };
     store.visitCount += 1;
-    store.totalNewIn += visit.totalNewIn;
-    store.totalNewOut += visit.totalNewOut;
-    store.totalNet += visit.totalNet;
-    store.storeAmount += visit.storeAmount;
-    store.vendorAmount += visit.vendorAmount;
+    store.totalNewIn += snapshot.totalNewIn;
+    store.totalNewOut += snapshot.totalNewOut;
+    store.totalNet += snapshot.totalNet;
+    store.storeAmount += snapshot.storeAmount;
+    store.vendorAmount += snapshot.vendorAmount;
     storeMap.set(visit.storeId, store);
 
     for (const machine of visit.machines) {
@@ -133,8 +135,8 @@ export const buildReportSummary = (visits: Visit[]): ReportSummary => {
       employeeName: visit.employeeName,
       businessDate: visit.businessDate,
       runAt: timestamp ? `${formatDate(timestamp)} ${formatTime(timestamp)}` : formatDate(visit.businessDate),
-      totalNet: visit.totalNet,
-      result: visit.result,
+      totalNet: snapshot.totalNet,
+      result: snapshot.result,
       settlementStatus: visit.settlementStatus,
       printStatus: visit.printStatus,
     });
@@ -143,10 +145,10 @@ export const buildReportSummary = (visits: Visit[]): ReportSummary => {
     else settlementTotals.notSubmittedCount += 1;
     if (visit.printStatus === 'printed') settlementTotals.printedCount += 1;
     else settlementTotals.notPrintedCount += 1;
-    settlementTotals.totalStoreAmount += visit.storeAmount;
-    settlementTotals.totalVendorAmount += visit.vendorAmount;
-    if (visit.result === 'positive') settlementTotals.positiveCount += 1;
-    else if (visit.result === 'negative') settlementTotals.negativeCount += 1;
+    settlementTotals.totalStoreAmount += snapshot.storeAmount;
+    settlementTotals.totalVendorAmount += snapshot.vendorAmount;
+    if (snapshot.result === 'positive') settlementTotals.positiveCount += 1;
+    else if (snapshot.result === 'negative') settlementTotals.negativeCount += 1;
     else settlementTotals.zeroCount += 1;
   }
 

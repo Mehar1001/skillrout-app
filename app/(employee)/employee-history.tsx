@@ -5,6 +5,7 @@ import { Card } from '../../components/Card';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+import { getLockedFinancialSnapshot } from '../../helpers/calculations';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { listAssignedStoreVisits, listVisits } from '../../services/visits';
 import { Visit } from '../../types';
@@ -74,12 +75,12 @@ export default function EmployeeHistoryScreen() {
                   </Text>
                   <Text style={styles.meta}>{visit.employeeName}</Text>
                 </View>
-                <Text style={[styles.net, visit.totalNet < 0 ? styles.negative : styles.positive]}>
-                  {formatCurrency(visit.totalNet)}
+                <Text style={[styles.net, getLockedFinancialSnapshot(visit).totalNet < 0 ? styles.negative : styles.positive]}>
+                  {formatCurrency(getLockedFinancialSnapshot(visit).totalNet)}
                 </Text>
               </View>
               <View style={styles.statuses}>
-                <Text style={styles.status}>Result: {visit.result}</Text>
+                <Text style={styles.status}>Result: {getLockedFinancialSnapshot(visit).result}</Text>
                 <Text style={styles.status}>Settlement: {visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}</Text>
                 <Text style={styles.status}>Receipt: {visit.printStatus === 'printed' ? 'Printed' : 'Not printed'}</Text>
               </View>

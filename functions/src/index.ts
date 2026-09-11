@@ -707,7 +707,15 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
       }
     });
 
-    const { storeAmount, vendorAmount, cashDueLocation } = calculateVisit(visit.machines, storePercent);
+    const {
+      totalNewIn,
+      totalNewOut,
+      totalNet,
+      result,
+      storeAmount,
+      vendorAmount,
+      cashDueLocation,
+    } = calculateVisit(visit.machines, storePercent);
 
     machineRefs.forEach((machineRef: DocumentReference, index: number) => {
       const machine = visit.machines[index];
@@ -722,6 +730,10 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
     transaction.update(visitRef, {
       storePercent,
       vendorPercent,
+      totalNewIn,
+      totalNewOut,
+      totalNet,
+      result,
       storeAmount,
       vendorAmount,
       cashDueLocation,
@@ -731,8 +743,13 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
         submittedBy: callerId,
         storePercent,
         vendorPercent,
+        totalNewIn,
+        totalNewOut,
+        totalNet,
+        result,
         storeAmount,
         vendorAmount,
+        cashDueLocation,
       },
     });
   });
@@ -1127,14 +1144,22 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
     }
 
     const storePercent = safeNumber(visit.storePercent);
-    const calc = calculateVisit(newMachines, storePercent);
-    const oldTotals = {
+
+    // The submitted financial snapshot is locked after SUBMIT. Admin adjustments
+    // may only change machine readings and (optionally) future baselines. The
+    // original visit totals are preserved so historical Profit/Loss never
+    // changes. If this visit was previously adjusted and its totals were
+    // overwritten, restore them from the preserved original totals.
+    const firstTotals = {
       totalNewIn: safeNumber(visit.totalNewIn),
       totalNewOut: safeNumber(visit.totalNewOut),
       totalNet: safeNumber(visit.totalNet),
+      result: visit.result,
       storeAmount: safeNumber(visit.storeAmount),
       vendorAmount: safeNumber(visit.vendorAmount),
+      cashDueLocation: safeNumber(visit.cashDueLocation),
     };
+    const submittedTotals = visit.originalTotals ?? firstTotals;
 
     // Firestore rejects FieldValue.serverTimestamp() inside array elements, so
     // the audit entry records an explicit server-side timestamp instead.
@@ -1148,51 +1173,45 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
       rewroteBaselines: updatedBaselines,
       storePercent,
       vendorPercent: safeNumber(visit.vendorPercent),
-      oldTotalNewIn: oldTotals.totalNewIn,
-      oldTotalNewOut: oldTotals.totalNewOut,
-      oldTotalNet: oldTotals.totalNet,
-      oldStoreAmount: oldTotals.storeAmount,
-      oldVendorAmount: oldTotals.vendorAmount,
-      newTotalNewIn: calc.totalNewIn,
-      newTotalNewOut: calc.totalNewOut,
-      newTotalNet: calc.totalNet,
-      newStoreAmount: calc.storeAmount,
-      newVendorAmount: calc.vendorAmount,
-      netDifference: round2(calc.totalNet - oldTotals.totalNet),
+      submittedTotalNewIn: submittedTotals.totalNewIn,
+      submittedTotalNewOut: submittedTotals.totalNewOut,
+      submittedTotalNet: submittedTotals.totalNet,
+      submittedStoreAmount: submittedTotals.storeAmount,
+      submittedVendorAmount: submittedTotals.vendorAmount,
       machineChanges,
     };
 
     const visitUpdate: Record<string, unknown> = {
       machines: newMachines,
-      totalNewIn: calc.totalNewIn,
-      totalNewOut: calc.totalNewOut,
-      totalNet: calc.totalNet,
-      result: calc.result,
-      storeAmount: calc.storeAmount,
-      vendorAmount: calc.vendorAmount,
-      cashDueLocation: calc.cashDueLocation,
+      totalNewIn: submittedTotals.totalNewIn,
+      totalNewOut: submittedTotals.totalNewOut,
+      totalNet: submittedTotals.totalNet,
+      result: submittedTotals.result,
+      storeAmount: submittedTotals.storeAmount,
+      vendorAmount: submittedTotals.vendorAmount,
+      cashDueLocation: submittedTotals.cashDueLocation,
       adjustments: [...(Array.isArray(visit.adjustments) ? visit.adjustments : []), adjustment],
       lastAdjustedAt: FieldValue.serverTimestamp(),
       lastAdjustedBy: callerId,
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    // Preserve the untouched submitted readings the first time a visit is
-    // adjusted so the original record is never lost.
-    if (!Array.isArray(visit.originalMachines)) {
+    // Preserve the untouched submitted readings and totals the first time a
+    // visit is adjusted so the original record is never lost.
+    if (!visit.originalTotals) {
       visitUpdate.originalMachines = oldMachines;
-      visitUpdate.originalTotals = oldTotals;
+      visitUpdate.originalTotals = firstTotals;
     }
 
     transaction.update(visitRef, visitUpdate);
 
     return {
-      totalNewIn: calc.totalNewIn,
-      totalNewOut: calc.totalNewOut,
-      totalNet: calc.totalNet,
-      storeAmount: calc.storeAmount,
-      vendorAmount: calc.vendorAmount,
-      netDifference: round2(calc.totalNet - oldTotals.totalNet),
+      totalNewIn: submittedTotals.totalNewIn,
+      totalNewOut: submittedTotals.totalNewOut,
+      totalNet: submittedTotals.totalNet,
+      storeAmount: submittedTotals.storeAmount,
+      vendorAmount: submittedTotals.vendorAmount,
+      netDifference: 0,
       rewroteBaselines: updatedBaselines,
       baselineSkipped,
       adjustedMachineCount: machineChanges.length,

@@ -153,8 +153,13 @@ export interface Visit {
     submittedBy: string;
     storePercent: number;
     vendorPercent: number;
+    totalNewIn: number;
+    totalNewOut: number;
+    totalNet: number;
+    result: 'positive' | 'zero' | 'negative';
     storeAmount: number;
     vendorAmount: number;
+    cashDueLocation: number;
   };
   voided?: {
     voidedAt: Timestamp;
@@ -197,17 +202,11 @@ export interface Adjustment {
   rewroteBaselines: boolean;
   storePercent?: number;
   vendorPercent?: number;
-  oldTotalNewIn: number;
-  oldTotalNewOut: number;
-  oldTotalNet: number;
-  oldStoreAmount: number;
-  oldVendorAmount: number;
-  newTotalNewIn: number;
-  newTotalNewOut: number;
-  newTotalNet: number;
-  newStoreAmount: number;
-  newVendorAmount: number;
-  netDifference?: number;
+  submittedTotalNewIn: number;
+  submittedTotalNewOut: number;
+  submittedTotalNet: number;
+  submittedStoreAmount: number;
+  submittedVendorAmount: number;
   machineChanges: {
     machineId: string;
     machineNumber: string;

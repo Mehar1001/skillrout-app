@@ -1,4 +1,4 @@
-import { Machine, MachineReadingDraft, VisitMachine } from '../types';
+import { Machine, MachineReadingDraft, Visit, VisitMachine } from '../types';
 
 export const round2 = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
@@ -59,5 +59,51 @@ export const calculateVisit = (
     storeAmount,
     vendorAmount,
     cashDueLocation,
+  };
+};
+
+export interface LockedFinancialSnapshot {
+  totalNewIn: number;
+  totalNewOut: number;
+  totalNet: number;
+  result: 'positive' | 'zero' | 'negative';
+  storePercent: number;
+  vendorPercent: number;
+  storeAmount: number;
+  vendorAmount: number;
+  cashDueLocation: number;
+}
+
+export const resultFromNet = (net: number): 'positive' | 'zero' | 'negative' =>
+  net > 0 ? 'positive' : net < 0 ? 'negative' : 'zero';
+
+export const getLockedFinancialSnapshot = (visit: Visit): LockedFinancialSnapshot => {
+  const percentFallback = {
+    storePercent: visit.storePercent,
+    vendorPercent: visit.vendorPercent,
+  };
+
+  if (visit.settlementStatus === 'submitted' && visit.settlement) {
+    return {
+      totalNewIn: visit.settlement.totalNewIn,
+      totalNewOut: visit.settlement.totalNewOut,
+      totalNet: visit.settlement.totalNet,
+      result: visit.settlement.result,
+      ...percentFallback,
+      storeAmount: visit.settlement.storeAmount,
+      vendorAmount: visit.settlement.vendorAmount,
+      cashDueLocation: visit.settlement.cashDueLocation,
+    };
+  }
+
+  return {
+    totalNewIn: visit.totalNewIn,
+    totalNewOut: visit.totalNewOut,
+    totalNet: visit.totalNet,
+    result: resultFromNet(visit.totalNet),
+    ...percentFallback,
+    storeAmount: visit.storeAmount,
+    vendorAmount: visit.vendorAmount,
+    cashDueLocation: visit.cashDueLocation,
   };
 };

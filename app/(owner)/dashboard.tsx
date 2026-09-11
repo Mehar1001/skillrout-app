@@ -7,6 +7,7 @@ import { Card } from '../../components/Card';
 import { type Colors, fontSizes, letterSpacings, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+import { getLockedFinancialSnapshot } from '../../helpers/calculations';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { listStores } from '../../services/stores';
 import { listVisits } from '../../services/visits';
@@ -97,19 +98,19 @@ export default function OwnerDashboard() {
   const stats: DashboardStats = useMemo(() => {
     const todayVisits = visits.filter(v => isToday(visitDate(v))).length;
     const monthVisits = visits.filter(v => isThisMonth(visitDate(v)));
-    const monthNet = monthVisits.reduce((sum, v) => sum + v.totalNet, 0);
+    const monthNet = monthVisits.reduce((sum, v) => sum + getLockedFinancialSnapshot(v).totalNet, 0);
     const pendingSubmissions = visits.filter(v => v.settlementStatus === 'not_submitted').length;
     const monthTotal = monthVisits.length;
     const monthSubmitted = monthVisits.filter(v => v.settlementStatus === 'submitted').length;
     const monthPrintedOnly = monthVisits.filter(v => v.settlementStatus === 'not_submitted' && v.printStatus === 'printed').length;
     const monthPending = monthVisits.filter(v => v.settlementStatus === 'not_submitted' && v.printStatus === 'not_printed').length;
-    const monthNetTotal = monthVisits.reduce((sum, v) => sum + v.totalNet, 0);
+    const monthNetTotal = monthVisits.reduce((sum, v) => sum + getLockedFinancialSnapshot(v).totalNet, 0);
     const monthSubmittedAmount = monthVisits
       .filter(v => v.settlementStatus === 'submitted')
-      .reduce((sum, v) => sum + v.totalNet, 0);
+      .reduce((sum, v) => sum + getLockedFinancialSnapshot(v).totalNet, 0);
     const monthPendingAmount = monthVisits
       .filter(v => v.settlementStatus === 'not_submitted')
-      .reduce((sum, v) => sum + v.totalNet, 0);
+      .reduce((sum, v) => sum + getLockedFinancialSnapshot(v).totalNet, 0);
     const avgPerVisit = monthTotal ? monthNetTotal / monthTotal : 0;
     return {
       totalStores: storeCount,
@@ -263,8 +264,8 @@ export default function OwnerDashboard() {
                     <Text style={[styles.tableCell, { color: colors.textSecondary }]}>{formatDate(visitDate(visit))}</Text>
                     <Text style={[styles.tableCellTime, { color: colors.textMuted }]}>{formatTime(visitDate(visit))}</Text>
                   </View>
-                  <Text style={[styles.tableCellNet, { color: visit.totalNet >= 0 ? colors.success : colors.error }]}>
-                    {formatCurrency(visit.totalNet)}
+                  <Text style={[styles.tableCellNet, { color: getLockedFinancialSnapshot(visit).totalNet >= 0 ? colors.success : colors.error }]}>
+                    {formatCurrency(getLockedFinancialSnapshot(visit).totalNet)}
                   </Text>
                   <StatusBadge status={getStatus(visit)} />
                 </Pressable>

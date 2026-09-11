@@ -7,6 +7,7 @@ import { Card } from '../../components/Card';
 import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+import { getLockedFinancialSnapshot } from '../../helpers/calculations';
 import { sortMachinesByNumber } from '../../helpers/machineOrdering';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { buildReportSummary, generateReportHtml, type ReportSummary } from '../../helpers/reportTemplate';
@@ -261,6 +262,7 @@ export default function ReportsScreen() {
             {filteredVisits.map(visit => {
               const expanded = expandedVisitId === visit.id;
               const ts = visit.timestamp?.toDate?.();
+              const snapshot = getLockedFinancialSnapshot(visit);
               return (
                 <View key={visit.id} style={[styles.summaryRow, { flexWrap: 'wrap' }]}>
                   <View style={{ flex: 1, minWidth: 180 }}>
@@ -270,7 +272,7 @@ export default function ReportsScreen() {
                     </Text>
                   </View>
                   <View style={[styles.summaryRight, { flex: 1, minWidth: 140 }]}>
-                    <Text style={styles.summaryNet}>{formatCurrency(visit.totalNet)}</Text>
+                    <Text style={styles.summaryNet}>{formatCurrency(snapshot.totalNet)}</Text>
                     <View style={styles.statusBadges}>
                       <Badge
                         title={visit.settlementStatus === 'submitted' ? 'Submitted' : 'Not submitted'}
@@ -299,12 +301,12 @@ export default function ReportsScreen() {
                       ))}
                       <View style={[styles.detailRow, styles.detailSection]}>
                         <Text style={styles.detailLabel}>Split</Text>
-                        <Text style={styles.detailValue}>Store {visit.storePercent}% · Games {visit.vendorPercent}%</Text>
+                        <Text style={styles.detailValue}>Store {snapshot.storePercent}% · Games {snapshot.vendorPercent}%</Text>
                       </View>
                       <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Payouts</Text>
                         <Text style={styles.detailValue}>
-                          Store {formatCurrency(visit.storeAmount)} · Games {formatCurrency(visit.vendorAmount)}
+                          Store {formatCurrency(snapshot.storeAmount)} · Games {formatCurrency(snapshot.vendorAmount)}
                         </Text>
                       </View>
                     </View>

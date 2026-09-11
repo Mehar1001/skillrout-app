@@ -6,6 +6,7 @@ import { Card } from '../../components/Card';
 import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
+import { getLockedFinancialSnapshot } from '../../helpers/calculations';
 import { formatCurrency, formatDate, formatTime } from '../../helpers/formatters';
 import { listVisits } from '../../services/visits';
 import { Visit } from '../../types';
@@ -64,8 +65,9 @@ export default function HistoryScreen() {
       ) : (
         visits.map(visit => {
           const timestamp = visit.timestamp?.toDate?.();
-          const resultLabel = visit.result === 'positive' ? 'Positive' : visit.result === 'negative' ? 'Negative' : 'Zero';
-          const resultVariant = visit.result === 'positive' ? 'success' : visit.result === 'negative' ? 'error' : 'muted';
+          const snapshot = getLockedFinancialSnapshot(visit);
+          const resultLabel = snapshot.result === 'positive' ? 'Positive' : snapshot.result === 'negative' ? 'Negative' : 'Zero';
+          const resultVariant = snapshot.result === 'positive' ? 'success' : snapshot.result === 'negative' ? 'error' : 'muted';
 
           return (
             <Card key={visit.id} style={styles.visitCard}>
@@ -82,9 +84,9 @@ export default function HistoryScreen() {
 
               <View style={styles.metrics}>
                 <Metric label="Machines" value={String(visit.machines.length)} />
-                <Metric label="New IN" value={formatCurrency(visit.totalNewIn)} />
-                <Metric label="New OUT" value={formatCurrency(visit.totalNewOut)} />
-                <Metric label="Total Net" value={formatCurrency(visit.totalNet)} emphasis />
+                <Metric label="New IN" value={formatCurrency(snapshot.totalNewIn)} />
+                <Metric label="New OUT" value={formatCurrency(snapshot.totalNewOut)} />
+                <Metric label="Total Net" value={formatCurrency(snapshot.totalNet)} emphasis />
               </View>
 
               <View style={styles.statusRow}>
@@ -99,7 +101,7 @@ export default function HistoryScreen() {
               </View>
 
               <Text style={styles.splitText}>
-                Store {visit.storePercent}%: {formatCurrency(visit.storeAmount)} · Games {visit.vendorPercent}%: {formatCurrency(visit.vendorAmount)}
+                Store {snapshot.storePercent}%: {formatCurrency(snapshot.storeAmount)} · Games {snapshot.vendorPercent}%: {formatCurrency(snapshot.vendorAmount)}
               </Text>
             </Card>
           );
