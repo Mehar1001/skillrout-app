@@ -25,6 +25,24 @@ const daysAgoIso = (days: number) => {
 
 type RangePreset = '7' | '30' | '90' | 'custom';
 
+const visitMillis = (visit: Visit) =>
+  visit.timestamp?.toMillis?.() ?? new Date(`${visit.businessDate}T00:00:00`).getTime();
+
+// Baselines may only be rewritten when no later submitted visit shares a
+// machine with the visit being adjusted.
+const hasNewerSubmittedVisit = (visits: Visit[], visit: Visit) => {
+  const machineIds = new Set(visit.machines.map(m => m.machineId));
+  const reference = visitMillis(visit);
+  return visits.some(
+    other =>
+      other.id !== visit.id &&
+      other.storeId === visit.storeId &&
+      other.settlementStatus === 'submitted' &&
+      visitMillis(other) > reference &&
+      other.machines.some(m => machineIds.has(m.machineId))
+  );
+};
+
 export default function ReportsScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
@@ -308,6 +326,7 @@ export default function ReportsScreen() {
     {selectedVisit ? (
       <VisitAdjustmentModal
         visit={selectedVisit}
+        hasNewerSubmittedVisit={hasNewerSubmittedVisit(visits, selectedVisit)}
         onClose={() => setSelectedVisit(null)}
         onAdjusted={() => {
           setSelectedVisit(null);

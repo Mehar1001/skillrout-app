@@ -91,3 +91,47 @@ test('calculateVisit decimal rounding preserves totals', () => {
   assert.equal(result.vendorAmount, 670.23);
   assert.equal(result.storeAmount + result.vendorAmount, result.totalNet);
 });
+
+test('adjustment recalculates from the previous settled readings, not the submitted present readings', () => {
+  // A visit was submitted with a mistyped Present IN of 1,400 when the machine
+  // actually read 1,500. The adjustment must recompute from the baseline.
+  const baseline = { lastSettledIn: 1000, lastSettledOut: 500 };
+  const submitted = calculateMachine(baseline as any, 1400, 700);
+  assert.deepEqual(submitted, { newIn: 400, newOut: 200, machineNet: 200 });
+
+  const corrected = calculateMachine(baseline as any, 1500, 700);
+  assert.deepEqual(corrected, { newIn: 500, newOut: 200, machineNet: 300 });
+
+  const before = calculateVisit([submitted], 70);
+  const after = calculateVisit([corrected], 70);
+  assert.equal(before.totalNet, 200);
+  assert.equal(after.totalNet, 300);
+  assert.equal(round2(after.totalNet - before.totalNet), 100);
+
+  // Store and vendor splits follow the corrected net.
+  assert.equal(after.storeAmount, 210);
+  assert.equal(after.vendorAmount, 90);
+  assert.equal(round2(after.storeAmount + after.vendorAmount), after.totalNet);
+});
+
+test('adjustment keeps untouched machines at their stored activity', () => {
+  const touched = calculateMachine({ lastSettledIn: 100, lastSettledOut: 40 } as any, 260, 60);
+  const untouched = calculateMachine({ lastSettledIn: 900, lastSettledOut: 300 } as any, 1000, 350);
+  const totals = calculateVisit([touched, untouched], 50);
+
+  assert.deepEqual(touched, { newIn: 160, newOut: 20, machineNet: 140 });
+  assert.deepEqual(untouched, { newIn: 100, newOut: 50, machineNet: 50 });
+  assert.equal(totals.totalNewIn, 260);
+  assert.equal(totals.totalNewOut, 70);
+  assert.equal(totals.totalNet, 190);
+});
+
+test('a corrected reading equal to the baseline closes the visit at zero activity', () => {
+  const closed = calculateMachine({ lastSettledIn: 2500, lastSettledOut: 1200 } as any, 2500, 1200);
+  assert.deepEqual(closed, { newIn: 0, newOut: 0, machineNet: 0 });
+  const totals = calculateVisit([closed], 70);
+  assert.equal(totals.totalNet, 0);
+  assert.equal(totals.result, 'zero');
+  assert.equal(totals.storeAmount, 0);
+  assert.equal(totals.vendorAmount, 0);
+});

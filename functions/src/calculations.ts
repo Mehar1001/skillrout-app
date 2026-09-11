@@ -3,8 +3,6 @@ export const round2 = (value: number): number => Math.round((value + Number.EPSI
 interface MachineLike {
   lastSettledIn: number;
   lastSettledOut: number;
-  presentIn: number;
-  presentOut: number;
 }
 
 interface VisitMachineLike {

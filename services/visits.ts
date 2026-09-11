@@ -14,7 +14,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebaseConfig';
 import { listStores } from './stores';
-import { Machine, MachineReadingDraft, Visit } from '../types';
+import { AdjustmentResult, Machine, MachineReadingDraft, Visit } from '../types';
 import { uploadVisitPhoto, uploadVisitReceipt, UploadedVisitPhoto } from './visitPhotos';
 
 const getVisitRef = (ownerId: string, storeId: string, visitId: string) =>
@@ -168,6 +168,38 @@ export const markPrinted = async (
   });
 };
 
+// Callable errors surface as "INTERNAL" when the server throws an unexpected
+// error, which tells an admin nothing. Translate the code into guidance and
+// keep any server-provided message.
+const describeAdjustmentError = (error: unknown): string => {
+  const { code, message } = (error ?? {}) as { code?: string; message?: string };
+  const detail = typeof message === 'string' ? message.trim() : '';
+  const normalizedCode = (code || '').replace('functions/', '');
+  const hasUsefulDetail = detail.length > 0 && !/^internal$/i.test(detail);
+
+  switch (normalizedCode) {
+    case 'invalid-argument':
+    case 'failed-precondition':
+    case 'not-found':
+      return hasUsefulDetail ? detail : 'The adjustment details could not be accepted. Review the readings and try again.';
+    case 'permission-denied':
+      return 'Only an owner or admin on this account can adjust a visit.';
+    case 'unauthenticated':
+      return 'Your session expired. Sign in again and retry the adjustment.';
+    case 'unavailable':
+    case 'deadline-exceeded':
+      return 'The server did not respond in time. Check your connection and try again.';
+    case 'aborted':
+      return 'Another change was saved while you were editing. Refresh the report and retry.';
+    case 'internal':
+      return hasUsefulDetail
+        ? `The server could not save the adjustment: ${detail}`
+        : 'The server could not save the adjustment. Please retry, and if it keeps failing report the visit ID to support.';
+    default:
+      return hasUsefulDetail ? detail : 'The adjustment could not be saved. Please try again.';
+  }
+};
+
 export const adjustVisit = async (
   ownerId: string,
   storeId: string,
@@ -178,7 +210,12 @@ export const adjustVisit = async (
     rewriteBaselines: boolean;
     readings: { machineId: string; presentIn: number; presentOut: number }[];
   }
-): Promise<void> => {
-  const adjustVisitFn = httpsCallable(functions, 'adjustVisit');
-  await adjustVisitFn({ ownerId, storeId, visitId, ...payload });
+): Promise<AdjustmentResult> => {
+  const adjustVisitFn = httpsCallable<Record<string, unknown>, AdjustmentResult>(functions, 'adjustVisit');
+  try {
+    const response = await adjustVisitFn({ ownerId, storeId, visitId, ...payload });
+    return response.data;
+  } catch (error) {
+    throw new Error(describeAdjustmentError(error));
+  }
 };

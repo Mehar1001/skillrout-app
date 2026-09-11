@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { initializeApp } from 'firebase-admin/app'; // Corrected: Import initializeApp directly
 import { getAuth } from 'firebase-admin/auth';
-import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
+import { DocumentReference, FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore'; // Corrected: Import getFirestore directly
 import { logger } from 'firebase-functions';
 import { setGlobalOptions } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
@@ -915,9 +915,20 @@ interface MachineChange {
   newPresentOut: number;
   oldLastSettledIn: number;
   oldLastSettledOut: number;
+  oldNewIn: number;
+  oldNewOut: number;
+  adjustedNewIn: number;
+  adjustedNewOut: number;
+  baselineRewritten: boolean;
+  baselineSkippedReason?: string;
   newLastSettledIn?: number;
   newLastSettledOut?: number;
 }
+
+const safeNumber = (value: unknown): number => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
 
 export const adjustVisit = onCall(async (request: CallableRequest) => {
   if (!request.auth?.uid) {
@@ -957,22 +968,22 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
 
   const visitRef = db.doc(`owners/${ownerId}/stores/${storeId}/visits/${visitId}`);
   const machineIds = readings.map(r => r.machineId);
+  if (new Set(machineIds).size !== machineIds.length) {
+    throw new HttpsError('invalid-argument', 'Each machine may only appear once in an adjustment.');
+  }
 
-  await db.runTransaction(async transaction => {
+  const summary = await db.runTransaction(async transaction => {
     const visitDoc = await transaction.get(visitRef);
     if (!visitDoc.exists) throw new HttpsError('not-found', 'Visit not found.');
     const visit = visitDoc.data()!;
     if (visit.storeId !== storeId) {
       throw new HttpsError('invalid-argument', 'Visit does not belong to this store.');
     }
-
-    const machineRefs = new Map(machineIds.map(id => [id, db.doc(`owners/${ownerId}/stores/${storeId}/machines/${id}`)]));
-    const machineDocs = new Map<string, any>();
-    for (const [id, ref] of machineRefs) {
-      machineDocs.set(id, await transaction.get(ref));
+    if (visit.voided) {
+      throw new HttpsError('failed-precondition', 'A voided visit cannot be adjusted.');
     }
 
-    const oldMachines = visit.machines as Array<{
+    const oldMachines = (Array.isArray(visit.machines) ? visit.machines : []) as Array<{
       machineId: string;
       machineNumber: string;
       name: string;
@@ -988,75 +999,171 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
       readingSource?: 'manual' | 'ocr_reviewed';
       ocrScanId?: string;
     }>;
+    if (oldMachines.length === 0) {
+      throw new HttpsError('failed-precondition', 'This visit has no machine readings to adjust.');
+    }
+
+    const visitMachineIds = new Set(oldMachines.map(m => m.machineId));
+    const unknownMachineId = machineIds.find(id => !visitMachineIds.has(id));
+    if (unknownMachineId) {
+      throw new HttpsError('invalid-argument', 'A submitted reading does not belong to this visit.');
+    }
+
+    // Read every machine master record up front: Firestore transactions
+    // require all reads to happen before any write.
+    const machineDocs = new Map<string, any>();
+    for (const id of machineIds) {
+      machineDocs.set(id, await transaction.get(db.doc(`owners/${ownerId}/stores/${storeId}/machines/${id}`)));
+    }
 
     const readingMap = new Map(readings.map(r => [r.machineId, r]));
     const newMachines: typeof oldMachines = [];
     const machineChanges: MachineChange[] = [];
+    const baselineSkipped: { machineNumber: string; reason: string }[] = [];
+    const isSubmitted = visit.settlementStatus === 'submitted';
     let updatedBaselines = false;
 
     for (const m of oldMachines) {
       const reading = readingMap.get(m.machineId);
+      const lastSettledIn = safeNumber(m.lastSettledIn);
+      const lastSettledOut = safeNumber(m.lastSettledOut);
+
+      if (!reading) {
+        // Machine was not part of this adjustment: recompute from its own
+        // snapshot so totals always agree with the stored per-machine rows.
+        const untouched = calculateMachine(
+          { lastSettledIn, lastSettledOut },
+          safeNumber(m.presentIn),
+          safeNumber(m.presentOut)
+        );
+        newMachines.push({
+          ...m,
+          lastSettledIn,
+          lastSettledOut,
+          presentIn: safeNumber(m.presentIn),
+          presentOut: safeNumber(m.presentOut),
+          newIn: untouched.newIn,
+          newOut: untouched.newOut,
+          machineNet: untouched.machineNet,
+        });
+        continue;
+      }
+
       const machineDoc = machineDocs.get(m.machineId);
       if (!machineDoc?.exists) {
-        throw new HttpsError('not-found', `Machine ${m.machineNumber} not found.`);
+        throw new HttpsError('not-found', `Machine ${m.machineNumber} no longer exists.`);
       }
       const machine = machineDoc.data()!;
 
-      const newPresentIn = reading ? Number(reading.presentIn) : m.presentIn;
-      const newPresentOut = reading ? Number(reading.presentOut) : m.presentOut;
-      const calc = calculateMachine(m, newPresentIn, newPresentOut);
+      const correctedPresentIn = round2(safeNumber(reading.presentIn));
+      const correctedPresentOut = round2(safeNumber(reading.presentOut));
+
+      // An adjustment must close out the previous settled readings. Allowing a
+      // corrected reading below the baseline would create a negative activity
+      // total and an invalid starting point for the next RUN.
+      if (correctedPresentIn < lastSettledIn) {
+        throw new HttpsError(
+          'invalid-argument',
+          `Machine ${m.machineNumber}: corrected Present IN (${correctedPresentIn.toFixed(2)}) cannot be below the previous settled IN (${lastSettledIn.toFixed(2)}).`
+        );
+      }
+      if (correctedPresentOut < lastSettledOut) {
+        throw new HttpsError(
+          'invalid-argument',
+          `Machine ${m.machineNumber}: corrected Present OUT (${correctedPresentOut.toFixed(2)}) cannot be below the previous settled OUT (${lastSettledOut.toFixed(2)}).`
+        );
+      }
+
+      const calc = calculateMachine(
+        { lastSettledIn, lastSettledOut },
+        correctedPresentIn,
+        correctedPresentOut
+      );
 
       newMachines.push({
         ...m,
-        presentIn: newPresentIn,
-        presentOut: newPresentOut,
+        lastSettledIn,
+        lastSettledOut,
+        presentIn: correctedPresentIn,
+        presentOut: correctedPresentOut,
         newIn: calc.newIn,
         newOut: calc.newOut,
         machineNet: calc.machineNet,
       });
 
-      if (reading) {
-        machineChanges.push({
-          machineId: m.machineId,
-          machineNumber: m.machineNumber,
-          oldPresentIn: m.presentIn,
-          oldPresentOut: m.presentOut,
-          newPresentIn,
-          newPresentOut,
-          oldLastSettledIn: m.lastSettledIn,
-          oldLastSettledOut: m.lastSettledOut,
-        });
+      const change: MachineChange = {
+        machineId: m.machineId,
+        machineNumber: m.machineNumber,
+        oldPresentIn: safeNumber(m.presentIn),
+        oldPresentOut: safeNumber(m.presentOut),
+        newPresentIn: correctedPresentIn,
+        newPresentOut: correctedPresentOut,
+        oldLastSettledIn: lastSettledIn,
+        oldLastSettledOut: lastSettledOut,
+        oldNewIn: safeNumber(m.newIn),
+        oldNewOut: safeNumber(m.newOut),
+        adjustedNewIn: calc.newIn,
+        adjustedNewOut: calc.newOut,
+        baselineRewritten: false,
+      };
 
-        if (rewriteBaselines && visit.settlementStatus === 'submitted' && machine.lastSubmittedVisitId === visitId) {
+      if (rewriteBaselines === true) {
+        // Baselines may only move when this visit is still the newest
+        // submitted visit for the machine. A newer submission already counts
+        // from its own readings, so rewriting here would corrupt that visit.
+        if (!isSubmitted) {
+          change.baselineSkippedReason = 'Visit is not submitted.';
+          baselineSkipped.push({ machineNumber: m.machineNumber, reason: 'visit is not submitted' });
+        } else if (machine.lastSubmittedVisitId !== visitId) {
+          change.baselineSkippedReason = 'A newer submitted visit already closed this machine.';
+          baselineSkipped.push({
+            machineNumber: m.machineNumber,
+            reason: 'a newer submitted visit already closed this machine',
+          });
+        } else {
           transaction.update(machineDoc.ref, {
-            lastSettledIn: newPresentIn,
-            lastSettledOut: newPresentOut,
-            baselineVersion: (machine.baselineVersion || 0) + 1,
+            lastSettledIn: correctedPresentIn,
+            lastSettledOut: correctedPresentOut,
+            baselineVersion: safeNumber(machine.baselineVersion) + 1,
             lastSubmittedVisitId: visitId,
             updatedAt: FieldValue.serverTimestamp(),
           });
-          machineChanges[machineChanges.length - 1].newLastSettledIn = newPresentIn;
-          machineChanges[machineChanges.length - 1].newLastSettledOut = newPresentOut;
+          change.baselineRewritten = true;
+          change.newLastSettledIn = correctedPresentIn;
+          change.newLastSettledOut = correctedPresentOut;
           updatedBaselines = true;
         }
       }
+
+      machineChanges.push(change);
     }
 
-    const calc = calculateVisit(newMachines, visit.storePercent);
+    if (machineChanges.length === 0) {
+      throw new HttpsError('invalid-argument', 'No machine readings were supplied for this adjustment.');
+    }
+
+    const storePercent = safeNumber(visit.storePercent);
+    const calc = calculateVisit(newMachines, storePercent);
     const oldTotals = {
-      totalNewIn: visit.totalNewIn,
-      totalNewOut: visit.totalNewOut,
-      totalNet: visit.totalNet,
-      storeAmount: visit.storeAmount,
-      vendorAmount: visit.vendorAmount,
+      totalNewIn: safeNumber(visit.totalNewIn),
+      totalNewOut: safeNumber(visit.totalNewOut),
+      totalNet: safeNumber(visit.totalNet),
+      storeAmount: safeNumber(visit.storeAmount),
+      vendorAmount: safeNumber(visit.vendorAmount),
     };
 
-    const adjustment: any = {
-      adjustedAt: FieldValue.serverTimestamp(),
+    // Firestore rejects FieldValue.serverTimestamp() inside array elements, so
+    // the audit entry records an explicit server-side timestamp instead.
+    const adjustment = {
+      adjustedAt: Timestamp.now(),
       adjustedBy: callerId,
-      tag: tag.trim(),
-      note: note.trim(),
+      adjustedByName: caller.name,
+      tag: tag.trim().slice(0, 60),
+      note: note.trim().slice(0, 2000),
+      rewriteBaselinesRequested: rewriteBaselines === true,
       rewroteBaselines: updatedBaselines,
+      storePercent,
+      vendorPercent: safeNumber(visit.vendorPercent),
       oldTotalNewIn: oldTotals.totalNewIn,
       oldTotalNewOut: oldTotals.totalNewOut,
       oldTotalNet: oldTotals.totalNet,
@@ -1067,10 +1174,11 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
       newTotalNet: calc.totalNet,
       newStoreAmount: calc.storeAmount,
       newVendorAmount: calc.vendorAmount,
+      netDifference: round2(calc.totalNet - oldTotals.totalNet),
       machineChanges,
     };
 
-    transaction.update(visitRef, {
+    const visitUpdate: Record<string, unknown> = {
       machines: newMachines,
       totalNewIn: calc.totalNewIn,
       totalNewOut: calc.totalNewOut,
@@ -1079,10 +1187,42 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
       storeAmount: calc.storeAmount,
       vendorAmount: calc.vendorAmount,
       cashDueLocation: calc.cashDueLocation,
-      adjustments: [...(visit.adjustments || []), adjustment],
+      adjustments: [...(Array.isArray(visit.adjustments) ? visit.adjustments : []), adjustment],
+      lastAdjustedAt: FieldValue.serverTimestamp(),
+      lastAdjustedBy: callerId,
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    };
+
+    // Preserve the untouched submitted readings the first time a visit is
+    // adjusted so the original record is never lost.
+    if (!Array.isArray(visit.originalMachines)) {
+      visitUpdate.originalMachines = oldMachines;
+      visitUpdate.originalTotals = oldTotals;
+    }
+
+    transaction.update(visitRef, visitUpdate);
+
+    return {
+      totalNewIn: calc.totalNewIn,
+      totalNewOut: calc.totalNewOut,
+      totalNet: calc.totalNet,
+      storeAmount: calc.storeAmount,
+      vendorAmount: calc.vendorAmount,
+      netDifference: round2(calc.totalNet - oldTotals.totalNet),
+      rewroteBaselines: updatedBaselines,
+      baselineSkipped,
+      adjustedMachineCount: machineChanges.length,
+    };
   });
 
-  return { success: true };
+  logger.info('Visit adjusted', {
+    ownerId,
+    storeId,
+    visitId,
+    adjustedBy: callerId,
+    rewroteBaselines: summary.rewroteBaselines,
+    adjustedMachineCount: summary.adjustedMachineCount,
+  });
+
+  return { success: true, ...summary };
 });

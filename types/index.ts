@@ -162,6 +162,29 @@ export interface Visit {
     reason: string;
   };
   adjustments?: Adjustment[];
+  originalMachines?: VisitMachine[];
+  originalTotals?: {
+    totalNewIn: number;
+    totalNewOut: number;
+    totalNet: number;
+    storeAmount: number;
+    vendorAmount: number;
+  };
+  lastAdjustedAt?: Timestamp;
+  lastAdjustedBy?: string;
+}
+
+export interface AdjustmentResult {
+  success: true;
+  totalNewIn: number;
+  totalNewOut: number;
+  totalNet: number;
+  storeAmount: number;
+  vendorAmount: number;
+  netDifference: number;
+  rewroteBaselines: boolean;
+  baselineSkipped: { machineNumber: string; reason: string }[];
+  adjustedMachineCount: number;
 }
 
 export interface Adjustment {
@@ -170,7 +193,10 @@ export interface Adjustment {
   adjustedByName?: string;
   tag: string;
   note: string;
+  rewriteBaselinesRequested?: boolean;
   rewroteBaselines: boolean;
+  storePercent?: number;
+  vendorPercent?: number;
   oldTotalNewIn: number;
   oldTotalNewOut: number;
   oldTotalNet: number;
@@ -181,6 +207,7 @@ export interface Adjustment {
   newTotalNet: number;
   newStoreAmount: number;
   newVendorAmount: number;
+  netDifference?: number;
   machineChanges: {
     machineId: string;
     machineNumber: string;
@@ -190,6 +217,12 @@ export interface Adjustment {
     newPresentOut: number;
     oldLastSettledIn: number;
     oldLastSettledOut: number;
+    oldNewIn?: number;
+    oldNewOut?: number;
+    adjustedNewIn?: number;
+    adjustedNewOut?: number;
+    baselineRewritten?: boolean;
+    baselineSkippedReason?: string;
     newLastSettledIn?: number;
     newLastSettledOut?: number;
   }[];
