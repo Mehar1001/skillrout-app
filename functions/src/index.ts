@@ -1090,6 +1090,32 @@ const safeNumber = (value: unknown): number => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
+const resultFromNet = (net: number): 'positive' | 'zero' | 'negative' =>
+  net > 0 ? 'positive' : net < 0 ? 'negative' : 'zero';
+
+interface FinancialTotals {
+  totalNewIn: number;
+  totalNewOut: number;
+  totalNet: number;
+  result: 'positive' | 'zero' | 'negative';
+  storeAmount: number;
+  vendorAmount: number;
+  cashDueLocation: number;
+}
+
+const normalizeTotals = (totals: any): FinancialTotals => {
+  const totalNet = safeNumber(totals?.totalNet);
+  return {
+    totalNewIn: safeNumber(totals?.totalNewIn),
+    totalNewOut: safeNumber(totals?.totalNewOut),
+    totalNet,
+    result: (totals?.result as 'positive' | 'zero' | 'negative') || resultFromNet(totalNet),
+    storeAmount: safeNumber(totals?.storeAmount),
+    vendorAmount: safeNumber(totals?.vendorAmount),
+    cashDueLocation: safeNumber(totals?.cashDueLocation),
+  };
+};
+
 export const adjustVisit = onCall(async (request: CallableRequest) => {
   if (!request.auth?.uid) {
     throw new HttpsError('unauthenticated', 'Sign in to adjust a visit.');
@@ -1311,16 +1337,8 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
     // original visit totals are preserved so historical Profit/Loss never
     // changes. If this visit was previously adjusted and its totals were
     // overwritten, restore them from the preserved original totals.
-    const firstTotals = {
-      totalNewIn: safeNumber(visit.totalNewIn),
-      totalNewOut: safeNumber(visit.totalNewOut),
-      totalNet: safeNumber(visit.totalNet),
-      result: visit.result,
-      storeAmount: safeNumber(visit.storeAmount),
-      vendorAmount: safeNumber(visit.vendorAmount),
-      cashDueLocation: safeNumber(visit.cashDueLocation),
-    };
-    const submittedTotals = visit.originalTotals ?? firstTotals;
+    const firstTotals = normalizeTotals(visit);
+    const submittedTotals = visit.originalTotals ? normalizeTotals(visit.originalTotals) : firstTotals;
 
     // Firestore rejects FieldValue.serverTimestamp() inside array elements, so
     // the audit entry records an explicit server-side timestamp instead.
