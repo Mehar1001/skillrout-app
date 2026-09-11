@@ -137,8 +137,8 @@ export default function ReportsScreen() {
     <ScrollView ref={reportRef} style={styles.scroll} contentContainerStyle={styles.container}>
       <View style={styles.headingRow}>
         <View style={styles.headingText}>
-          <Text style={styles.title}>Reports</Text>
-          <Text style={styles.subtitle}>Store, machine, visit, and settlement summaries.</Text>
+          <Text style={styles.title}>Reports and Adjustments</Text>
+          <Text style={styles.subtitle}>Store, machine, visit, and settlement summaries with admin visit corrections.</Text>
         </View>
         <Button title="Refresh" onPress={fetchVisits} variant="secondary" disabled={loading} />
       </View>

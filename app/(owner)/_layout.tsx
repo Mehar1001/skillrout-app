@@ -14,7 +14,7 @@ const ownerNavigation: AppSidebarItem[] = [
   { key: 'machines', label: 'Machines', icon: 'hardware-chip-outline', activeIcon: 'hardware-chip' },
   { key: 'employees', label: 'Employees', icon: 'people-outline', activeIcon: 'people' },
   { key: 'history', label: 'History', icon: 'time-outline', activeIcon: 'time' },
-  { key: 'reports', label: 'Reports', icon: 'document-text-outline', activeIcon: 'document-text' },
+  { key: 'reports', label: 'Reports and Adjustments', icon: 'document-text-outline', activeIcon: 'document-text' },
   { key: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
 ];
 
@@ -122,7 +122,7 @@ export default function OwnerLayout() {
       <Tabs.Screen
         name="reports"
         options={{
-          title: 'Reports',
+          title: 'Reports and Adjustments',
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name={focused ? 'document-text' : 'document-text-outline'} color={color} size={size} />
           ),
