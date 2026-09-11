@@ -1058,22 +1058,6 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
       const correctedPresentIn = round2(safeNumber(reading.presentIn));
       const correctedPresentOut = round2(safeNumber(reading.presentOut));
 
-      // An adjustment must close out the previous settled readings. Allowing a
-      // corrected reading below the baseline would create a negative activity
-      // total and an invalid starting point for the next RUN.
-      if (correctedPresentIn < lastSettledIn) {
-        throw new HttpsError(
-          'invalid-argument',
-          `Machine ${m.machineNumber}: corrected Present IN (${correctedPresentIn.toFixed(2)}) cannot be below the previous settled IN (${lastSettledIn.toFixed(2)}).`
-        );
-      }
-      if (correctedPresentOut < lastSettledOut) {
-        throw new HttpsError(
-          'invalid-argument',
-          `Machine ${m.machineNumber}: corrected Present OUT (${correctedPresentOut.toFixed(2)}) cannot be below the previous settled OUT (${lastSettledOut.toFixed(2)}).`
-        );
-      }
-
       const calc = calculateMachine(
         { lastSettledIn, lastSettledOut },
         correctedPresentIn,

@@ -92,7 +92,6 @@ export const VisitAdjustmentModal = ({
     const correctedIn = toAmount(r.presentIn);
     const correctedOut = toAmount(r.presentOut);
     const calc = calculateMachine(r.lastSettledIn, r.lastSettledOut, correctedIn, correctedOut);
-    const belowBaseline = correctedIn < r.lastSettledIn || correctedOut < r.lastSettledOut;
     return {
       ...r,
       originalPresentIn: Number(original?.presentIn ?? r.storedPresentIn) || 0,
@@ -103,7 +102,6 @@ export const VisitAdjustmentModal = ({
       newOut: calc.newOut,
       machineNet: calc.machineNet,
       changed: correctedIn !== r.storedPresentIn || correctedOut !== r.storedPresentOut,
-      belowBaseline,
     };
   });
 
@@ -112,7 +110,6 @@ export const VisitAdjustmentModal = ({
     visit.storePercent
   );
   const netDifference = round2(computed.totalNet - originalTotalNet);
-  const invalidRows = rows.filter(r => r.belowBaseline);
   const changedCount = rows.filter(r => r.changed).length;
 
   const updatePresent = (machineId: string, field: 'presentIn' | 'presentOut', value: string) => {
@@ -132,7 +129,6 @@ export const VisitAdjustmentModal = ({
     confirmed &&
     note.trim().length > 0 &&
     tag.trim().length > 0 &&
-    invalidRows.length === 0 &&
     !saving;
 
   const handleSave = async () => {
@@ -194,16 +190,16 @@ export const VisitAdjustmentModal = ({
           {visit.businessDate} · {visit.employeeName} · Visit {visit.id.slice(-8).toUpperCase()}
         </Text>
       </View>
+      <View style={styles.warningBanner} accessibilityRole="alert">
+        <Text style={styles.warningTitle}>⚠️ Warning</Text>
+        <Text style={styles.warningText}>{READING_WARNING}</Text>
+      </View>
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        <View style={styles.warningBanner} accessibilityRole="alert">
-          <Text style={styles.warningTitle}>⚠️ Warning</Text>
-          <Text style={styles.warningText}>{READING_WARNING}</Text>
-        </View>
-
         <Text style={styles.sectionTitle}>Per-machine readings</Text>
         {rows.map(r => (
           <Card key={r.machineId} style={styles.machineCard}>
@@ -237,11 +233,6 @@ export const VisitAdjustmentModal = ({
                   prefix="$"
                   keyboardType="decimal-pad"
                   inputMode="decimal"
-                  error={
-                    r.correctedIn < r.lastSettledIn
-                      ? `Cannot be below ${formatCurrency(r.lastSettledIn)}`
-                      : undefined
-                  }
                 />
               </View>
               <View style={styles.half}>
@@ -253,11 +244,6 @@ export const VisitAdjustmentModal = ({
                   prefix="$"
                   keyboardType="decimal-pad"
                   inputMode="decimal"
-                  error={
-                    r.correctedOut < r.lastSettledOut
-                      ? `Cannot be below ${formatCurrency(r.lastSettledOut)}`
-                      : undefined
-                  }
                 />
               </View>
             </View>
@@ -407,14 +393,8 @@ export const VisitAdjustmentModal = ({
           <Text style={styles.confirmText}>{CONFIRM_LABEL}</Text>
         </Pressable>
 
-        {invalidRows.length > 0 ? (
-          <Text style={styles.error}>
-            Correct the highlighted readings: {invalidRows.map(r => r.machineNumber).join(', ')} cannot be below the
-            previous settled readings.
-          </Text>
-        ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        {!confirmed && invalidRows.length === 0 && !error ? (
+        {!confirmed && !error ? (
           <Text style={styles.hint}>Check the confirmation box above to enable Save Adjustment.</Text>
         ) : null}
 
@@ -486,9 +466,10 @@ const makeStyles = (colors: Colors) =>
       zIndex: 100,
       padding: spacing.lg,
       paddingBottom: spacing.xxl,
+      justifyContent: 'flex-start',
     },
     header: {
-      marginBottom: spacing.md,
+      marginBottom: spacing.sm,
     },
     eyebrow: {
       color: colors.primary,
@@ -506,12 +487,16 @@ const makeStyles = (colors: Colors) =>
       color: colors.textSecondary,
       fontSize: fontSizes.body,
     },
+    scroll: {
+      flex: 1,
+    },
     container: {
       paddingBottom: spacing.xxl,
       gap: spacing.md,
     },
     warningBanner: {
       padding: spacing.md,
+      marginBottom: spacing.md,
       borderRadius: radii.md,
       borderWidth: 1,
       borderColor: colors.warning,
