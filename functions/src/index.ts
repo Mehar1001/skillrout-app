@@ -51,6 +51,34 @@ const resolveCaller = async (uid: string) => {
   };
 };
 
+interface ActivityPayload {
+  ownerId: string;
+  action: string;
+  actorId: string;
+  actorName: string;
+  actorRole: string;
+  storeId?: string;
+  storeName?: string;
+  machineId?: string;
+  machineNumber?: string;
+  visitId?: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  reason?: string;
+  note?: string;
+}
+
+const logActivity = (payload: ActivityPayload) => {
+  const ref = db.collection(`owners/${payload.ownerId}/activities`).doc();
+  return {
+    ref,
+    data: {
+      ...payload,
+      createdAt: FieldValue.serverTimestamp(),
+    },
+  };
+};
+
 const validateBusinessDate = (businessDate: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(businessDate)) {
     throw new HttpsError('invalid-argument', 'Select a valid business date.');
@@ -605,6 +633,28 @@ export const runVisit = onCall(async (request: CallableRequest) => {
       ...(receiptPhotoUrl ? { receiptPhotoUrl } : {}),
       ...(receiptPhotoPath ? { receiptPhotoPath } : {}),
     });
+
+    const runActivity = logActivity({
+      ownerId: caller.ownerId,
+      action: 'visit_run',
+      actorId: request.auth!.uid,
+      actorName: caller.name,
+      actorRole: caller.role,
+      storeId,
+      storeName: store.name || '',
+      visitId,
+      after: {
+        totalNewIn,
+        totalNewOut,
+        totalNet,
+        storePercent,
+        vendorPercent,
+        storeAmount,
+        vendorAmount,
+        machineCount: visitMachines.length,
+      },
+    });
+    transaction.create(runActivity.ref, runActivity.data);
   });
 
   return { visitId, ownerId: caller.ownerId };
@@ -638,14 +688,33 @@ export const setVisitSplit = onCall(async (request: CallableRequest) => {
     if (visit.settlementStatus === 'submitted') {
       throw new HttpsError('failed-precondition', 'Submitted settlement percentages cannot be changed.');
     }
-    const { storeAmount, vendorAmount, cashDueLocation } = calculateVisit(visit.machines, storePercent);
+    const { totalNewIn, totalNewOut, totalNet, result, storeAmount, vendorAmount, cashDueLocation } =
+      calculateVisit(visit.machines, storePercent);
     transaction.update(visitRef, {
       storePercent,
       vendorPercent,
+      totalNewIn,
+      totalNewOut,
+      totalNet,
+      result,
       storeAmount,
       vendorAmount,
       cashDueLocation,
     });
+
+    const splitActivity = logActivity({
+      ownerId,
+      action: 'percentage_changed',
+      actorId: request.auth!.uid,
+      actorName: caller.name,
+      actorRole: caller.role,
+      storeId,
+      storeName: visit.storeName || '',
+      visitId,
+      before: { storePercent: visit.storePercent, vendorPercent: visit.vendorPercent },
+      after: { storePercent, vendorPercent, totalNet, storeAmount, vendorAmount },
+    });
+    transaction.create(splitActivity.ref, splitActivity.data);
   });
   return { success: true };
 });
@@ -752,6 +821,28 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
         cashDueLocation,
       },
     });
+
+    const submitActivity = logActivity({
+      ownerId,
+      action: 'visit_submitted',
+      actorId: callerId,
+      actorName: caller.name,
+      actorRole: caller.role,
+      storeId,
+      storeName: visit.storeName || '',
+      visitId,
+      after: {
+        totalNewIn,
+        totalNewOut,
+        totalNet,
+        storePercent,
+        vendorPercent,
+        storeAmount,
+        vendorAmount,
+        machineCount: visit.machines.length,
+      },
+    });
+    transaction.create(submitActivity.ref, submitActivity.data);
   });
 
   return { success: true };
@@ -848,6 +939,44 @@ export const employeeOnboardStore = onCall(async (request: CallableRequest) => {
       assignedStoreIds: [...assignedStoreIds, storeId],
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    const storeActivity = logActivity({
+      ownerId,
+      action: 'store_created',
+      actorId: request.auth!.uid,
+      actorName: caller.name,
+      actorRole: caller.role,
+      storeId,
+      storeName: name.trim(),
+      after: {
+        name: name.trim(),
+        address: (address || '').trim(),
+        defaultStorePercent,
+        defaultVendorPercent,
+        machineCount: machineEntries.length,
+      },
+    });
+    transaction.create(storeActivity.ref, storeActivity.data);
+
+    for (const entry of machineEntries) {
+      const machineActivity = logActivity({
+        ownerId,
+        action: 'machine_created',
+        actorId: request.auth!.uid,
+        actorName: caller.name,
+        actorRole: caller.role,
+        storeId,
+        storeName: name.trim(),
+        machineId: entry.id,
+        machineNumber: entry.data.machineNumber,
+        after: {
+          name: entry.data.name,
+          lastSettledIn: entry.data.lastSettledIn,
+          lastSettledOut: entry.data.lastSettledOut,
+        },
+      });
+      transaction.create(machineActivity.ref, machineActivity.data);
+    }
   });
 
   return { storeId, ownerId, machineCount: machineEntries.length };
@@ -918,6 +1047,20 @@ export const employeeAddMachine = onCall(async (request: CallableRequest) => {
       updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.update(storeRef, { updatedAt: FieldValue.serverTimestamp() });
+
+    const machineActivity = logActivity({
+      ownerId,
+      action: 'machine_created',
+      actorId: request.auth!.uid,
+      actorName: caller.name,
+      actorRole: caller.role,
+      storeId,
+      storeName: storeDoc.data()?.name || '',
+      machineId: machineRef.id,
+      machineNumber,
+      after: { name: name.trim(), lastSettledIn, lastSettledOut },
+    });
+    transaction.create(machineActivity.ref, machineActivity.data);
   });
 
   return { machineId: machineRef.id, machineNumber };
@@ -1133,6 +1276,24 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
           change.newLastSettledIn = correctedPresentIn;
           change.newLastSettledOut = correctedPresentOut;
           updatedBaselines = true;
+
+          const baselineActivity = logActivity({
+            ownerId,
+            action: 'machine_baseline_rewritten',
+            actorId: callerId,
+            actorName: caller.name,
+            actorRole: caller.role,
+            storeId,
+            storeName: visit.storeName || '',
+            machineId: machineDoc.id,
+            machineNumber: m.machineNumber,
+            visitId,
+            reason: tag.trim(),
+            note: note.trim(),
+            before: { lastSettledIn, lastSettledOut },
+            after: { lastSettledIn: correctedPresentIn, lastSettledOut: correctedPresentOut },
+          });
+          transaction.create(baselineActivity.ref, baselineActivity.data);
         }
       }
 
@@ -1204,6 +1365,33 @@ export const adjustVisit = onCall(async (request: CallableRequest) => {
     }
 
     transaction.update(visitRef, visitUpdate);
+
+    const adjustActivity = logActivity({
+      ownerId,
+      action: 'visit_adjusted',
+      actorId: callerId,
+      actorName: caller.name,
+      actorRole: caller.role,
+      storeId,
+      storeName: visit.storeName || '',
+      visitId,
+      reason: tag.trim(),
+      note: note.trim(),
+      before: { totalNet: submittedTotals.totalNet, storeAmount: submittedTotals.storeAmount, vendorAmount: submittedTotals.vendorAmount },
+      after: {
+        machineChanges: machineChanges.map(c => ({
+          machineId: c.machineId,
+          machineNumber: c.machineNumber,
+          oldPresentIn: c.oldPresentIn,
+          oldPresentOut: c.oldPresentOut,
+          newPresentIn: c.newPresentIn,
+          newPresentOut: c.newPresentOut,
+          baselineRewritten: c.baselineRewritten,
+        })),
+        submittedTotalNet: submittedTotals.totalNet,
+      },
+    });
+    transaction.create(adjustActivity.ref, adjustActivity.data);
 
     return {
       totalNewIn: submittedTotals.totalNewIn,

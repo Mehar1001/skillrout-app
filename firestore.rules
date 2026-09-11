@@ -77,6 +77,11 @@ service cloud.firestore {
                      && request.resource.data.businessName.size() <= 200;
       allow delete: if false;
 
+      match /activities/{activityId} {
+        allow read: if isOwner(ownerId);
+        allow create, update, delete: if false;
+      }
+
       match /stores/{storeId} {
         allow read: if isOwner(ownerId) || isActiveEmployee(ownerId, storeId);
         allow create: if isOwner(ownerId) && validStoreData(request.resource.data);

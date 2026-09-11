@@ -226,3 +226,47 @@ export interface Adjustment {
     newLastSettledOut?: number;
   }[];
 }
+
+export type ActivityAction =
+  | 'store_created'
+  | 'store_updated'
+  | 'store_deleted'
+  | 'store_activated'
+  | 'store_deactivated'
+  | 'machine_created'
+  | 'machine_updated'
+  | 'machine_deleted'
+  | 'machine_moved'
+  | 'machine_activated'
+  | 'machine_deactivated'
+  | 'machine_number_changed'
+  | 'machine_baseline_rewritten'
+  | 'visit_run'
+  | 'visit_submitted'
+  | 'visit_printed'
+  | 'visit_adjusted'
+  | 'visit_voided'
+  | 'employee_created'
+  | 'employee_updated'
+  | 'employee_assigned'
+  | 'employee_removed'
+  | 'percentage_changed';
+
+export interface Activity {
+  id: string;
+  ownerId: string;
+  action: ActivityAction;
+  actorId: string;
+  actorName?: string;
+  actorRole: string;
+  storeId?: string;
+  storeName?: string;
+  machineId?: string;
+  machineNumber?: string;
+  visitId?: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  reason?: string;
+  note?: string;
+  createdAt: Timestamp;
+}

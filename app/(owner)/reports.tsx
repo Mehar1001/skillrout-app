@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
@@ -47,6 +48,7 @@ const hasNewerSubmittedVisit = (visits: Visit[], visit: Visit) => {
 export default function ReportsScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
+  const router = useRouter();
   const { ownerId, businessName } = useAuth();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -287,6 +289,7 @@ export default function ReportsScreen() {
                         compact
                       />
                       <Button title="Adjust" onPress={() => setSelectedVisit(visit)} variant="secondary" compact />
+      <Button title="Activity" onPress={() => router.push(`/activity?visitId=${visit.id}`)} variant="secondary" compact />
                     </View>
                   </View>
                   {expanded ? (

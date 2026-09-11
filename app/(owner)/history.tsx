@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
@@ -14,6 +15,7 @@ import { Visit } from '../../types';
 export default function HistoryScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
+  const router = useRouter();
   const { ownerId } = useAuth();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +105,14 @@ export default function HistoryScreen() {
               <Text style={styles.splitText}>
                 Store {snapshot.storePercent}%: {formatCurrency(snapshot.storeAmount)} · Games {snapshot.vendorPercent}%: {formatCurrency(snapshot.vendorAmount)}
               </Text>
+              <View style={styles.actionRow}>
+                <Button
+                  title="View Activity"
+                  onPress={() => router.push(`/activity?visitId=${visit.id}`)}
+                  variant="secondary"
+                  compact
+                />
+              </View>
             </Card>
           );
         })
@@ -234,5 +244,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.md,
     fontSize: fontSizes.caption,
     color: colors.textSecondary,
+  },
+  actionRow: {
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
 });
