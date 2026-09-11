@@ -29,9 +29,7 @@ const BASELINE_WARNING =
 
 const CONFIRM_LABEL = 'I confirm these adjusted readings are correct and should be used to close out this visit.';
 
-const baselineInfo = `When to use it:\n\nEnable it ONLY if this is the most recent submitted visit for these machines and you need future visits to start counting from these newly adjusted numbers.\n\nKeep it disabled if there have already been newer visits submitted after this one, or if you are simply correcting a past record without changing the current baseline for future readings.`;
-
-const showInfo = () => alert('Rewrite machine baselines', baselineInfo);
+const baselineInfo = `Enable it ONLY if this is the most recent submitted visit for these machines and you need future visits to start counting from these newly adjusted numbers.\n\nKeep it disabled if there have already been newer visits submitted after this one, or if you are simply correcting a past record without changing the current baseline for future readings.`;
 
 const sanitizeNumeric = (value: string) =>
   value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
@@ -80,6 +78,7 @@ export const VisitAdjustmentModal = ({
   const [note, setNote] = useState('');
   const [tag, setTag] = useState('');
   const [rewriteBaselines, setRewriteBaselines] = useState(false);
+  const [showBaselineInfo, setShowBaselineInfo] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -336,7 +335,7 @@ export const VisitAdjustmentModal = ({
             <View style={styles.switchLabelGroup}>
               <Text style={styles.switchLabel}>Rewrite machine baselines</Text>
               <Pressable
-                onPress={showInfo}
+                onPress={() => setShowBaselineInfo(value => !value)}
                 style={styles.infoButton}
                 accessibilityRole="button"
                 accessibilityLabel="Baseline rewrite info"
@@ -354,6 +353,12 @@ export const VisitAdjustmentModal = ({
               thumbColor={rewriteBaselines ? colors.primary : colors.textMuted}
             />
           </View>
+          {showBaselineInfo ? (
+            <View style={styles.infoPanel}>
+              <Text style={styles.infoTitle}>Rewrite machine baselines</Text>
+              <Text style={styles.infoText}>{baselineInfo}</Text>
+            </View>
+          ) : null}
           <Text style={styles.switchHint}>
             Only enable if this is the last submitted visit for these machines.
           </Text>
@@ -489,9 +494,11 @@ const makeStyles = (colors: Colors) =>
     },
     scroll: {
       flex: 1,
+      minHeight: 0,
     },
     container: {
       paddingBottom: spacing.xxl,
+      flexGrow: 1,
       gap: spacing.md,
     },
     warningBanner: {
@@ -518,6 +525,25 @@ const makeStyles = (colors: Colors) =>
       fontWeight: '700',
     },
     warningText: {
+      color: colors.textPrimary,
+      fontSize: fontSizes.body,
+      lineHeight: lineHeights.body,
+    },
+    infoPanel: {
+      marginTop: spacing.sm,
+      padding: spacing.md,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.info,
+      backgroundColor: colors.surfaceSecondary,
+      gap: spacing.xs,
+    },
+    infoTitle: {
+      color: colors.info,
+      fontSize: fontSizes.body,
+      fontWeight: '700',
+    },
+    infoText: {
       color: colors.textPrimary,
       fontSize: fontSizes.body,
       lineHeight: lineHeights.body,
