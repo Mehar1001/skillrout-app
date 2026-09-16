@@ -14,7 +14,7 @@ const formatStatus = (status: string) => {
     case 'reconciled':
       return 'Received';
     case 'partially_reconciled':
-      return 'Partly Received';
+      return 'Cash Checked';
     case 'discrepancy':
       return 'Difference';
     case 'in_progress':
@@ -49,7 +49,7 @@ export const buildShiftReportWorkbook = (
     ['Total Difference', formatCurrency(summary.totalDifference)],
     ['In Progress', summary.inProgress],
     ['Needs Cash', summary.pendingReconciliation],
-    ['Partly Received', summary.partiallyReconciled],
+    ['Cash Checked', summary.partiallyReconciled],
     ['Closed', summary.closed],
     [],
     ['Employee', 'Shifts', 'Expected', 'Received', 'Difference'],

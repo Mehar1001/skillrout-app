@@ -195,7 +195,7 @@ export default function ShiftReportsScreen() {
             <View style={styles.breakdownRow}>
               <BreakdownItem label="In Progress" value={summary.inProgress} color={colors.info} />
               <BreakdownItem label="Needs Cash" value={summary.pendingReconciliation} color={colors.warning} />
-              <BreakdownItem label="Partly Received" value={summary.partiallyReconciled} color={colors.warning} />
+              <BreakdownItem label="Cash Checked" value={summary.partiallyReconciled} color={colors.success} />
               <BreakdownItem label="Closed" value={summary.closed} color={colors.success} />
             </View>
           </Card>

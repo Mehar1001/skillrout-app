@@ -13,26 +13,34 @@ import { listShiftReconciliations, listShiftVisits, listShifts, closeShift, reco
 import { listStores } from '../../services/stores';
 import { CollectionShift, ShiftReconciliation, Store, Visit } from '../../types';
 
-const statusLabel: Record<string, string> = {
-  in_progress: 'In Progress',
-  returning: 'Returning',
-  pending_reconciliation: 'Needs Cash Review',
-  partially_reconciled: 'Partly Received',
-  closed: 'Closed',
-};
-
-const statusVariant: Record<string, 'muted' | 'success' | 'warning' | 'error' | 'info'> = {
-  in_progress: 'info',
-  returning: 'info',
-  pending_reconciliation: 'warning',
-  partially_reconciled: 'warning',
-  closed: 'success',
-};
-
 const roundCurrency = (value: number | null | undefined) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? Math.round(numeric * 100) / 100 : null;
 };
+
+const getShiftStatus = (
+  status: string,
+  allStoreCashSaved: boolean
+): { label: string; variant: 'muted' | 'success' | 'warning' | 'error' | 'info' } => {
+  if (status === 'closed') return { label: 'Closed', variant: 'success' };
+  if (status === 'in_progress') return { label: 'In Progress', variant: 'info' };
+  if (status === 'returning') return { label: 'Returning', variant: 'info' };
+  if (allStoreCashSaved) return { label: 'Ready to Close', variant: 'success' };
+  return { label: 'Needs Cash', variant: 'warning' };
+};
+
+const getStoreCashStatus = (
+  recon: ShiftReconciliation | undefined,
+  expectedReturnCash: number
+): { label: string; colorType: 'success' | 'warning' | 'error' | 'muted' } => {
+  if (!recon) return { label: expectedReturnCash === 0 ? 'No Cash Due' : 'Needs Cash', colorType: expectedReturnCash === 0 ? 'muted' : 'warning' };
+  if (recon.difference === 0 && expectedReturnCash === 0 && recon.actualCashReceived === 0) return { label: 'No Cash Due', colorType: 'muted' };
+  if (recon.difference === 0) return { label: 'Received', colorType: 'success' };
+  if (recon.difference < 0) return { label: 'Partial', colorType: 'warning' };
+  return { label: 'Extra Cash', colorType: 'warning' };
+};
+
+const isGenericNote = (note: string) => ['received', 'no cash due', 'saved'].includes(note.trim().toLowerCase());
 
 export default function CollectionsScreen() {
   const colors = useColors();
@@ -128,7 +136,7 @@ export default function CollectionsScreen() {
     }
     const difference = Math.round((actualCashReceived - expectedReturnCash) * 100) / 100;
     if (difference !== 0 && !note) {
-      setReconcileErrors(prev => ({ ...prev, [key]: 'Please enter a reason for the difference.' }));
+      setReconcileErrors(prev => ({ ...prev, [key]: 'Add a short note for partial or extra cash.' }));
       setReconcileSuccess(prev => ({ ...prev, [key]: '' }));
       return;
     }
@@ -152,12 +160,16 @@ export default function CollectionsScreen() {
       setReconcileSuccess(prev => ({
         ...prev,
         [key]: difference === 0
-          ? 'Store cash saved.'
-          : `Store cash saved. Difference recorded: ${formatCurrency(difference)}.`,
+          ? actualCashReceived === 0 && expectedReturnCash === 0
+            ? 'No cash due marked.'
+            : 'Cash marked received.'
+          : difference < 0
+            ? `Partial cash saved: ${formatCurrency(actualCashReceived)} received.`
+            : `Extra cash saved: ${formatCurrency(difference)} over expected.`,
       }));
     } catch (e: any) {
       const message = e.message || 'Check the cash amount and try again.';
-      setReconcileErrors(prev => ({ ...prev, [key]: `Could not save store cash: ${message}` }));
+      setReconcileErrors(prev => ({ ...prev, [key]: `Could not save cash: ${message}` }));
     } finally {
       setReconcileActionId(null);
     }
@@ -228,13 +240,14 @@ export default function CollectionsScreen() {
             const shiftRecons = reconciliations[shift.id] || [];
             const reconsByStore = Object.fromEntries(shiftRecons.map(r => [r.storeId, r]));
             const pendingStoreIds = shift.storeIds.filter(s => !reconsByStore[s] || reconsByStore[s].status === 'pending');
-            const allStoresReconciled = pendingStoreIds.length === 0;
+            const allStoreCashSaved = pendingStoreIds.length === 0;
+            const shiftStatus = getShiftStatus(shift.status, allStoreCashSaved);
             const pendingStoreNames = pendingStoreIds.map(storeId => stores[storeId]?.name || 'Unknown store');
             const closeHelpText = !isExpanded
               ? 'Open details to review store cash before closing.'
               : pendingStoreNames.length > 0
-                ? `Save cash for ${pendingStoreNames.join(', ')} before closing this shift.`
-                : 'All store cash is saved. You can close this shift.';
+                ? `Mark cash for ${pendingStoreNames.join(', ')} before closing this shift.`
+                : 'Cash is checked. You can close this shift.';
             const byStore: Record<string, Visit[]> = {};
             for (const v of shiftVisits) {
               if (!byStore[v.storeId]) byStore[v.storeId] = [];
@@ -248,7 +261,7 @@ export default function CollectionsScreen() {
                     <Text style={styles.shiftDate}>
                       {startedAt ? formatDate(startedAt.toISOString().slice(0, 10)) : '—'}
                     </Text>
-                    <Badge title={statusLabel[shift.status] ?? shift.status} variant={statusVariant[shift.status] ?? 'muted'} />
+                    <Badge title={shiftStatus.label} variant={shiftStatus.variant} />
                   </View>
                   <View style={styles.shiftTotals}>
                     <Text style={styles.shiftTotal}>Expected {formatCurrency(shift.expectedReturnCash)}</Text>
@@ -266,14 +279,14 @@ export default function CollectionsScreen() {
                       title="Close Shift"
                       onPress={() => setConfirmingCloseShiftId(shift.id)}
                       loading={actionId === shift.id}
-                      disabled={!isExpanded || !allStoresReconciled}
+                      disabled={!isExpanded || !allStoreCashSaved}
                       variant="primary"
                       compact
                     />
                   )}
                 </View>
                 {shift.status !== 'closed' && !closedShiftIds[shift.id] ? (
-                  <Text style={allStoresReconciled && isExpanded ? styles.actionSuccess : styles.actionProgress}>{closeHelpText}</Text>
+                  <Text style={allStoreCashSaved && isExpanded ? styles.actionSuccess : styles.actionProgress}>{closeHelpText}</Text>
                 ) : null}
                 {closeErrors[shift.id] ? (
                   <Text style={styles.closeError}>{closeErrors[shift.id]}</Text>
@@ -308,24 +321,39 @@ export default function CollectionsScreen() {
                         const draftAmount = roundCurrency(actualDraft);
                         const hasReconcileChanges = !recon || savedAmount !== draftAmount || savedNote !== draftNote;
                         const isSavingCash = reconcileActionId === reconcileKey;
-                        const reconcileButtonTitle = recon ? 'Update Cash' : 'Save Store Cash';
+                        const liveDifference = roundCurrency((actualDraft ?? 0) - expectedReturnCash) ?? 0;
+                        const isZeroCashStore = expectedReturnCash === 0 && (recon?.actualCashReceived ?? actualDraft ?? 0) === 0;
+                        const storeCashStatus = getStoreCashStatus(recon, expectedReturnCash);
+                        const storeStatusColor = storeCashStatus.colorType === 'success'
+                          ? colors.success
+                          : storeCashStatus.colorType === 'error'
+                            ? colors.error
+                            : storeCashStatus.colorType === 'warning'
+                              ? colors.warning
+                              : colors.textMuted;
+                        const reconcileButtonTitle = recon
+                          ? 'Update Amount'
+                          : expectedReturnCash === 0
+                            ? 'Mark No Cash Due'
+                            : 'Mark Received';
+                        const visibleLineItems = (recon?.lineItems || []).filter(item =>
+                          item.expectedAmount !== 0 || item.actualAmount !== 0 || item.difference !== 0
+                        );
 
                         return (
                           <View key={storeId} style={styles.storeSection}>
                             <View style={styles.storeHeader}>
                               <Text style={styles.storeName}>{store?.name || 'Unknown store'}</Text>
-                              {recon ? (
-                                <Text style={[styles.storeStatus, { color: recon.status === 'reconciled' ? colors.success : colors.error }]}>
-                                  {recon.status === 'reconciled' ? 'Received' : 'Difference'}
-                                </Text>
-                              ) : (
-                                <Text style={[styles.storeStatus, { color: colors.warning }]}>Needs Cash</Text>
-                              )}
+                              <Text style={[styles.storeStatus, { color: storeStatusColor }]}>{storeCashStatus.label}</Text>
                             </View>
 
                             <View style={styles.storeRow}>
-                              <Text style={styles.storeMeta}>Expected: {formatCurrency(expectedReturnCash)}</Text>
-                              {recon ? (
+                              {isZeroCashStore ? (
+                                <Text style={styles.storeMeta}>No cash due for this store.</Text>
+                              ) : (
+                                <Text style={styles.storeMeta}>Expected: {formatCurrency(expectedReturnCash)}</Text>
+                              )}
+                              {recon && !isZeroCashStore ? (
                                 <>
                                   <Text style={styles.storeMeta}>Received: {formatCurrency(recon.actualCashReceived)}</Text>
                                   <Text style={[styles.storeMeta, { color: recon.difference === 0 ? colors.success : colors.error }]}>
@@ -350,25 +378,22 @@ export default function CollectionsScreen() {
                               </View>
                             )}
 
-                            {recon?.lineItems && recon.lineItems.length > 0 && (
+                            {visibleLineItems.length > 0 && (
                               <View style={styles.machineList}>
-                                {recon.lineItems.map(item => (
+                                {visibleLineItems.map(item => (
                                   <View key={item.machineId} style={styles.machineRow}>
                                     <Text style={styles.machineName}>{item.machineNumber || item.machineId}</Text>
                                     <Text style={styles.machineAmount}>
-                                      Exp {formatCurrency(item.expectedAmount)} · Got {formatCurrency(item.actualAmount)} · {item.status === 'reconciled' ? 'received' : item.status === 'discrepancy' ? 'difference' : 'needs cash'}
+                                      Exp {formatCurrency(item.expectedAmount)} · Got {formatCurrency(item.actualAmount)} · {item.status === 'reconciled' ? 'received' : item.difference < 0 ? 'partial' : 'extra'}
                                     </Text>
                                   </View>
                                 ))}
                               </View>
                             )}
 
-                            {recon?.reconciliationNote ? (
+                            {recon?.reconciliationNote && !isGenericNote(recon.reconciliationNote) ? (
                               <Text style={styles.note}>Note: {recon.reconciliationNote}</Text>
                             ) : null}
-                            {recon?.receiptVerified && (
-                              <Text style={styles.note}>Receipt verified</Text>
-                            )}
 
                             {shift.status !== 'closed' && (
                               <View style={styles.reconcileBox}>
@@ -390,14 +415,14 @@ export default function CollectionsScreen() {
                                     setReconcileErrors(prev => ({ ...prev, [reconcileKey]: null }));
                                     setReconcileSuccess(prev => ({ ...prev, [reconcileKey]: '' }));
                                   }}
-                                  placeholder="Reason or note"
+                                  placeholder={liveDifference === 0 ? 'Note (optional)' : 'Reason for partial or extra cash'}
                                   placeholderTextColor={colors.textMuted}
                                   multiline
                                   style={styles.noteInput}
                                 />
                                 {recon && !hasReconcileChanges && !isSavingCash ? (
                                   <View style={styles.savedState}>
-                                    <Text style={styles.savedStateText}>Saved</Text>
+                                    <Text style={styles.savedStateText}>Checked</Text>
                                   </View>
                                 ) : (
                                   <Button
@@ -410,11 +435,11 @@ export default function CollectionsScreen() {
                                 )}
                                 {recon && !hasReconcileChanges && !isSavingCash ? (
                                   <Text style={styles.savedHint}>
-                                    Store cash is saved. Change the cash amount or note to update it.
+                                    Cash is checked. Change the amount or note to update it.
                                   </Text>
                                 ) : null}
                                 {isSavingCash ? (
-                                  <Text style={styles.actionProgress}>Saving store cash...</Text>
+                                  <Text style={styles.actionProgress}>Saving cash...</Text>
                                 ) : null}
                                 {reconcileSuccessMessage ? (
                                   <Text style={styles.actionSuccess}>{reconcileSuccessMessage}</Text>

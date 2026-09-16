@@ -77,7 +77,7 @@ Use these example readings:
 | 2 | Enter a reason for the difference. | Reason is accepted. | | |
 | 3 | Check **Receipt Verified** if shown. | Receipt verified flag is saved. | | |
 | 4 | Tap **Save Store Cash**. | Store status becomes **Received** or **Difference**. | | |
-| 5 | Return to the shift. | Shift status is **Partly Received** or **Needs Cash Review**. | | |
+| 5 | Return to the shift. | Shift status is **Ready to Close** when all store cash is checked, or **Needs Cash** if stores are still missing. | | |
 | 6 | Repeat for any remaining stores. | All stores show **Received** or **Difference**. | | |
 
 ---
