@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -7,8 +7,17 @@ import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDraftQueue } from '../../contexts/DraftQueueContext';
+import { getActiveShift } from '../../services/shifts';
 import { listAssignedStores, listStores } from '../../services/stores';
-import { Store } from '../../types';
+import { CollectionShift, Store } from '../../types';
+
+const shiftStatusLabel: Record<string, string> = {
+  in_progress: 'In Progress',
+  returning: 'Returning',
+  pending_reconciliation: 'Waiting for Owner',
+  partially_reconciled: 'Owner Collecting Cash',
+  closed: 'Closed',
+};
 
 export default function SelectStoreScreen() {
   const colors = useColors();
@@ -17,14 +26,37 @@ export default function SelectStoreScreen() {
   const router = useRouter();
   const { pendingCount } = useDraftQueue();
   const [stores, setStores] = useState<Store[]>([]);
+  const [activeShift, setActiveShift] = useState<CollectionShift | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!user || !ownerId) return;
     const request = role === 'owner'
       ? listStores(ownerId)
       : listAssignedStores(ownerId, assignedStoreIds);
     request.then(data => setStores(data));
+    if (role === 'employee') {
+      getActiveShift().then(setActiveShift).catch(() => setActiveShift(null));
+    } else {
+      setActiveShift(null);
+    }
   }, [user, ownerId, role, assignedStoreIds]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const hasOpenButBlockedShift = Boolean(activeShift && activeShift.status !== 'in_progress');
+  const shiftHelp = activeShift
+    ? hasOpenButBlockedShift
+      ? `Your current shift is ${shiftStatusLabel[activeShift.status] ?? activeShift.status}. Wait for the owner to close it before starting another visit.`
+      : null
+    : 'Start a shift on Activity before recording a visit.';
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -40,8 +72,12 @@ export default function SelectStoreScreen() {
           All assigned stores are currently deactivated. Contact your admin to reactivate a store.
         </Text>
       ) : null}
+      {role === 'employee' && shiftHelp ? (
+        <Text style={styles.shiftHelp}>{shiftHelp}</Text>
+      ) : null}
       {stores.map(store => {
         const active = store.active;
+        const canStartVisit = active && activeShift?.status === 'in_progress';
         return (
           <Card
             key={store.id}
@@ -69,10 +105,10 @@ export default function SelectStoreScreen() {
               </View>
               <View style={styles.storeAction}>
                 <Button
-                  title="Start"
+                  title={canStartVisit ? 'Start' : activeShift ? 'Waiting for Owner' : 'Start Shift First'}
                   onPress={() => router.push(`/visit?storeId=${store.id}` as any)}
                   variant="primary"
-                  disabled={!active}
+                  disabled={!canStartVisit}
                 />
                 {active ? (
                   <Button
@@ -152,6 +188,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.warning,
     fontWeight: '600',
     marginTop: spacing.xs,
+  },
+  shiftHelp: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
+    marginBottom: spacing.md,
   },
   storeAction: {
     gap: spacing.sm,
