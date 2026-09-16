@@ -1816,6 +1816,8 @@ export const reconcileStore = onCall(async (request: CallableRequest) => {
   const expectedByVisit = new Map<string, number>();
   const expectedByMachine = new Map<string, number>();
   const visitByMachine = new Map<string, string>();
+  const machineNameById = new Map<string, string>();
+  const machineNumberById = new Map<string, string>();
   let expectedStoreReturn = 0;
   submittedVisits.docs.forEach(v => {
     const visit = v.data();
@@ -1823,11 +1825,12 @@ export const reconcileStore = onCall(async (request: CallableRequest) => {
     expectedByVisit.set(v.id, vendor);
     expectedStoreReturn = round2(expectedStoreReturn + vendor);
     (visit.machines || []).forEach((m: any) => {
-      const machineVendor = round2(safeNumber(m.newIn) - safeNumber(m.newOut) > 0
-        ? safeNumber((m.newIn - m.newOut) * (1 - safeNumber(visit.storePercent) / 100))
-        : 0);
+      const machineNet = safeNumber(m.newIn) - safeNumber(m.newOut);
+      const machineVendor = round2(machineNet > 0 ? machineNet * (1 - safeNumber(visit.storePercent) / 100) : 0);
       expectedByMachine.set(m.machineId, machineVendor);
       visitByMachine.set(m.machineId, v.id);
+      machineNameById.set(m.machineId, m.name || '');
+      machineNumberById.set(m.machineId, m.machineNumber || '');
     });
   });
 
@@ -1875,8 +1878,8 @@ export const reconcileStore = onCall(async (request: CallableRequest) => {
           : 'discrepancy';
       builtLineItems.push({
         machineId,
-        machineNumber: '',
-        machineName: '',
+        machineNumber: machineNumberById.get(machineId) || '',
+        machineName: machineNameById.get(machineId) || '',
         visitId: visitByMachine.get(machineId) || '',
         expectedAmount,
         actualAmount: actual,

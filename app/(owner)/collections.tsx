@@ -45,6 +45,7 @@ export default function CollectionsScreen() {
   const [reconcileAmounts, setReconcileAmounts] = useState<Record<string, number | null>>({});
   const [reconcileNotes, setReconcileNotes] = useState<Record<string, string>>({});
   const [reconcileErrors, setReconcileErrors] = useState<Record<string, string | null>>({});
+  const [closeErrors, setCloseErrors] = useState<Record<string, string>>({});
 
   const loadShifts = useCallback(async () => {
     if (!ownerId) return;
@@ -148,12 +149,14 @@ export default function CollectionsScreen() {
 
   const handleClose = async (shift: CollectionShift) => {
     setActionId(shift.id);
+    setCloseErrors(prev => ({ ...prev, [shift.id]: '' }));
     try {
       await closeShift(shift.id);
       await loadShifts();
       setExpanded(null);
     } catch (e: any) {
-      Alert.alert('Could not close shift', e.message || 'Check that every store is reconciled.');
+      const message = e.message || 'Check that every store is reconciled.';
+      setCloseErrors(prev => ({ ...prev, [shift.id]: message }));
     } finally {
       setActionId(null);
     }
@@ -237,11 +240,15 @@ export default function CollectionsScreen() {
                       title="Close Shift"
                       onPress={() => handleClose(shift)}
                       loading={actionId === shift.id}
+                      disabled={!isExpanded || shift.storeIds.some(s => !reconsByStore[s] || reconsByStore[s].status === 'pending')}
                       variant="primary"
                       compact
                     />
                   )}
                 </View>
+                {closeErrors[shift.id] ? (
+                  <Text style={styles.closeError}>{closeErrors[shift.id]}</Text>
+                ) : null}
 
                 {isExpanded && (
                   <View style={styles.detailSection}>
@@ -500,6 +507,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   note: {
     color: colors.textMuted,
+    fontSize: fontSizes.caption,
+    marginTop: spacing.xs,
+  },
+  closeError: {
+    color: '#DC2626',
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
   },

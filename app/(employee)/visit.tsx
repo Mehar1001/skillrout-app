@@ -25,6 +25,14 @@ import { CollectionShift, Machine, MachineReadingDraft, ReceiptOcrResponse, Stor
 
 const RUN_TIMEOUT_MS = 30000;
 
+const shiftStatusLabel: Record<string, string> = {
+  in_progress: 'In Progress',
+  returning: 'Returning',
+  pending_reconciliation: 'Pending Reconciliation',
+  partially_reconciled: 'Partially Reconciled',
+  closed: 'Closed',
+};
+
 const runProgressMessages: Record<RunProgress | 'checking', string> = {
   preparing: 'Preparing your visit…',
   'uploading-photos': 'Uploading machine photos…',
@@ -68,6 +76,7 @@ export default function VisitScreen() {
   const [receiptRows, setReceiptRows] = useState<ReceiptReviewRow[]>([]);
   const [scanTargetMachineId, setScanTargetMachineId] = useState<string | null>(null);
   const [activeShift, setActiveShift] = useState<CollectionShift | null>(null);
+  const [shiftLoading, setShiftLoading] = useState(true);
 
   useEffect(() => {
     if (!user || !ownerId || !storeId) return;
@@ -81,7 +90,10 @@ export default function VisitScreen() {
         )
       );
     });
-    getActiveShift().then(setActiveShift);
+    getActiveShift().then(shift => {
+      setActiveShift(shift);
+      setShiftLoading(false);
+    });
   }, [user, ownerId, storeId]);
 
   const dateError = validateBusinessDate(businessDate);
@@ -338,6 +350,17 @@ export default function VisitScreen() {
 
   if (!store) return null;
 
+  if (shiftLoading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.stateText}>Loading shift status…</Text>
+      </View>
+    );
+  }
+
+  const canRecord = activeShift?.status === 'in_progress';
+
   const handleViewResults = async () => {
     if (!completedVisitId || !storeId || !ownerId) return;
     const visitId = completedVisitId;
@@ -361,6 +384,25 @@ export default function VisitScreen() {
             Enter every cumulative Present In and Present Out reading. Values below the last settlement are not accepted.
           </Text>
         </View>
+
+        {!canRecord && (
+          <Card style={styles.blockedCard}>
+            <Text style={styles.blockedTitle}>
+              {activeShift ? 'Shift is not in progress' : 'No active shift'}
+            </Text>
+            <Text style={styles.blockedBody}>
+              {activeShift
+                ? `This shift is ${shiftStatusLabel[activeShift.status]}. You cannot record visits until it is In Progress.`
+                : 'Start a shift from the Activity tab before visiting a store.'}
+            </Text>
+            <Button
+              title="Go to Activity"
+              onPress={() => router.push('/(employee)/activity' as any)}
+              variant="primary"
+              compact
+            />
+          </Card>
+        )}
 
         <View style={styles.dateField}>
           <Text style={styles.dateLabel}>Business date</Text>
@@ -417,7 +459,7 @@ export default function VisitScreen() {
             />
           </Card>
         ) : (
-          <>
+          <View pointerEvents={canRecord ? 'auto' : 'none'} style={{ opacity: canRecord ? 1 : 0.5 }}>
             <MachineReadingTable
               machines={machines}
               readings={readings}
@@ -463,7 +505,7 @@ export default function VisitScreen() {
                   title={isOnline ? pendingVisitId ? 'Retry RUN' : 'RUN' : 'Save Offline Draft'}
                   onPress={handleRun}
                   loading={saving}
-                  disabled={saving}
+                  disabled={saving || !canRecord}
                   variant="primary"
                 />
               </View>
@@ -473,7 +515,7 @@ export default function VisitScreen() {
                   : 'You appear offline. Save a draft and it will be submitted automatically when you reconnect.'}
               </Text>
             </View>
-          </>
+          </View>
         )}
       </ScrollView>
 
@@ -740,6 +782,33 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSizes.body,
     textAlign: 'center',
+  },
+  blockedCard: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+    alignItems: 'center',
+  },
+  blockedTitle: {
+    color: colors.error,
+    fontSize: fontSizes.h2,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  blockedBody: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
+    textAlign: 'center',
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
+  stateText: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
   },
   modalBackdrop: {
     flex: 1,
