@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const employeeNavigation: AppSidebarItem[] = [
   { key: 'select-store', label: 'Stores', icon: 'storefront-outline', activeIcon: 'storefront' },
+  { key: 'activity', label: 'Activity', icon: 'pulse-outline', activeIcon: 'pulse' },
   { key: 'drafts', label: 'Drafts', icon: 'document-outline', activeIcon: 'document' },
   { key: 'employee-history', label: 'History', icon: 'time-outline', activeIcon: 'time' },
   { key: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
@@ -136,6 +137,7 @@ export default function EmployeeLayout() {
           <Stack.Screen name="outcome" options={{ title: 'Outcome' }} />
           <Stack.Screen name="receipt" options={{ title: 'Receipt Preview' }} />
           <Stack.Screen name="employee-history" options={{ title: 'History' }} />
+          <Stack.Screen name="activity" options={{ title: 'Shift Activity' }} />
           <Stack.Screen name="settings" options={{ title: 'Profile & Settings' }} />
         </Stack>
       </View>
