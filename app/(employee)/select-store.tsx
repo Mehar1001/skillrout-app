@@ -1,13 +1,13 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { type Colors, fontSizes, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDraftQueue } from '../../contexts/DraftQueueContext';
-import { getActiveShift } from '../../services/shifts';
+import { getActiveShift, startShift } from '../../services/shifts';
 import { listAssignedStores, listStores } from '../../services/stores';
 import { CollectionShift, Store } from '../../types';
 
@@ -27,6 +27,8 @@ export default function SelectStoreScreen() {
   const { pendingCount } = useDraftQueue();
   const [stores, setStores] = useState<Store[]>([]);
   const [activeShift, setActiveShift] = useState<CollectionShift | null>(null);
+  const [startingShift, setStartingShift] = useState(false);
+  const [shiftMessage, setShiftMessage] = useState('');
 
   const load = useCallback(() => {
     if (!user || !ownerId) return;
@@ -56,7 +58,23 @@ export default function SelectStoreScreen() {
     ? hasOpenButBlockedShift
       ? `Your current shift is ${shiftStatusLabel[activeShift.status] ?? activeShift.status}. Wait for the owner to close it before starting another visit.`
       : null
-    : 'Start a shift on Activity before recording a visit.';
+    : 'Start a shift, then choose a store to record a visit.';
+
+  const handleStartShift = async () => {
+    if (!ownerId) return;
+    setStartingShift(true);
+    setShiftMessage('');
+    try {
+      await startShift(ownerId);
+      const shift = await getActiveShift();
+      setActiveShift(shift);
+      setShiftMessage('Shift started. Choose a store and tap Start.');
+    } catch (e: any) {
+      Alert.alert('Could not start shift', e.message || 'Please try again.');
+    } finally {
+      setStartingShift(false);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -73,7 +91,15 @@ export default function SelectStoreScreen() {
         </Text>
       ) : null}
       {role === 'employee' && shiftHelp ? (
-        <Text style={styles.shiftHelp}>{shiftHelp}</Text>
+        <Card style={styles.shiftCard}>
+          <Text style={styles.shiftHelp}>{shiftHelp}</Text>
+          {!activeShift ? (
+            <Button title="Start Shift" onPress={handleStartShift} loading={startingShift} />
+          ) : null}
+          {shiftMessage ? (
+            <Text style={styles.shiftSuccess}>{shiftMessage}</Text>
+          ) : null}
+        </Card>
       ) : null}
       {stores.map(store => {
         const active = store.active;
@@ -156,6 +182,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   storeCard: {
     marginBottom: spacing.md,
   },
+  shiftCard: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
   storeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -192,7 +222,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   shiftHelp: {
     color: colors.textSecondary,
     fontSize: fontSizes.body,
-    marginBottom: spacing.md,
+  },
+  shiftSuccess: {
+    color: colors.success,
+    fontSize: fontSizes.body,
   },
   storeAction: {
     gap: spacing.sm,
