@@ -116,3 +116,27 @@ export const listShiftVisits = async (
   );
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Visit));
 };
+
+export const listEmployeeShiftVisits = async (
+  ownerId: string,
+  shiftId: string,
+  storeIds: string[]
+): Promise<Visit[]> => {
+  const uniqueStoreIds = Array.from(new Set(storeIds.filter(Boolean)));
+  if (uniqueStoreIds.length === 0) return [];
+
+  const snapshots = await Promise.all(
+    uniqueStoreIds.map(storeId =>
+      getDocs(
+        query(
+          collection(db, `owners/${ownerId}/stores/${storeId}/visits`),
+          where('shiftId', '==', shiftId)
+        )
+      )
+    )
+  );
+
+  return snapshots
+    .flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Visit)))
+    .sort((a, b) => (b.timestamp?.toMillis?.() ?? 0) - (a.timestamp?.toMillis?.() ?? 0));
+};

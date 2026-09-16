@@ -8,7 +8,7 @@ import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/de
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../helpers/formatters';
-import { getActiveShift, getShift, startShift, finishShift, listShiftVisits } from '../../services/shifts';
+import { getActiveShift, getShift, startShift, finishShift, listEmployeeShiftVisits } from '../../services/shifts';
 import { CollectionShift, Visit } from '../../types';
 
 const statusLabel: Record<string, string> = {
@@ -30,7 +30,7 @@ const statusVariant: Record<string, 'muted' | 'success' | 'warning' | 'error' | 
 export default function EmployeeActivityScreen() {
   const colors = useColors();
   const styles = makeStyles(colors);
-  const { ownerId } = useAuth();
+  const { ownerId, assignedStoreIds } = useAuth();
   const [shift, setShift] = useState<CollectionShift | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +64,7 @@ export default function EmployeeActivityScreen() {
       const active = await getActiveShift();
       setShift(active);
       if (active) {
-        const shiftVisits = await listShiftVisits(active.ownerId, active.id);
+        const shiftVisits = await listEmployeeShiftVisits(active.ownerId, active.id, assignedStoreIds);
         setVisits(shiftVisits);
       } else {
         setVisits([]);
@@ -76,7 +76,7 @@ export default function EmployeeActivityScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [assignedStoreIds]);
 
   useEffect(() => {
     load();
@@ -96,7 +96,7 @@ export default function EmployeeActivityScreen() {
       const { shiftId } = await startShift(ownerId);
       const newShift = await getShift(ownerId, shiftId);
       setShift(newShift);
-      setVisits(newShift ? await listShiftVisits(newShift.ownerId, newShift.id) : []);
+      setVisits(newShift ? await listEmployeeShiftVisits(newShift.ownerId, newShift.id, assignedStoreIds) : []);
       setActionMessage('Shift started. Go to Stores, enter readings, and tap RUN for each visit.');
     } catch (e: any) {
       Alert.alert('Could not start shift', e.message || 'Please try again.');
