@@ -78,6 +78,7 @@ export const saveRun = async (
   receiptPhotoUri?: string,
   options?: {
     visitId?: string;
+    shiftId?: string;
     preUploadedPhotos?: Record<string, UploadedVisitPhoto>;
     preUploadedReceipt?: UploadedVisitPhoto;
     onProgress?: (progress: RunProgress) => void;
@@ -117,6 +118,7 @@ export const saveRun = async (
   await runVisit({
     visitId,
     storeId,
+    shiftId: options?.shiftId,
     businessDate,
     ...(uploadedReceipt
       ? { receiptPhotoUrl: uploadedReceipt.photoUrl, receiptPhotoPath: uploadedReceipt.photoPath }
@@ -149,10 +151,11 @@ export const submitVisit = async (
   storeId: string,
   visitId: string,
   storePercent: number,
-  vendorPercent: number
+  vendorPercent: number,
+  shiftId?: string
 ): Promise<void> => {
   const submitVisitFn = httpsCallable(functions, 'submitVisit');
-  await submitVisitFn({ ownerId, storeId, visitId, storePercent, vendorPercent });
+  await submitVisitFn({ ownerId, storeId, visitId, shiftId, storePercent, vendorPercent });
 };
 
 export const markPrinted = async (

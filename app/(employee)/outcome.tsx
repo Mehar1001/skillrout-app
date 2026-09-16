@@ -45,7 +45,7 @@ export default function OutcomeScreen() {
     if (!user || !ownerId || !positive) return;
     setWorking(true);
     try {
-      await submitVisit(ownerId, visit.storeId, visit.id, visit.storePercent, visit.vendorPercent);
+      await submitVisit(ownerId, visit.storeId, visit.id, visit.storePercent, visit.vendorPercent, visit.shiftId || undefined);
       router.replace(`/receipt?visitId=${visit.id}&storeId=${visit.storeId}` as any);
     } catch (e: any) {
       showError('Submit Error', e.message || 'Settlement could not be submitted.');

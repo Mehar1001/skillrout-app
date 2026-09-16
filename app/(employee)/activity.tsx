@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
@@ -6,8 +7,8 @@ import { Badge } from '../../components/Badge';
 import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatCurrency, formatDate } from '../../helpers/formatters';
-import { getActiveShift, startShift, finishShift, listShiftVisits } from '../../services/shifts';
+import { formatCurrency } from '../../helpers/formatters';
+import { getActiveShift, getShift, startShift, finishShift, listShiftVisits } from '../../services/shifts';
 import { CollectionShift, Visit } from '../../types';
 
 const statusLabel: Record<string, string> = {
@@ -34,6 +35,25 @@ export default function EmployeeActivityScreen() {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [duration, setDuration] = useState('—');
+
+  useEffect(() => {
+    const startedAt = shift?.startedAt?.toDate?.();
+    if (!startedAt) {
+      setDuration('—');
+      return;
+    }
+    const tick = () => {
+      const diff = Date.now() - startedAt.getTime();
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setDuration(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [shift?.startedAt]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,12 +77,20 @@ export default function EmployeeActivityScreen() {
     load();
   }, [load]);
 
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
   const handleStart = async () => {
     if (!ownerId) return;
     setActionLoading(true);
     try {
-      await startShift(ownerId);
-      await load();
+      const { shiftId } = await startShift(ownerId);
+      const newShift = await getShift(ownerId, shiftId);
+      setShift(newShift);
+      setVisits(newShift ? await listShiftVisits(newShift.ownerId, newShift.id) : []);
     } catch (e: any) {
       Alert.alert('Could not start shift', e.message || 'Please try again.');
     } finally {
@@ -111,8 +139,17 @@ export default function EmployeeActivityScreen() {
         <Card style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <View>
-              <Text style={styles.summaryTitle}>Shift</Text>
-              <Text style={styles.summaryDate}>{startedAt ? formatDate(startedAt.toISOString().slice(0, 10)) : '—'}</Text>
+              <Text style={styles.summaryTitle}>Current Shift</Text>
+              {startedAt && (
+                <View style={styles.clockRow}>
+                  <Text style={styles.clockLabel}>Clocked in:</Text>
+                  <Text style={styles.clockValue}>{startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                </View>
+              )}
+              <View style={styles.clockRow}>
+                <Text style={styles.clockLabel}>Duration:</Text>
+                <Text style={styles.clockValue}>{duration}</Text>
+              </View>
             </View>
             <Badge title={statusLabel[shift.status] ?? shift.status} variant={statusVariant[shift.status] ?? 'default'} />
           </View>
@@ -267,6 +304,20 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   summaryDate: {
     color: colors.textSecondary,
     fontSize: fontSizes.caption,
+  },
+  clockRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  clockLabel: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.caption,
+  },
+  clockValue: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.caption,
+    fontWeight: '600',
   },
   kpiRow: {
     flexDirection: 'row',

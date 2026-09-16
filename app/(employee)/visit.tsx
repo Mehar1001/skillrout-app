@@ -19,8 +19,9 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { listMachines } from '../../services/machines';
 import { prepareReceiptImage, readReceiptImage } from '../../services/receiptOcr';
 import { getStore } from '../../services/stores';
+import { getActiveShift } from '../../services/shifts';
 import { createVisitId, getVisit, type RunProgress, saveRun } from '../../services/visits';
-import { Machine, MachineReadingDraft, ReceiptOcrResponse, Store } from '../../types';
+import { CollectionShift, Machine, MachineReadingDraft, ReceiptOcrResponse, Store } from '../../types';
 
 const RUN_TIMEOUT_MS = 30000;
 
@@ -66,6 +67,7 @@ export default function VisitScreen() {
   const [receiptOcr, setReceiptOcr] = useState<ReceiptOcrResponse | null>(null);
   const [receiptRows, setReceiptRows] = useState<ReceiptReviewRow[]>([]);
   const [scanTargetMachineId, setScanTargetMachineId] = useState<string | null>(null);
+  const [activeShift, setActiveShift] = useState<CollectionShift | null>(null);
 
   useEffect(() => {
     if (!user || !ownerId || !storeId) return;
@@ -79,6 +81,7 @@ export default function VisitScreen() {
         )
       );
     });
+    getActiveShift().then(setActiveShift);
   }, [user, ownerId, storeId]);
 
   const dateError = validateBusinessDate(businessDate);
@@ -256,6 +259,10 @@ export default function VisitScreen() {
 
   const handleRun = async () => {
     if (!user || !ownerId || !store || !storeId) return;
+    if (!activeShift) {
+      Alert.alert('No Active Shift', 'Start a shift before running a visit.');
+      return;
+    }
     setRunMessage('');
     setShowRequiredErrors(true);
     if (dateError) {
@@ -306,6 +313,7 @@ export default function VisitScreen() {
       const recordedVisitId = await withTimeout(
         saveRun(ownerId, storeId, businessDate, machines, readings, receiptImageUri ?? undefined, {
           visitId,
+          shiftId: activeShift.id,
           onProgress: setRunProgress,
         }),
         RUN_TIMEOUT_MS

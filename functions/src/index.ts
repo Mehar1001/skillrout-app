@@ -494,9 +494,10 @@ export const runVisit = onCall(async (request: CallableRequest) => {
     throw new HttpsError('unauthenticated', 'You must be logged in to run a visit.');
   }
 
-  const { visitId, storeId, businessDate, readings, receiptPhotoUrl, receiptPhotoPath } = request.data as {
+  const { visitId, storeId, shiftId, businessDate, readings, receiptPhotoUrl, receiptPhotoPath } = request.data as {
     visitId: string;
     storeId: string;
+    shiftId?: string;
     businessDate: string;
     receiptPhotoUrl?: string;
     receiptPhotoPath?: string;
@@ -535,25 +536,30 @@ export const runVisit = onCall(async (request: CallableRequest) => {
   if (activeMachineSnapshot.empty) throw new HttpsError('failed-precondition', 'This store has no active machines.');
   const activeMachineRefs = activeMachineSnapshot.docs.map(machine => machine.ref);
 
-  let shiftId: string | undefined;
-  if (caller.role === 'employee') {
-    const activeShift = await db.collection(`owners/${caller.ownerId}/shifts`)
-      .where('employeeId', '==', request.auth!.uid)
-      .where('status', 'in', ['in_progress', 'returning'])
-      .limit(1)
-      .get();
-    if (activeShift.empty) {
-      throw new HttpsError('failed-precondition', 'Start a shift before running a visit.');
-    }
-    shiftId = activeShift.docs[0].id;
+  const shiftRef = shiftId ? db.doc(`owners/${caller.ownerId}/shifts/${shiftId}`) : null;
+  if (caller.role === 'employee' && !shiftRef) {
+    throw new HttpsError('failed-precondition', 'Start a shift before running a visit.');
   }
 
   await db.runTransaction(async transaction => {
-    const [storeDoc, existingVisit, ...machineDocs] = await transaction.getAll(
-      storeRef,
-      visitRef,
-      ...activeMachineRefs
-    );
+    const allRefs = [storeRef, visitRef];
+    if (shiftRef) allRefs.push(shiftRef);
+    allRefs.push(...activeMachineRefs);
+    const [storeDoc, existingVisit, ...rest] = await transaction.getAll(...allRefs);
+    const shiftDoc = shiftRef ? rest.shift() : undefined;
+    const machineDocs = rest;
+    if (shiftRef && shiftDoc) {
+      if (!shiftDoc.exists) {
+        throw new HttpsError('not-found', 'Shift not found.');
+      }
+      const shift = shiftDoc.data()!;
+      if (shift.ownerId !== caller.ownerId || shift.employeeId !== request.auth!.uid) {
+        throw new HttpsError('permission-denied', 'This shift does not belong to you.');
+      }
+      if (!['in_progress', 'returning'].includes(shift.status)) {
+        throw new HttpsError('failed-precondition', `Cannot run a visit on a ${shift.status} shift.`);
+      }
+    }
     if (!storeDoc.exists) throw new HttpsError('not-found', 'Store not found.');
     if (existingVisit.exists) throw new HttpsError('already-exists', 'This visit has already been recorded.');
     if (machineDocs.some(machine => !machine.exists || machine.data()?.active !== true)) {
@@ -662,6 +668,7 @@ export const runVisit = onCall(async (request: CallableRequest) => {
       storeName: store.name || '',
       visitId,
       after: {
+        shiftId,
         totalNewIn,
         totalNewOut,
         totalNet,
@@ -675,7 +682,9 @@ export const runVisit = onCall(async (request: CallableRequest) => {
     transaction.create(runActivity.ref, runActivity.data);
   });
 
-  return { visitId, ownerId: caller.ownerId };
+  logger.info('runVisit: completed', { uid: request.auth!.uid, ownerId: caller.ownerId, shiftId, visitId, storeId });
+
+  return { visitId, ownerId: caller.ownerId, shiftId: shiftId || null };
 });
 
 export const setVisitSplit = onCall(async (request: CallableRequest) => {
@@ -761,6 +770,7 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
   }
 
   const visitRef = db.doc(`owners/${ownerId}/stores/${storeId}/visits/${visitId}`);
+  let usedShiftId = '';
   await db.runTransaction(async transaction => {
     const visitDoc = await transaction.get(visitRef);
     if (!visitDoc.exists) throw new HttpsError('not-found', 'Visit not found.');
@@ -799,6 +809,7 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
       shiftRef = activeSnap.docs[0].ref;
       shiftDoc = activeSnap.docs[0];
     }
+    usedShiftId = shiftRef.id;
     const shift = shiftDoc.data()!;
     if (shift.ownerId !== ownerId || shift.employeeId !== callerId) {
       throw new HttpsError('permission-denied', 'This shift does not belong to you.');
@@ -900,6 +911,7 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
       storeName: visit.storeName || '',
       visitId,
       after: {
+        shiftId: shiftRef.id,
         totalNewIn,
         totalNewOut,
         totalNet,
@@ -912,6 +924,8 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
     });
     transaction.create(submitActivity.ref, submitActivity.data);
   });
+
+  logger.info('submitVisit: completed', { uid: callerId, ownerId, shiftId: usedShiftId, visitId, status: 'submitted' });
 
   return { success: true };
 });
@@ -1589,6 +1603,7 @@ export const startShift = onCall(async (request: CallableRequest) => {
   }
 
   const shiftsRef = db.collection(`owners/${ownerId}/shifts`);
+  let shiftRef: DocumentReference | null = null;
   await db.runTransaction(async transaction => {
     const existingQuery = shiftsRef
       .where('employeeId', '==', request.auth!.uid)
@@ -1599,7 +1614,7 @@ export const startShift = onCall(async (request: CallableRequest) => {
       throw new HttpsError('already-exists', 'You already have an unresolved shift. Finish and reconcile it before starting a new one.');
     }
 
-    const shiftRef = shiftsRef.doc();
+    shiftRef = shiftsRef.doc();
     transaction.set(shiftRef, {
       ownerId,
       employeeId: request.auth!.uid,
@@ -1633,7 +1648,9 @@ export const startShift = onCall(async (request: CallableRequest) => {
     transaction.create(startActivity.ref, startActivity.data);
   });
 
-  return { success: true };
+  logger.info('startShift: created', { uid: request.auth!.uid, ownerId, employeeId: request.auth!.uid, shiftId: shiftRef!.id, status: 'in_progress' });
+
+  return { shiftId: shiftRef!.id, ownerId, employeeId: request.auth!.uid, status: 'in_progress' };
 });
 
 export const getActiveShift = onCall(async (request: CallableRequest) => {
@@ -1653,7 +1670,9 @@ export const getActiveShift = onCall(async (request: CallableRequest) => {
     .limit(1);
   const snap = await q.get();
   const doc = snap.docs[0];
-  return { shift: doc ? { id: doc.id, ...doc.data() } : null };
+  const shift: any = doc ? { id: doc.id, ...doc.data() } : null;
+  logger.info('getActiveShift: resolved', { uid: request.auth.uid, ownerId, employeeId: targetEmployeeId, shiftId: shift?.id || null, status: shift?.status || null });
+  return { shift };
 });
 
 export const finishShift = onCall(async (request: CallableRequest) => {
