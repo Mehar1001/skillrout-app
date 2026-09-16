@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Badge } from '../../components/Badge';
+import { CurrencyInput } from '../../components/CurrencyInput';
 import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate } from '../../helpers/formatters';
-import { listShiftReconciliations, listShiftVisits, listShifts, closeShift } from '../../services/shifts';
+import { listShiftReconciliations, listShiftVisits, listShifts, closeShift, reconcileStore } from '../../services/shifts';
 import { listStores } from '../../services/stores';
 import { CollectionShift, ShiftReconciliation, Store, Visit } from '../../types';
 
@@ -38,6 +39,10 @@ export default function CollectionsScreen() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [reconcileActionId, setReconcileActionId] = useState<string | null>(null);
+  const [reconcileAmounts, setReconcileAmounts] = useState<Record<string, number | null>>({});
+  const [reconcileNotes, setReconcileNotes] = useState<Record<string, string>>({});
+  const [reconcileErrors, setReconcileErrors] = useState<Record<string, string | null>>({});
 
   const loadShifts = useCallback(async () => {
     if (!ownerId) return;
@@ -57,6 +62,16 @@ export default function CollectionsScreen() {
     loadShifts();
   }, [loadShifts]);
 
+  const loadShiftDetails = useCallback(async (shiftId: string) => {
+    if (!ownerId) return;
+    const [reconData, visitData] = await Promise.all([
+      listShiftReconciliations(ownerId, shiftId),
+      listShiftVisits(ownerId, shiftId),
+    ]);
+    setReconciliations(prev => ({ ...prev, [shiftId]: reconData }));
+    setVisits(prev => ({ ...prev, [shiftId]: visitData }));
+  }, [ownerId]);
+
   const toggleExpand = async (shift: CollectionShift) => {
     if (expanded === shift.id) {
       setExpanded(null);
@@ -65,15 +80,58 @@ export default function CollectionsScreen() {
     setExpanded(shift.id);
     if (!reconciliations[shift.id]) {
       try {
-        const [reconData, visitData] = await Promise.all([
-          listShiftReconciliations(ownerId!, shift.id),
-          listShiftVisits(ownerId!, shift.id),
-        ]);
-        setReconciliations(prev => ({ ...prev, [shift.id]: reconData }));
-        setVisits(prev => ({ ...prev, [shift.id]: visitData }));
+        await loadShiftDetails(shift.id);
       } catch (e: any) {
         Alert.alert('Error', e.message || 'Could not load shift details.');
       }
+    }
+  };
+
+  const getReconcileKey = (shiftId: string, storeId: string) => `${shiftId}:${storeId}`;
+
+  const handleReconcile = async (
+    shift: CollectionShift,
+    storeId: string,
+    expectedReturnCash: number,
+    storeVisits: Visit[],
+    existingRecon?: ShiftReconciliation
+  ) => {
+    if (!ownerId) return;
+    const key = getReconcileKey(shift.id, storeId);
+    const actualCashReceived = Object.prototype.hasOwnProperty.call(reconcileAmounts, key)
+      ? reconcileAmounts[key]
+      : existingRecon?.actualCashReceived ?? expectedReturnCash;
+    const note = (reconcileNotes[key] ?? existingRecon?.reconciliationNote ?? existingRecon?.discrepancyReason ?? '').trim();
+    if (actualCashReceived === null || !Number.isFinite(actualCashReceived) || actualCashReceived < 0) {
+      setReconcileErrors(prev => ({ ...prev, [key]: 'Enter a valid cash amount.' }));
+      return;
+    }
+    const difference = Math.round((actualCashReceived - expectedReturnCash) * 100) / 100;
+    if (difference !== 0 && !note) {
+      setReconcileErrors(prev => ({ ...prev, [key]: 'Add a reason when actual cash differs from expected.' }));
+      return;
+    }
+    setReconcileActionId(key);
+    setReconcileErrors(prev => ({ ...prev, [key]: null }));
+    try {
+      await reconcileStore(shift.id, storeId, {
+        actualCashReceived,
+        discrepancyReason: difference !== 0 ? note : undefined,
+        reconciliationNote: note,
+        receiptVerified: true,
+        lineItems: storeVisits
+          .filter(v => v.settlementStatus === 'submitted')
+          .flatMap(v => v.machines.map(m => ({
+            machineId: m.machineId,
+            actualAmount: Math.max(0, Math.round((m.machineNet * (v.vendorPercent / 100)) * 100) / 100),
+          }))),
+      });
+      await Promise.all([loadShifts(), loadShiftDetails(shift.id)]);
+      Alert.alert('Store reconciled', 'The shift totals were updated.');
+    } catch (e: any) {
+      Alert.alert('Could not reconcile store', e.message || 'Check the cash amount and try again.');
+    } finally {
+      setReconcileActionId(null);
     }
   };
 
@@ -181,6 +239,13 @@ export default function CollectionsScreen() {
                         const submittedTotal = storeVisits
                           .filter(v => v.settlementStatus === 'submitted')
                           .reduce((sum, v) => sum + (v.settlement?.vendorAmount ?? v.vendorAmount), 0);
+                        const expectedReturnCash = recon?.expectedReturnCash ?? submittedTotal;
+                        const reconcileKey = getReconcileKey(shift.id, storeId);
+                        const actualDraft = Object.prototype.hasOwnProperty.call(reconcileAmounts, reconcileKey)
+                          ? reconcileAmounts[reconcileKey]
+                          : recon?.actualCashReceived ?? expectedReturnCash;
+                        const noteDraft = reconcileNotes[reconcileKey] ?? recon?.reconciliationNote ?? recon?.discrepancyReason ?? '';
+                        const reconcileError = reconcileErrors[reconcileKey];
 
                         return (
                           <View key={storeId} style={styles.storeSection}>
@@ -196,7 +261,7 @@ export default function CollectionsScreen() {
                             </View>
 
                             <View style={styles.storeRow}>
-                              <Text style={styles.storeMeta}>Expected: {formatCurrency(recon?.expectedReturnCash ?? submittedTotal)}</Text>
+                              <Text style={styles.storeMeta}>Expected: {formatCurrency(expectedReturnCash)}</Text>
                               {recon ? (
                                 <>
                                   <Text style={styles.storeMeta}>Actual: {formatCurrency(recon.actualCashReceived)}</Text>
@@ -240,6 +305,39 @@ export default function CollectionsScreen() {
                             ) : null}
                             {recon?.receiptVerified && (
                               <Text style={styles.note}>Receipt verified</Text>
+                            )}
+
+                            {shift.status !== 'closed' && (
+                              <View style={styles.reconcileBox}>
+                                <CurrencyInput
+                                  label="Actual cash received"
+                                  value={actualDraft}
+                                  onChangeValue={value => {
+                                    setReconcileAmounts(prev => ({ ...prev, [reconcileKey]: value }));
+                                    setReconcileErrors(prev => ({ ...prev, [reconcileKey]: null }));
+                                  }}
+                                  error={reconcileError}
+                                  helperText={`Expected ${formatCurrency(expectedReturnCash)}`}
+                                />
+                                <TextInput
+                                  value={noteDraft}
+                                  onChangeText={value => {
+                                    setReconcileNotes(prev => ({ ...prev, [reconcileKey]: value }));
+                                    setReconcileErrors(prev => ({ ...prev, [reconcileKey]: null }));
+                                  }}
+                                  placeholder="Reason or note"
+                                  placeholderTextColor={colors.textMuted}
+                                  multiline
+                                  style={styles.noteInput}
+                                />
+                                <Button
+                                  title={recon ? 'Update Reconciliation' : 'Reconcile Store'}
+                                  onPress={() => handleReconcile(shift, storeId, expectedReturnCash, storeVisits, recon)}
+                                  loading={reconcileActionId === reconcileKey}
+                                  disabled={reconcileActionId === reconcileKey}
+                                  compact
+                                />
+                              </View>
                             )}
                           </View>
                         );
@@ -388,5 +486,26 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textMuted,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
+  },
+  reconcileBox: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceSecondary,
+  },
+  noteInput: {
+    minHeight: 72,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+    fontSize: fontSizes.body,
+    textAlignVertical: 'top',
   },
 });

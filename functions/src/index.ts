@@ -538,6 +538,14 @@ export const runVisit = onCall(async (request: CallableRequest) => {
 
   const shiftRef = shiftId ? db.doc(`owners/${caller.ownerId}/shifts/${shiftId}`) : null;
   if (caller.role === 'employee' && !shiftRef) {
+    logger.warn('runVisit: shift check failed', {
+      uid: request.auth.uid,
+      ownerId: caller.ownerId,
+      shiftId: shiftId || null,
+      status: 'missing',
+      visitId,
+      storeId,
+    });
     throw new HttpsError('failed-precondition', 'Start a shift before running a visit.');
   }
 
@@ -553,6 +561,14 @@ export const runVisit = onCall(async (request: CallableRequest) => {
         throw new HttpsError('not-found', 'Shift not found.');
       }
       const shift = shiftDoc.data()!;
+      logger.info('runVisit: shift check', {
+        uid: request.auth!.uid,
+        ownerId: caller.ownerId,
+        shiftId: shiftRef.id,
+        status: shift.status,
+        visitId,
+        storeId,
+      });
       if (shift.ownerId !== caller.ownerId || shift.employeeId !== request.auth!.uid) {
         throw new HttpsError('permission-denied', 'This shift does not belong to you.');
       }
@@ -811,6 +827,14 @@ export const submitVisit = onCall(async (request: CallableRequest) => {
     }
     usedShiftId = shiftRef.id;
     const shift = shiftDoc.data()!;
+    logger.info('submitVisit: shift check', {
+      uid: callerId,
+      ownerId,
+      shiftId: shiftRef.id,
+      status: shift.status,
+      visitId,
+      storeId,
+    });
     if (shift.ownerId !== ownerId || shift.employeeId !== callerId) {
       throw new HttpsError('permission-denied', 'This shift does not belong to you.');
     }
@@ -1688,11 +1712,19 @@ export const finishShift = onCall(async (request: CallableRequest) => {
   const caller = await resolveCaller(request.auth.uid);
   const ownerId = caller.ownerId;
   const shiftRef = db.doc(`owners/${ownerId}/shifts/${shiftId}`);
+  let previousStatus: string | null = null;
 
   await db.runTransaction(async transaction => {
     const shiftDoc = await transaction.get(shiftRef);
     if (!shiftDoc.exists) throw new HttpsError('not-found', 'Shift not found.');
     const shift = shiftDoc.data()!;
+    previousStatus = String(shift.status || '');
+    logger.info('finishShift: shift check', {
+      uid: request.auth!.uid,
+      ownerId,
+      shiftId,
+      status: previousStatus,
+    });
     if (caller.role === 'employee' && shift.employeeId !== request.auth!.uid) {
       throw new HttpsError('permission-denied', 'This shift does not belong to you.');
     }
@@ -1718,6 +1750,14 @@ export const finishShift = onCall(async (request: CallableRequest) => {
       after: { status: 'pending_reconciliation' },
     });
     transaction.create(finishActivity.ref, finishActivity.data);
+  });
+
+  logger.info('finishShift: completed', {
+    uid: request.auth.uid,
+    ownerId,
+    shiftId,
+    previousStatus,
+    status: 'pending_reconciliation',
   });
 
   return { success: true, status: 'pending_reconciliation' };
@@ -1796,6 +1836,8 @@ export const reconcileStore = onCall(async (request: CallableRequest) => {
   }
 
   const reconciliationsRef = db.collection(`owners/${ownerId}/shifts/${shiftId}/reconciliations`);
+  let savedStoreStatus = '';
+  let checkedShiftStatus = '';
   await db.runTransaction(async transaction => {
     const [shiftDoc, storeDoc, existingReconSnap] = await Promise.all([
       transaction.get(shiftRef),
@@ -1805,6 +1847,14 @@ export const reconcileStore = onCall(async (request: CallableRequest) => {
     if (!shiftDoc.exists) throw new HttpsError('not-found', 'Shift not found.');
     if (!storeDoc.exists) throw new HttpsError('not-found', 'Store not found.');
     const shift = shiftDoc.data()!;
+    checkedShiftStatus = String(shift.status || '');
+    logger.info('reconcileStore: shift check', {
+      uid: request.auth!.uid,
+      ownerId,
+      shiftId,
+      status: checkedShiftStatus,
+      storeId,
+    });
     if (shift.ownerId !== ownerId) {
       throw new HttpsError('permission-denied', 'You cannot reconcile this shift.');
     }
@@ -1838,6 +1888,7 @@ export const reconcileStore = onCall(async (request: CallableRequest) => {
 
     const storeDifference = round2(actualCashReceived - expectedStoreReturn);
     const storeStatus = storeDifference === 0 ? 'reconciled' : 'discrepancy';
+    savedStoreStatus = storeStatus;
     if (storeStatus === 'discrepancy' && (!discrepancyReason || !String(discrepancyReason).trim())) {
       throw new HttpsError('invalid-argument', 'A discrepancy reason is required when actual cash differs from expected.');
     }
@@ -1904,6 +1955,15 @@ export const reconcileStore = onCall(async (request: CallableRequest) => {
     transaction.create(reconActivity.ref, reconActivity.data);
   });
 
+  logger.info('reconcileStore: completed', {
+    uid: request.auth.uid,
+    ownerId,
+    shiftId,
+    status: checkedShiftStatus,
+    storeId,
+    reconciliationStatus: savedStoreStatus,
+  });
+
   return { success: true };
 });
 
@@ -1925,11 +1985,19 @@ export const closeShift = onCall(async (request: CallableRequest) => {
 
   const ownerId = caller.ownerId;
   const shiftRef = db.doc(`owners/${ownerId}/shifts/${shiftId}`);
+  let previousStatus: string | null = null;
 
   await db.runTransaction(async transaction => {
     const shiftDoc = await transaction.get(shiftRef);
     if (!shiftDoc.exists) throw new HttpsError('not-found', 'Shift not found.');
     const shift = shiftDoc.data()!;
+    previousStatus = String(shift.status || '');
+    logger.info('closeShift: shift check', {
+      uid: request.auth!.uid,
+      ownerId,
+      shiftId,
+      status: previousStatus,
+    });
     if (shift.ownerId !== ownerId) {
       throw new HttpsError('permission-denied', 'You cannot close this shift.');
     }
@@ -1986,6 +2054,14 @@ export const closeShift = onCall(async (request: CallableRequest) => {
       after: { expectedReturnCash: shift.expectedReturnCash, actualCashReceived: shift.actualCashReceived, difference: shift.difference },
     });
     transaction.create(closeActivity.ref, closeActivity.data);
+  });
+
+  logger.info('closeShift: completed', {
+    uid: request.auth.uid,
+    ownerId,
+    shiftId,
+    previousStatus,
+    status: 'closed',
   });
 
   return { success: true };
