@@ -140,8 +140,8 @@ export default function EmployeeActivityScreen() {
     if (!shift) {
       return (
         <Card style={styles.stateCard}>
-          <Text style={styles.emptyTitle}>No active shift</Text>
-          <Text style={styles.stateText}>Start a shift before running visits so your collections are grouped correctly.</Text>
+          <Text style={styles.emptyTitle}>All cleared. No pending reconciliation.</Text>
+          <Text style={styles.stateText}>You can start a new shift for the next store visit.</Text>
           <Button title="Start Shift" onPress={handleStart} loading={actionLoading} />
         </Card>
       );

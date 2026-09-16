@@ -119,3 +119,31 @@ Use these example readings:
 | Issues found | |
 
 If any check failed, record the issue number and re-test after the fix.
+
+---
+
+## Acceptance notes
+
+### Close Shift confirmation + employee clearance
+
+When the owner taps **Close Shift**, a confirmation dialog must appear with this message:
+
+> You have collected and reviewed the pending shift amount. Closing this shift will mark reconciliation complete and allow the employee to start a new shift for the next visit.
+
+Buttons: **Cancel** and **Close Shift**.
+
+After the owner confirms:
+- A success message appears: "Shift closed successfully."
+- The shift status becomes **Closed**.
+- The **Close Shift** button disappears or is disabled.
+- The closed shift appears in **Shift Reports**.
+- **Export Excel** includes the closed shift.
+
+On the employee side after the owner closes the shift:
+- **Employee Activity** shows "All cleared. No pending reconciliation."
+- The **Start Shift** button is available again.
+- The employee can begin the next store visit normally.
+
+### Excel export feedback
+
+Tapping **Export Excel** must show a clear success or failure message on the report screen. A failed export should log the error and display it to the user instead of failing silently.

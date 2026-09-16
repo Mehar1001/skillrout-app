@@ -1,11 +1,11 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Badge } from '../../components/Badge';
 import { CurrencyInput } from '../../components/CurrencyInput';
-import { type Colors, fontSizes, lineHeights, spacing } from '../../constants/designTokens';
+import { type Colors, fontSizes, lineHeights, radii, spacing } from '../../constants/designTokens';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate } from '../../helpers/formatters';
@@ -41,6 +41,8 @@ export default function CollectionsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
+  const [confirmingCloseShiftId, setConfirmingCloseShiftId] = useState<string | null>(null);
+  const [closedShiftIds, setClosedShiftIds] = useState<Record<string, boolean>>({});
   const [reconcileActionId, setReconcileActionId] = useState<string | null>(null);
   const [reconcileAmounts, setReconcileAmounts] = useState<Record<string, number | null>>({});
   const [reconcileNotes, setReconcileNotes] = useState<Record<string, string>>({});
@@ -152,6 +154,7 @@ export default function CollectionsScreen() {
     setCloseErrors(prev => ({ ...prev, [shift.id]: '' }));
     try {
       await closeShift(shift.id);
+      setClosedShiftIds(prev => ({ ...prev, [shift.id]: true }));
       await loadShifts();
       setExpanded(null);
     } catch (e: any) {
@@ -159,6 +162,7 @@ export default function CollectionsScreen() {
       setCloseErrors(prev => ({ ...prev, [shift.id]: message }));
     } finally {
       setActionId(null);
+      setConfirmingCloseShiftId(null);
     }
   };
 
@@ -235,10 +239,10 @@ export default function CollectionsScreen() {
 
                 <View style={styles.shiftActions}>
                   <Button title={isExpanded ? 'Hide Details' : 'View Details'} onPress={() => toggleExpand(shift)} variant="secondary" compact />
-                  {shift.status !== 'closed' && (
+                  {shift.status !== 'closed' && !closedShiftIds[shift.id] && (
                     <Button
                       title="Close Shift"
-                      onPress={() => handleClose(shift)}
+                      onPress={() => setConfirmingCloseShiftId(shift.id)}
                       loading={actionId === shift.id}
                       disabled={!isExpanded || shift.storeIds.some(s => !reconsByStore[s] || reconsByStore[s].status === 'pending')}
                       variant="primary"
@@ -248,6 +252,9 @@ export default function CollectionsScreen() {
                 </View>
                 {closeErrors[shift.id] ? (
                   <Text style={styles.closeError}>{closeErrors[shift.id]}</Text>
+                ) : null}
+                {closedShiftIds[shift.id] ? (
+                  <Text style={styles.closeSuccess}>Shift closed successfully.</Text>
                 ) : null}
 
                 {isExpanded && (
@@ -373,9 +380,50 @@ export default function CollectionsScreen() {
           })}
         </View>
       ))}
+
+      <CloseShiftModal
+        shift={shifts.find(s => s.id === confirmingCloseShiftId) || null}
+        onCancel={() => setConfirmingCloseShiftId(null)}
+        onConfirm={() => {
+          const shift = shifts.find(s => s.id === confirmingCloseShiftId);
+          if (shift) handleClose(shift);
+        }}
+        colors={colors}
+      />
     </ScrollView>
   );
 }
+
+const CloseShiftModal = ({
+  shift,
+  onCancel,
+  onConfirm,
+  colors,
+}: {
+  shift: CollectionShift | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+  colors: Colors;
+}) => {
+  if (!shift) return null;
+  const styles = modalStyles(colors);
+  return (
+    <Modal visible animationType="fade" transparent onRequestClose={onCancel}>
+      <View style={styles.backdrop}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Close this shift?</Text>
+          <Text style={styles.body}>
+            You have collected and reviewed the pending shift amount. Closing this shift will mark reconciliation complete and allow the employee to start a new shift for the next visit.
+          </Text>
+          <View style={styles.actions}>
+            <Button title="Cancel" onPress={onCancel} variant="secondary" compact />
+            <Button title="Close Shift" onPress={onConfirm} variant="primary" compact />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
@@ -515,6 +563,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
   },
+  closeSuccess: {
+    color: '#16A34A',
+    fontSize: fontSizes.caption,
+    marginTop: spacing.xs,
+  },
   reconcileBox: {
     marginTop: spacing.md,
     padding: spacing.md,
@@ -535,5 +588,39 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textPrimary,
     fontSize: fontSizes.body,
     textAlignVertical: 'top',
+  },
+});
+
+const modalStyles = (colors: Colors) => StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    backgroundColor: colors.overlay,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 420,
+    padding: spacing.xl,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    gap: spacing.md,
+  },
+  title: {
+    fontSize: fontSizes.h2,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  body: {
+    fontSize: fontSizes.body,
+    color: colors.textSecondary,
+    lineHeight: lineHeights.body,
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
 });

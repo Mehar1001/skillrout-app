@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Badge } from '../../components/Badge';
@@ -41,6 +41,8 @@ export default function ShiftReportsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const [exportSuccess, setExportSuccess] = useState('');
   const [preset, setPreset] = useState<RangePreset>('month');
   const [startDate, setStartDate] = useState(daysAgoIso(30));
   const [endDate, setEndDate] = useState(todayIso());
@@ -110,14 +112,19 @@ export default function ShiftReportsScreen() {
 
   const handleExport = async () => {
     if (storeDetail.length === 0 && machineDetail.length === 0) {
-      Alert.alert('No data', 'There are no shifts in the selected range to export.');
+      setExportError('There are no shifts in the selected range to export.');
       return;
     }
     setExporting(true);
+    setExportError('');
+    setExportSuccess('');
     try {
       await shareReportExcel(summary, storeDetail, machineDetail, startDate, endDate, businessName ?? undefined);
+      setExportSuccess('Excel file downloaded.');
     } catch (e: any) {
-      Alert.alert('Export Error', e.message || 'Could not create the Excel file.');
+      const message = e.message || 'Could not create the Excel file.';
+      console.error('Shift Reports: export failed', { error: message });
+      setExportError(message);
     } finally {
       setExporting(false);
     }
@@ -212,6 +219,8 @@ export default function ShiftReportsScreen() {
 
           <View style={styles.actions}>
             <Button title="Export Excel" onPress={handleExport} loading={exporting} />
+            {exportError ? <Text style={styles.exportError}>{exportError}</Text> : null}
+            {exportSuccess ? <Text style={styles.exportSuccess}>{exportSuccess}</Text> : null}
           </View>
         </>
       )}
@@ -469,5 +478,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   actions: {
     marginTop: spacing.md,
     marginBottom: spacing.xxl,
+  },
+  exportError: {
+    color: '#DC2626',
+    fontSize: fontSizes.body,
+    marginTop: spacing.sm,
+  },
+  exportSuccess: {
+    color: '#16A34A',
+    fontSize: fontSizes.body,
+    marginTop: spacing.sm,
   },
 });
