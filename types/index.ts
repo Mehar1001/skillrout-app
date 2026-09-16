@@ -266,6 +266,7 @@ export interface ShiftReconciliation {
   actualCashReceived: number;
   difference: number;
   discrepancyReason?: string;
+  machineCount: number;
   lineItems: ShiftReconciliationLineItem[];
   reconciledBy?: string;
   reconciledAt?: Timestamp;

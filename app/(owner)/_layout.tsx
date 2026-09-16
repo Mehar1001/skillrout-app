@@ -15,6 +15,7 @@ const ownerNavigation: AppSidebarItem[] = [
   { key: 'employees', label: 'Employees', icon: 'people-outline', activeIcon: 'people' },
   { key: 'history', label: 'History', icon: 'time-outline', activeIcon: 'time' },
   { key: 'reports', label: 'Reports and Adjustments', icon: 'document-text-outline', activeIcon: 'document-text' },
+  { key: 'shift-reports', label: 'Shift Reports', icon: 'bar-chart-outline', activeIcon: 'bar-chart' },
   { key: 'activity', label: 'Activity', icon: 'pulse-outline', activeIcon: 'pulse' },
   { key: 'collections', label: 'Collections', icon: 'cash-outline', activeIcon: 'cash' },
   { key: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
@@ -127,6 +128,15 @@ export default function OwnerLayout() {
           title: 'Reports and Adjustments',
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name={focused ? 'document-text' : 'document-text-outline'} color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="shift-reports"
+        options={{
+          title: 'Shift Reports',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} color={color} size={size} />
           ),
         }}
       />
