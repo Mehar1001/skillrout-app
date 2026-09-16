@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
@@ -38,6 +39,7 @@ export default function CollectionsScreen() {
   const [visits, setVisits] = useState<Record<string, Visit[]>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
   const [reconcileActionId, setReconcileActionId] = useState<string | null>(null);
   const [reconcileAmounts, setReconcileAmounts] = useState<Record<string, number | null>>({});
@@ -47,12 +49,15 @@ export default function CollectionsScreen() {
   const loadShifts = useCallback(async () => {
     if (!ownerId) return;
     setLoading(true);
+    setError('');
     try {
       const [shiftData, storeData] = await Promise.all([listShifts(ownerId), listStores(ownerId)]);
       setShifts(shiftData);
       setStores(Object.fromEntries(storeData.map(s => [s.id, s])));
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not load collections.');
+      const message = e.message || 'Could not load collections.';
+      console.error('Collections: loadShifts failed', { ownerId, error: message });
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -61,6 +66,12 @@ export default function CollectionsScreen() {
   useEffect(() => {
     loadShifts();
   }, [loadShifts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadShifts();
+    }, [loadShifts])
+  );
 
   const loadShiftDetails = useCallback(async (shiftId: string) => {
     if (!ownerId) return;
@@ -171,8 +182,13 @@ export default function CollectionsScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Collections</Text>
         <Card style={styles.stateCard}>
-          <Text style={styles.emptyTitle}>No shifts yet</Text>
-          <Text style={styles.stateText}>Employee shifts will appear here once they are started and finished.</Text>
+          <Text style={styles.emptyTitle}>{error ? 'Collections unavailable' : 'No shifts yet'}</Text>
+          <Text style={styles.stateText}>
+            {error || 'Employee shifts will appear here once they are started and finished.'}
+          </Text>
+          {error ? (
+            <Button title="Try Again" onPress={loadShifts} variant="secondary" compact />
+          ) : null}
         </Card>
       </ScrollView>
     );

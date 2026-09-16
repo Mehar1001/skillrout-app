@@ -34,6 +34,7 @@ export default function EmployeeActivityScreen() {
   const [shift, setShift] = useState<CollectionShift | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [duration, setDuration] = useState('—');
 
@@ -57,6 +58,7 @@ export default function EmployeeActivityScreen() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const active = await getActiveShift();
       setShift(active);
@@ -67,7 +69,9 @@ export default function EmployeeActivityScreen() {
         setVisits([]);
       }
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not load shift.');
+      const message = e.message || 'Could not load shift.';
+      console.error('Employee Activity: load failed', { error: message });
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -118,6 +122,18 @@ export default function EmployeeActivityScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.stateText}>Loading shift…</Text>
         </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <ScrollView contentContainerStyle={styles.container}>
+          <Card style={styles.stateCard}>
+            <Text style={styles.emptyTitle}>Shift unavailable</Text>
+            <Text style={styles.stateText}>{error}</Text>
+            <Button title="Try Again" onPress={load} variant="secondary" compact />
+          </Card>
+        </ScrollView>
       );
     }
 

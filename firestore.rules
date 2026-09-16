@@ -110,7 +110,7 @@ service cloud.firestore {
       }
     }
 
-    match /shifts/{shiftId} {
+    match /owners/{ownerId}/shifts/{shiftId} {
       allow list: if isOwner(ownerId)
                   || (signedIn()
                       && exists(/databases/$(database)/documents/employees/$(request.auth.uid))

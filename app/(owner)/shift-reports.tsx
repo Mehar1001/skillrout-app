@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
@@ -38,6 +39,7 @@ export default function ShiftReportsScreen() {
   const [visits, setVisits] = useState<Record<string, Visit[]>>({});
   const [storeMap, setStoreMap] = useState<Record<string, Store>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
   const [preset, setPreset] = useState<RangePreset>('month');
   const [startDate, setStartDate] = useState(daysAgoIso(30));
@@ -63,6 +65,7 @@ export default function ShiftReportsScreen() {
   const load = useCallback(async () => {
     if (!ownerId) return;
     setLoading(true);
+    setError('');
     try {
       const [allShifts, allStores] = await Promise.all([listShifts(ownerId, undefined, 500), listStores(ownerId)]);
       setShifts(allShifts);
@@ -83,7 +86,9 @@ export default function ShiftReportsScreen() {
       setReconciliations(reconMap);
       setVisits(visitMap);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not load shift reports.');
+      const message = e.message || 'Could not load shift reports.';
+      console.error('Shift Reports: load failed', { ownerId, error: message });
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -92,6 +97,12 @@ export default function ShiftReportsScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const { summary, storeDetail, machineDetail } = useMemo(() => {
     return buildShiftReport(shifts, storeMap, reconciliations, visits, startDate, endDate);
@@ -151,6 +162,12 @@ export default function ShiftReportsScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.stateText}>Loading shift reports…</Text>
         </View>
+      ) : error ? (
+        <Card style={styles.stateCard}>
+          <Text style={styles.emptyTitle}>Reports unavailable</Text>
+          <Text style={styles.stateText}>{error}</Text>
+          <Button title="Try Again" onPress={load} variant="secondary" compact />
+        </Card>
       ) : summary.totalShifts === 0 ? (
         <Card style={styles.stateCard}>
           <Text style={styles.emptyTitle}>No shifts in range</Text>
