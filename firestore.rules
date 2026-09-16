@@ -110,6 +110,27 @@ service cloud.firestore {
       }
     }
 
+    match /shifts/{shiftId} {
+      allow list: if isOwner(ownerId)
+                  || (signedIn()
+                      && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+                      && employee().ownerId == ownerId
+                      && employee().active == true
+                      && request.query.employeeId == request.auth.uid);
+      allow get: if isOwner(ownerId)
+                 || (signedIn()
+                     && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+                     && employee().ownerId == ownerId
+                     && employee().active == true
+                     && resource.data.employeeId == request.auth.uid);
+      allow create, update, delete: if false;
+
+      match /reconciliations/{reconciliationId} {
+        allow list, get: if isOwner(ownerId);
+        allow create, update, delete: if false;
+      }
+    }
+
     match /employees/{employeeId} {
       allow read: if signedIn()
                   && (request.auth.uid == employeeId

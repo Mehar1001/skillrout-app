@@ -131,6 +131,7 @@ export interface Visit {
   employeeName: string;
   businessDate: string; // YYYY-MM-DD
   timestamp: Timestamp;
+  shiftId?: string;
   machines: VisitMachine[];
   totalNewIn: number;
   totalNewOut: number;
@@ -229,6 +230,92 @@ export interface Adjustment {
   }[];
 }
 
+export type ShiftStatus =
+  | 'in_progress'
+  | 'returning'
+  | 'pending_reconciliation'
+  | 'partially_reconciled'
+  | 'closed';
+
+export interface ShiftReconciliationLineItem {
+  machineId: string;
+  machineNumber: string;
+  machineName: string;
+  visitId: string;
+  expectedAmount: number;
+  actualAmount: number;
+  difference: number;
+  status: 'pending' | 'reconciled' | 'discrepancy';
+  note?: string;
+}
+
+export interface ShiftReconciliation {
+  id: string;
+  shiftId: string;
+  ownerId: string;
+  storeId: string;
+  storeName: string;
+  employeeId: string;
+  status: 'pending' | 'reconciled' | 'discrepancy';
+  receiptVerified: boolean;
+  receiptVerifiedBy?: string;
+  receiptVerifiedAt?: Timestamp;
+  receiptPhotoUrl?: string;
+  reconciliationNote?: string;
+  expectedReturnCash: number;
+  actualCashReceived: number;
+  difference: number;
+  discrepancyReason?: string;
+  lineItems: ShiftReconciliationLineItem[];
+  reconciledBy?: string;
+  reconciledAt?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface ClosedShiftSummary {
+  expectedReturnCash: number;
+  actualCashReceived: number;
+  difference: number;
+  grossCollected: number;
+  payouts: number;
+  net: number;
+  storeShare: number;
+  storeCount: number;
+  storesReconciled: number;
+  machineCount: number;
+  submittedVisitIds: string[];
+  closedAt: Timestamp;
+  closedBy: string;
+}
+
+export interface CollectionShift {
+  id: string;
+  ownerId: string;
+  employeeId: string;
+  employeeName: string;
+  status: ShiftStatus;
+  startedAt: Timestamp;
+  endedAt?: Timestamp;
+  storeIds: string[];
+  visitedStoreIds: string[];
+  machinesServiced: number;
+  grossCollected: number;
+  payouts: number;
+  net: number;
+  storeShare: number;
+  expectedReturnCash: number;
+  actualCashReceived: number;
+  difference: number;
+  discrepancyReasons: string[];
+  closedSummary?: ClosedShiftSummary;
+  closedBy?: string;
+  closedAt?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  schemaVersion: number;
+}
+
 export type ActivityAction =
   | 'store_created'
   | 'store_updated'
@@ -252,7 +339,13 @@ export type ActivityAction =
   | 'employee_updated'
   | 'employee_assigned'
   | 'employee_removed'
-  | 'percentage_changed';
+  | 'percentage_changed'
+  | 'shift_started'
+  | 'shift_finished'
+  | 'shift_store_reconciled'
+  | 'shift_discrepancy_added'
+  | 'shift_closed'
+  | 'visit_linked_to_shift';
 
 export interface Activity {
   id: string;
