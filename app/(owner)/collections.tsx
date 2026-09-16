@@ -16,8 +16,8 @@ import { CollectionShift, ShiftReconciliation, Store, Visit } from '../../types'
 const statusLabel: Record<string, string> = {
   in_progress: 'In Progress',
   returning: 'Returning',
-  pending_reconciliation: 'Pending Reconciliation',
-  partially_reconciled: 'Partially Reconciled',
+  pending_reconciliation: 'Needs Cash Review',
+  partially_reconciled: 'Partly Received',
   closed: 'Closed',
 };
 
@@ -27,6 +27,11 @@ const statusVariant: Record<string, 'muted' | 'success' | 'warning' | 'error' | 
   pending_reconciliation: 'warning',
   partially_reconciled: 'warning',
   closed: 'success',
+};
+
+const roundCurrency = (value: number | null | undefined) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.round(numeric * 100) / 100 : null;
 };
 
 export default function CollectionsScreen() {
@@ -47,6 +52,7 @@ export default function CollectionsScreen() {
   const [reconcileAmounts, setReconcileAmounts] = useState<Record<string, number | null>>({});
   const [reconcileNotes, setReconcileNotes] = useState<Record<string, string>>({});
   const [reconcileErrors, setReconcileErrors] = useState<Record<string, string | null>>({});
+  const [reconcileSuccess, setReconcileSuccess] = useState<Record<string, string>>({});
   const [closeErrors, setCloseErrors] = useState<Record<string, string>>({});
 
   const loadShifts = useCallback(async () => {
@@ -122,11 +128,13 @@ export default function CollectionsScreen() {
     }
     const difference = Math.round((actualCashReceived - expectedReturnCash) * 100) / 100;
     if (difference !== 0 && !note) {
-      setReconcileErrors(prev => ({ ...prev, [key]: 'Add a reason when actual cash differs from expected.' }));
+      setReconcileErrors(prev => ({ ...prev, [key]: 'Please enter a reason for the difference.' }));
+      setReconcileSuccess(prev => ({ ...prev, [key]: '' }));
       return;
     }
     setReconcileActionId(key);
     setReconcileErrors(prev => ({ ...prev, [key]: null }));
+    setReconcileSuccess(prev => ({ ...prev, [key]: '' }));
     try {
       await reconcileStore(shift.id, storeId, {
         actualCashReceived,
@@ -141,9 +149,15 @@ export default function CollectionsScreen() {
           }))),
       });
       await Promise.all([loadShifts(), loadShiftDetails(shift.id)]);
-      Alert.alert('Store reconciled', 'The shift totals were updated.');
+      setReconcileSuccess(prev => ({
+        ...prev,
+        [key]: difference === 0
+          ? 'Store cash saved.'
+          : `Store cash saved. Difference recorded: ${formatCurrency(difference)}.`,
+      }));
     } catch (e: any) {
-      Alert.alert('Could not reconcile store', e.message || 'Check the cash amount and try again.');
+      const message = e.message || 'Check the cash amount and try again.';
+      setReconcileErrors(prev => ({ ...prev, [key]: `Could not save store cash: ${message}` }));
     } finally {
       setReconcileActionId(null);
     }
@@ -158,8 +172,8 @@ export default function CollectionsScreen() {
       await loadShifts();
       setExpanded(null);
     } catch (e: any) {
-      const message = e.message || 'Check that every store is reconciled.';
-      setCloseErrors(prev => ({ ...prev, [shift.id]: message }));
+      const message = e.message || 'Check that every store cash amount is saved.';
+      setCloseErrors(prev => ({ ...prev, [shift.id]: `Could not close shift: ${message}` }));
     } finally {
       setActionId(null);
       setConfirmingCloseShiftId(null);
@@ -213,6 +227,14 @@ export default function CollectionsScreen() {
             const shiftVisits = visits[shift.id] || [];
             const shiftRecons = reconciliations[shift.id] || [];
             const reconsByStore = Object.fromEntries(shiftRecons.map(r => [r.storeId, r]));
+            const pendingStoreIds = shift.storeIds.filter(s => !reconsByStore[s] || reconsByStore[s].status === 'pending');
+            const allStoresReconciled = pendingStoreIds.length === 0;
+            const pendingStoreNames = pendingStoreIds.map(storeId => stores[storeId]?.name || 'Unknown store');
+            const closeHelpText = !isExpanded
+              ? 'Open details to review store cash before closing.'
+              : pendingStoreNames.length > 0
+                ? `Save cash for ${pendingStoreNames.join(', ')} before closing this shift.`
+                : 'All store cash is saved. You can close this shift.';
             const byStore: Record<string, Visit[]> = {};
             for (const v of shiftVisits) {
               if (!byStore[v.storeId]) byStore[v.storeId] = [];
@@ -230,7 +252,7 @@ export default function CollectionsScreen() {
                   </View>
                   <View style={styles.shiftTotals}>
                     <Text style={styles.shiftTotal}>Expected {formatCurrency(shift.expectedReturnCash)}</Text>
-                    <Text style={styles.shiftTotal}>Actual {formatCurrency(shift.actualCashReceived)}</Text>
+                    <Text style={styles.shiftTotal}>Received {formatCurrency(shift.actualCashReceived)}</Text>
                     <Text style={[styles.shiftTotal, { color: shift.difference === 0 ? colors.success : colors.error }]}>
                       Diff {formatCurrency(shift.difference)}
                     </Text>
@@ -244,17 +266,20 @@ export default function CollectionsScreen() {
                       title="Close Shift"
                       onPress={() => setConfirmingCloseShiftId(shift.id)}
                       loading={actionId === shift.id}
-                      disabled={!isExpanded || shift.storeIds.some(s => !reconsByStore[s] || reconsByStore[s].status === 'pending')}
+                      disabled={!isExpanded || !allStoresReconciled}
                       variant="primary"
                       compact
                     />
                   )}
                 </View>
+                {shift.status !== 'closed' && !closedShiftIds[shift.id] ? (
+                  <Text style={allStoresReconciled && isExpanded ? styles.actionSuccess : styles.actionProgress}>{closeHelpText}</Text>
+                ) : null}
                 {closeErrors[shift.id] ? (
                   <Text style={styles.closeError}>{closeErrors[shift.id]}</Text>
                 ) : null}
                 {closedShiftIds[shift.id] ? (
-                  <Text style={styles.closeSuccess}>Shift closed successfully.</Text>
+                  <Text style={styles.closeSuccess}>Shift closed successfully. Employee is cleared to start a new shift.</Text>
                 ) : null}
 
                 {isExpanded && (
@@ -276,6 +301,14 @@ export default function CollectionsScreen() {
                           : recon?.actualCashReceived ?? expectedReturnCash;
                         const noteDraft = reconcileNotes[reconcileKey] ?? recon?.reconciliationNote ?? recon?.discrepancyReason ?? '';
                         const reconcileError = reconcileErrors[reconcileKey];
+                        const reconcileSuccessMessage = reconcileSuccess[reconcileKey];
+                        const savedNote = (recon?.reconciliationNote ?? recon?.discrepancyReason ?? '').trim();
+                        const draftNote = noteDraft.trim();
+                        const savedAmount = roundCurrency(recon?.actualCashReceived);
+                        const draftAmount = roundCurrency(actualDraft);
+                        const hasReconcileChanges = !recon || savedAmount !== draftAmount || savedNote !== draftNote;
+                        const isSavingCash = reconcileActionId === reconcileKey;
+                        const reconcileButtonTitle = recon ? 'Update Cash' : 'Save Store Cash';
 
                         return (
                           <View key={storeId} style={styles.storeSection}>
@@ -283,10 +316,10 @@ export default function CollectionsScreen() {
                               <Text style={styles.storeName}>{store?.name || 'Unknown store'}</Text>
                               {recon ? (
                                 <Text style={[styles.storeStatus, { color: recon.status === 'reconciled' ? colors.success : colors.error }]}>
-                                  {recon.status === 'reconciled' ? 'Reconciled' : 'Discrepancy'}
+                                  {recon.status === 'reconciled' ? 'Received' : 'Difference'}
                                 </Text>
                               ) : (
-                                <Text style={[styles.storeStatus, { color: colors.warning }]}>Pending</Text>
+                                <Text style={[styles.storeStatus, { color: colors.warning }]}>Needs Cash</Text>
                               )}
                             </View>
 
@@ -294,7 +327,7 @@ export default function CollectionsScreen() {
                               <Text style={styles.storeMeta}>Expected: {formatCurrency(expectedReturnCash)}</Text>
                               {recon ? (
                                 <>
-                                  <Text style={styles.storeMeta}>Actual: {formatCurrency(recon.actualCashReceived)}</Text>
+                                  <Text style={styles.storeMeta}>Received: {formatCurrency(recon.actualCashReceived)}</Text>
                                   <Text style={[styles.storeMeta, { color: recon.difference === 0 ? colors.success : colors.error }]}>
                                     Diff: {formatCurrency(recon.difference)}
                                   </Text>
@@ -323,7 +356,7 @@ export default function CollectionsScreen() {
                                   <View key={item.machineId} style={styles.machineRow}>
                                     <Text style={styles.machineName}>{item.machineNumber || item.machineId}</Text>
                                     <Text style={styles.machineAmount}>
-                                      Exp {formatCurrency(item.expectedAmount)} · Act {formatCurrency(item.actualAmount)} · {item.status}
+                                      Exp {formatCurrency(item.expectedAmount)} · Got {formatCurrency(item.actualAmount)} · {item.status === 'reconciled' ? 'received' : item.status === 'discrepancy' ? 'difference' : 'needs cash'}
                                     </Text>
                                   </View>
                                 ))}
@@ -340,11 +373,12 @@ export default function CollectionsScreen() {
                             {shift.status !== 'closed' && (
                               <View style={styles.reconcileBox}>
                                 <CurrencyInput
-                                  label="Actual cash received"
+                                  label="Cash received"
                                   value={actualDraft}
                                   onChangeValue={value => {
                                     setReconcileAmounts(prev => ({ ...prev, [reconcileKey]: value }));
                                     setReconcileErrors(prev => ({ ...prev, [reconcileKey]: null }));
+                                    setReconcileSuccess(prev => ({ ...prev, [reconcileKey]: '' }));
                                   }}
                                   error={reconcileError}
                                   helperText={`Expected ${formatCurrency(expectedReturnCash)}`}
@@ -354,19 +388,37 @@ export default function CollectionsScreen() {
                                   onChangeText={value => {
                                     setReconcileNotes(prev => ({ ...prev, [reconcileKey]: value }));
                                     setReconcileErrors(prev => ({ ...prev, [reconcileKey]: null }));
+                                    setReconcileSuccess(prev => ({ ...prev, [reconcileKey]: '' }));
                                   }}
                                   placeholder="Reason or note"
                                   placeholderTextColor={colors.textMuted}
                                   multiline
                                   style={styles.noteInput}
                                 />
-                                <Button
-                                  title={recon ? 'Update Reconciliation' : 'Reconcile Store'}
-                                  onPress={() => handleReconcile(shift, storeId, expectedReturnCash, storeVisits, recon)}
-                                  loading={reconcileActionId === reconcileKey}
-                                  disabled={reconcileActionId === reconcileKey}
-                                  compact
-                                />
+                                {recon && !hasReconcileChanges && !isSavingCash ? (
+                                  <View style={styles.savedState}>
+                                    <Text style={styles.savedStateText}>Saved</Text>
+                                  </View>
+                                ) : (
+                                  <Button
+                                    title={reconcileButtonTitle}
+                                    onPress={() => handleReconcile(shift, storeId, expectedReturnCash, storeVisits, recon)}
+                                    loading={isSavingCash}
+                                    disabled={isSavingCash}
+                                    compact
+                                  />
+                                )}
+                                {recon && !hasReconcileChanges && !isSavingCash ? (
+                                  <Text style={styles.savedHint}>
+                                    Store cash is saved. Change the cash amount or note to update it.
+                                  </Text>
+                                ) : null}
+                                {isSavingCash ? (
+                                  <Text style={styles.actionProgress}>Saving store cash...</Text>
+                                ) : null}
+                                {reconcileSuccessMessage ? (
+                                  <Text style={styles.actionSuccess}>{reconcileSuccessMessage}</Text>
+                                ) : null}
                               </View>
                             )}
                           </View>
@@ -388,6 +440,7 @@ export default function CollectionsScreen() {
           const shift = shifts.find(s => s.id === confirmingCloseShiftId);
           if (shift) handleClose(shift);
         }}
+        loading={actionId === confirmingCloseShiftId}
         colors={colors}
       />
     </ScrollView>
@@ -398,11 +451,13 @@ const CloseShiftModal = ({
   shift,
   onCancel,
   onConfirm,
+  loading,
   colors,
 }: {
   shift: CollectionShift | null;
   onCancel: () => void;
   onConfirm: () => void;
+  loading: boolean;
   colors: Colors;
 }) => {
   if (!shift) return null;
@@ -413,11 +468,21 @@ const CloseShiftModal = ({
         <View style={styles.card}>
           <Text style={styles.title}>Close this shift?</Text>
           <Text style={styles.body}>
-            You have collected and reviewed the pending shift amount. Closing this shift will mark reconciliation complete and allow the employee to start a new shift for the next visit.
+            You have collected and reviewed the shift cash. Closing this shift will mark the cash review complete and allow the employee to start a new shift for the next visit.
           </Text>
+          <View style={styles.totals}>
+            <Text style={styles.total}>Expected return: {formatCurrency(shift.expectedReturnCash)}</Text>
+            <Text style={styles.total}>Cash received: {formatCurrency(shift.actualCashReceived)}</Text>
+            <Text style={[styles.total, { color: shift.difference === 0 ? colors.success : colors.error }]}>Difference: {formatCurrency(shift.difference)}</Text>
+          </View>
+          {shift.difference !== 0 ? (
+            <Text style={styles.warning}>This shift has a cash difference. Make sure the note is correct before closing.</Text>
+          ) : null}
+          <Text style={styles.body}>Closing this shift will clear the employee to start a new shift.</Text>
+          {loading ? <Text style={styles.progress}>Closing shift...</Text> : null}
           <View style={styles.actions}>
-            <Button title="Cancel" onPress={onCancel} variant="secondary" compact />
-            <Button title="Close Shift" onPress={onConfirm} variant="primary" compact />
+            <Button title="Cancel" onPress={onCancel} variant="secondary" disabled={loading} compact />
+            <Button title="Close Shift" onPress={onConfirm} loading={loading} variant="primary" compact />
           </View>
         </View>
       </View>
@@ -559,14 +624,46 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.xs,
   },
   closeError: {
-    color: '#DC2626',
-    fontSize: fontSizes.caption,
+    color: colors.error,
+    fontSize: fontSizes.body,
     marginTop: spacing.xs,
   },
   closeSuccess: {
-    color: '#16A34A',
-    fontSize: fontSizes.caption,
+    color: colors.success,
+    fontSize: fontSizes.body,
     marginTop: spacing.xs,
+  },
+  actionProgress: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
+    marginTop: spacing.sm,
+  },
+  actionSuccess: {
+    color: colors.success,
+    fontSize: fontSizes.body,
+    marginTop: spacing.sm,
+  },
+  savedState: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    opacity: 0.72,
+  },
+  savedStateText: {
+    color: colors.textMuted,
+    fontSize: fontSizes.body,
+    fontWeight: '700',
+  },
+  savedHint: {
+    color: colors.textMuted,
+    fontSize: fontSizes.caption,
+    marginTop: spacing.sm,
   },
   reconcileBox: {
     marginTop: spacing.md,
@@ -616,6 +713,26 @@ const modalStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.body,
     color: colors.textSecondary,
     lineHeight: lineHeights.body,
+  },
+  totals: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceSecondary,
+    gap: spacing.xs,
+  },
+  total: {
+    fontSize: fontSizes.body,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  warning: {
+    fontSize: fontSizes.body,
+    color: colors.error,
+    lineHeight: lineHeights.body,
+  },
+  progress: {
+    fontSize: fontSizes.body,
+    color: colors.textSecondary,
   },
   actions: {
     flexDirection: 'row',

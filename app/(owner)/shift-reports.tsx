@@ -135,7 +135,7 @@ export default function ShiftReportsScreen() {
       <View style={styles.headingRow}>
         <View style={styles.headingText}>
           <Text style={styles.title}>Collections Reports</Text>
-          <Text style={styles.subtitle}>Employee shift and collection summaries with Excel export.</Text>
+          <Text style={styles.subtitle}>Employee shift and cash collection summaries with Excel export.</Text>
         </View>
         <Button title="Refresh" onPress={load} variant="secondary" disabled={loading} />
       </View>
@@ -186,7 +186,7 @@ export default function ShiftReportsScreen() {
             <Kpi label="Employees" value={String(summary.totalEmployees)} />
             <Kpi label="Shifts" value={String(summary.totalShifts)} />
             <Kpi label="Expected" value={formatCurrency(summary.expectedReturnCash)} emphasis />
-            <Kpi label="Actual" value={formatCurrency(summary.actualCashReceived)} emphasis />
+            <Kpi label="Received" value={formatCurrency(summary.actualCashReceived)} emphasis />
             <Kpi label="Difference" value={formatCurrency(summary.totalDifference)} emphasis />
           </View>
 
@@ -194,8 +194,8 @@ export default function ShiftReportsScreen() {
             <Text style={styles.sectionTitle}>Shift Status</Text>
             <View style={styles.breakdownRow}>
               <BreakdownItem label="In Progress" value={summary.inProgress} color={colors.info} />
-              <BreakdownItem label="Pending" value={summary.pendingReconciliation} color={colors.warning} />
-              <BreakdownItem label="Partial" value={summary.partiallyReconciled} color={colors.warning} />
+              <BreakdownItem label="Needs Cash" value={summary.pendingReconciliation} color={colors.warning} />
+              <BreakdownItem label="Partly Received" value={summary.partiallyReconciled} color={colors.warning} />
               <BreakdownItem label="Closed" value={summary.closed} color={colors.success} />
             </View>
           </Card>
@@ -210,7 +210,7 @@ export default function ShiftReportsScreen() {
                 </View>
                 <View style={styles.employeeRight}>
                   <Text style={styles.employeeAmount}>Exp {formatCurrency(e.expectedReturnCash)}</Text>
-                  <Text style={styles.employeeAmount}>Act {formatCurrency(e.actualCashReceived)}</Text>
+                  <Text style={styles.employeeAmount}>Received {formatCurrency(e.actualCashReceived)}</Text>
                   <Badge title={`Diff ${formatCurrency(e.difference)}`} variant={e.difference === 0 ? 'success' : e.difference > 0 ? 'info' : 'error'} />
                 </View>
               </View>

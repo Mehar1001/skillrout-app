@@ -6,6 +6,28 @@ const formatCurrency = (value: number) => {
   return value.toFixed(2);
 };
 
+const formatStatus = (status: string) => {
+  switch (status) {
+    case 'pending':
+    case 'pending_reconciliation':
+      return 'Needs Cash';
+    case 'reconciled':
+      return 'Received';
+    case 'partially_reconciled':
+      return 'Partly Received';
+    case 'discrepancy':
+      return 'Difference';
+    case 'in_progress':
+      return 'In Progress';
+    case 'returning':
+      return 'Returning';
+    case 'closed':
+      return 'Closed';
+    default:
+      return status;
+  }
+};
+
 export const buildShiftReportWorkbook = (
   summary: ShiftReportSummary,
   storeDetail: ShiftStoreDetailRow[],
@@ -23,14 +45,14 @@ export const buildShiftReportWorkbook = (
     ['Net', formatCurrency(summary.net)],
     ['Store Share', formatCurrency(summary.storeShare)],
     ['Expected Return Cash', formatCurrency(summary.expectedReturnCash)],
-    ['Actual Cash Received', formatCurrency(summary.actualCashReceived)],
+    ['Cash Received', formatCurrency(summary.actualCashReceived)],
     ['Total Difference', formatCurrency(summary.totalDifference)],
     ['In Progress', summary.inProgress],
-    ['Pending Reconciliation', summary.pendingReconciliation],
-    ['Partially Reconciled', summary.partiallyReconciled],
+    ['Needs Cash', summary.pendingReconciliation],
+    ['Partly Received', summary.partiallyReconciled],
     ['Closed', summary.closed],
     [],
-    ['Employee', 'Shifts', 'Expected', 'Actual', 'Difference'],
+    ['Employee', 'Shifts', 'Expected', 'Received', 'Difference'],
     ...summary.employees.map(e => [
       e.employeeName,
       e.shiftCount,
@@ -51,10 +73,10 @@ export const buildShiftReportWorkbook = (
     Store: s.storeName,
     'Store ID': s.storeId,
     'Expected Return Cash': formatCurrency(s.expectedReturnCash),
-    'Actual Cash Received': formatCurrency(s.actualCashReceived),
+    'Cash Received': formatCurrency(s.actualCashReceived),
     Difference: formatCurrency(s.difference),
-    Status: s.status,
-    'Discrepancy Reason': s.discrepancyReason || '',
+    Status: formatStatus(s.status),
+    'Difference Reason': s.discrepancyReason || '',
     'Receipt Verified': s.receiptVerified ? 'Yes' : 'No',
     'Machine Count': s.machineCount,
     'Visit Count': s.visitCount,
@@ -80,9 +102,9 @@ export const buildShiftReportWorkbook = (
     'New OUT': m.newOut,
     'Machine Net': m.machineNet,
     'Expected Amount': formatCurrency(m.expectedAmount),
-    'Actual Amount': formatCurrency(m.actualAmount),
+    'Cash Received': formatCurrency(m.actualAmount),
     Difference: formatCurrency(m.difference),
-    Status: m.status,
+    Status: formatStatus(m.status),
     Note: m.note || '',
   }));
   const machineSheet = XLSX.utils.json_to_sheet(machineRows);

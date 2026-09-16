@@ -28,8 +28,8 @@ const RUN_TIMEOUT_MS = 30000;
 const shiftStatusLabel: Record<string, string> = {
   in_progress: 'In Progress',
   returning: 'Returning',
-  pending_reconciliation: 'Pending Reconciliation',
-  partially_reconciled: 'Partially Reconciled',
+  pending_reconciliation: 'Waiting for Owner',
+  partially_reconciled: 'Owner Collecting Cash',
   closed: 'Closed',
 };
 

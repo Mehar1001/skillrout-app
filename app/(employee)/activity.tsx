@@ -14,8 +14,8 @@ import { CollectionShift, Visit } from '../../types';
 const statusLabel: Record<string, string> = {
   in_progress: 'In Progress',
   returning: 'Returning',
-  pending_reconciliation: 'Pending Reconciliation',
-  partially_reconciled: 'Partially Reconciled',
+  pending_reconciliation: 'Waiting for Owner',
+  partially_reconciled: 'Owner Collecting Cash',
   closed: 'Closed',
 };
 
@@ -36,6 +36,7 @@ export default function EmployeeActivityScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
   const [duration, setDuration] = useState('—');
 
   useEffect(() => {
@@ -90,11 +91,13 @@ export default function EmployeeActivityScreen() {
   const handleStart = async () => {
     if (!ownerId) return;
     setActionLoading(true);
+    setActionMessage('');
     try {
       const { shiftId } = await startShift(ownerId);
       const newShift = await getShift(ownerId, shiftId);
       setShift(newShift);
       setVisits(newShift ? await listShiftVisits(newShift.ownerId, newShift.id) : []);
+      setActionMessage('Shift started. Go to Stores, enter readings, and tap RUN for each visit.');
     } catch (e: any) {
       Alert.alert('Could not start shift', e.message || 'Please try again.');
     } finally {
@@ -105,9 +108,15 @@ export default function EmployeeActivityScreen() {
   const handleFinish = async () => {
     if (!shift) return;
     setActionLoading(true);
+    setActionMessage('');
     try {
       await finishShift(shift.id);
       await load();
+      setActionMessage('Route finished. Your shift is waiting for the owner to check the cash and close it. You can start a new shift after it is closed.');
+      Alert.alert(
+        'Route finished',
+        'Your shift is waiting for the owner to check the cash and close it. After that, you can start another shift.'
+      );
     } catch (e: any) {
       Alert.alert('Could not finish shift', e.message || 'Please try again.');
     } finally {
@@ -140,7 +149,7 @@ export default function EmployeeActivityScreen() {
     if (!shift) {
       return (
         <Card style={styles.stateCard}>
-          <Text style={styles.emptyTitle}>All cleared. No pending reconciliation.</Text>
+          <Text style={styles.emptyTitle}>All cleared. No pending cash review.</Text>
           <Text style={styles.stateText}>You can start a new shift for the next store visit.</Text>
           <Button title="Start Shift" onPress={handleStart} loading={actionLoading} />
         </Card>
@@ -180,7 +189,7 @@ export default function EmployeeActivityScreen() {
           {shift.actualCashReceived > 0 && (
             <View style={styles.reconciliationRow}>
               <Text style={styles.reconciliationText}>
-                Actual received: <Text style={{ fontWeight: '700' }}>{formatCurrency(shift.actualCashReceived)}</Text>
+                Cash received: <Text style={{ fontWeight: '700' }}>{formatCurrency(shift.actualCashReceived)}</Text>
               </Text>
               <Text style={styles.reconciliationText}>
                 Difference: <Text style={{ fontWeight: '700', color: shift.difference === 0 ? colors.success : colors.error }}>
@@ -191,18 +200,26 @@ export default function EmployeeActivityScreen() {
           )}
 
           {canFinish ? (
-            <Button
-              title="Finish Route"
-              onPress={handleFinish}
-              loading={actionLoading}
-              variant="primary"
-            />
+            <>
+              <Button
+                title="Finish Route"
+                onPress={handleFinish}
+                loading={actionLoading}
+                variant="primary"
+              />
+              {actionLoading ? (
+                <Text style={styles.actionProgress}>Finishing route...</Text>
+              ) : null}
+            </>
           ) : (
             <View style={styles.waitingBox}>
-              <Text style={styles.waitingText}>Waiting for admin reconciliation.</Text>
-              <Text style={styles.waitingSubtext}>You cannot start a new shift until this one is closed.</Text>
+              <Text style={styles.waitingText}>Route finished. Waiting for owner cash review.</Text>
+              <Text style={styles.waitingSubtext}>Next: the owner opens Collections, checks the store cash, then closes this shift. You can start a new shift after it is closed.</Text>
             </View>
           )}
+          {actionMessage ? (
+            <Text style={styles.actionSuccess}>{actionMessage}</Text>
+          ) : null}
         </Card>
 
         <Text style={styles.sectionTitle}>Shift Visits</Text>
@@ -365,6 +382,17 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   reconciliationText: {
     color: colors.textSecondary,
     fontSize: fontSizes.body,
+  },
+  actionProgress: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.body,
+    marginTop: spacing.sm,
+  },
+  actionSuccess: {
+    color: colors.success,
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
+    marginTop: spacing.sm,
   },
   finishButton: {
     marginTop: spacing.sm,
