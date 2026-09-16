@@ -334,3 +334,123 @@ Expected:
 - Receipt output shows the plain number before the machine name, for example `1  Front Machine`.
 - The receipt remains based on the immutable visit snapshot.
 - Sharing a receipt marks `printStatus` as `printed`; it does not alter machine baselines.
+
+## 11. Collection Shift UAT
+
+### 11.1 Employee — start a shift and make collections
+
+1. Sign in as the employee on the web app or mobile app.
+2. Tap **Activity** in the bottom tabs.
+3. If no shift is active, tap **Start Shift**.
+4. Confirm the shift status shows **In Progress**.
+5. Go to **Select Store** and choose `UAT Store 1`.
+6. Enter Present IN `1200` and Present OUT `600`.
+7. Tap **RUN** and wait for the success message.
+
+Expected:
+
+- A new `CollectionShift` document is created with `status: in_progress`.
+- The visit is saved with `shiftId` linked to the active shift.
+- The employee **Activity** screen shows `1 store visited`, `1 machine serviced`, and the shift status.
+
+### 11.2 Employee — submit a visit and see expected return
+
+1. On the **Outcome** screen, tap **Submit & Print**.
+2. Close or save the receipt.
+3. Return to the **Activity** tab.
+
+Expected:
+
+- `settlementStatus` is `submitted`.
+- The machine's `lastSettledIn` becomes `1200` and `lastSettledOut` becomes `600`.
+- Employee Activity shows:
+  - Gross Collected `200.00`
+  - Net `100.00`
+  - Store Share `50.00`
+  - Expected Return Cash `50.00`
+- The shift `expectedReturnCash` is `50.00`.
+
+### 11.3 Employee — finish the route and wait
+
+1. From the **Activity** tab, tap **Finish Route**.
+2. Confirm the action in the dialog.
+
+Expected:
+
+- Shift status changes to **Pending Reconciliation**.
+- The employee sees a "Waiting for admin reconciliation" message.
+- The employee cannot start a new shift.
+- The employee can still sign out safely without closing the shift.
+
+### 11.4 Owner — review and partially reconcile a shift
+
+1. Sign in as the owner on the web app or mobile app.
+2. Tap **Collections** in the owner tabs.
+3. Find the employee and the pending shift.
+4. Tap the shift to open the drill-down.
+5. Tap the store `UAT Store 1` to see the machine line item.
+
+Expected:
+
+- The store shows Expected Return `50.00`.
+- The machine line item shows the visit, machine name, and expected amount.
+
+### 11.5 Owner — enter actual cash and discrepancy reason
+
+1. In the store reconciliation view, enter Actual Cash Received `45.00`.
+2. Enter a discrepancy reason, for example `Store kept extra $5 for promotion`.
+3. If receipt verification is required, check **Receipt Verified** and optionally add a note.
+4. Tap **Approve Store Reconciliation**.
+
+Expected:
+
+- The store status updates to `reconciled`.
+- The shift status changes to **Partially Reconciled** or **Pending Reconciliation** depending on remaining stores.
+- The shift `actualCashReceived` is updated to `45.00`.
+- An audit record is created for the reconciliation.
+
+### 11.6 Owner — close the shift
+
+1. Reconcile all remaining stores in the shift.
+2. Once all stores are reconciled, tap **Close Shift**.
+3. Confirm the close action.
+
+Expected:
+
+- Shift status becomes **Closed**.
+- A `closedSummary` is saved with:
+  - `expectedReturnCash`
+  - `actualCashReceived`
+  - `totalDifference`
+  - `storesReconciled`
+  - `machinesServiced`
+  - submitted visit IDs
+  - `closedAt` and `closedBy`
+- The shift is no longer editable.
+
+### 11.7 Owner — run the Shift Reports and export Excel
+
+1. Tap **Shift Reports** in the owner tabs.
+2. Select **Today** or a custom range that includes the closed shift.
+3. Review the summary cards:
+  - Total employees, shifts, expected, actual, and difference.
+4. Tap **Export Excel**.
+
+Expected:
+
+- The Excel file downloads on web or shares on mobile.
+- The workbook contains three sheets: **Summary**, **Store Detail**, and **Machine Detail**.
+- The exported data matches the active filter and the values from the closed shift.
+
+### 11.8 Collection Shift sign-off
+
+| Scenario | Result |
+|---|---|
+| Employee starts a shift | |
+| Employee RUN and SUBMIT a visit linked to the shift | |
+| Employee sees correct expected return cash | |
+| Employee finishes route and waits for admin | |
+| Owner reconciles a store with discrepancy reason | |
+| Owner closes the shift and snapshot is frozen | |
+| Shift Reports shows the closed shift | |
+| Excel export matches the filtered data | |
