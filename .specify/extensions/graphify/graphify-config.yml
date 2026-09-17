@@ -1,0 +1,14 @@
+# Graphify grounding configuration
+graph:
+  # Path to the repo-local graph, relative to repo root.
+  repo: graphify-out/graph.json
+  # Path to the merged cross-repo stack graph, relative to repo root.
+  # Used for features that span this repo and a sibling (e.g. frontend + backend).
+  # Harmless for single-repo projects — leave as-is or delete.
+  merged: ../graphify-out/graph.json
+output:
+  # Written into the active feature directory (specs/<feature>/).
+  file: graphify-context.md
+query:
+  # Token budget per graphify query (keeps the context file lean).
+  budget: 1200

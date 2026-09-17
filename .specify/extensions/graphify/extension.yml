@@ -1,0 +1,38 @@
+schema_version: "1.0"
+
+extension:
+  id: graphify
+  name: "Graphify Codebase Grounding"
+  version: "1.0.0"
+  description: "Grounds Spec Kit planning, task generation, and implementation in the project's graphify knowledge graph (graphify-out/graph.json): relevant modules, per-file blast radius, shared/mutable files, and existing patterns."
+  author: narenkarthikbm
+  repository: https://github.com/narenkarthikbm/speckit-graphifyy
+  license: MIT
+
+requires:
+  speckit_version: ">=0.2.0"
+
+provides:
+  commands:
+    - name: speckit.graphify.context
+      file: commands/speckit.graphify.context.md
+      description: "Write a token-bounded graphify-context.md into the active feature directory"
+
+hooks:
+  before_plan:
+    command: speckit.graphify.context
+    optional: true
+    description: "Ground the plan in the existing dependency graph"
+  before_tasks:
+    command: speckit.graphify.context
+    optional: true
+    description: "Verify task parallelism against real dependency edges"
+  before_implement:
+    command: speckit.graphify.context
+    optional: true
+    description: "Pre-resolve per-task blast radius before parallel execution"
+
+tags:
+  - "graphify"
+  - "context"
+  - "graph-rag"

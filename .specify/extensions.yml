@@ -1,0 +1,32 @@
+installed:
+- graphify
+settings:
+  auto_execute_hooks: true
+hooks:
+  before_plan:
+  - extension: graphify
+    command: speckit.graphify.context
+    enabled: true
+    optional: true
+    priority: 5
+    prompt: Generate graphify codebase context before planning?
+    description: Ground the plan in the existing dependency graph
+    condition: null
+  before_tasks:
+  - extension: graphify
+    command: speckit.graphify.context
+    enabled: true
+    optional: true
+    priority: 5
+    prompt: Generate graphify codebase context before task generation?
+    description: Verify task parallelism against real dependency edges
+    condition: null
+  before_implement:
+  - extension: graphify
+    command: speckit.graphify.context
+    enabled: true
+    optional: true
+    priority: 5
+    prompt: Generate graphify codebase context before implementation?
+    description: Pre-resolve per-task blast radius before parallel execution
+    condition: null

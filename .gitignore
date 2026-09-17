@@ -21,6 +21,9 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# generated Graphify cache
+graphify-out/cache/
+
 # debug
 npm-debug.*
 yarn-debug.*
