@@ -109,7 +109,7 @@ All Cloud Functions live in `functions/src/index.ts` and include:
 - `employeeOnboardStore` / `employeeAddMachine` — employee-initiated setup
 - `runVisit` / `submitVisit` / `adjustVisit` / `setVisitSplit` — visit lifecycle
 - `extractReceiptReadings` — receipt OCR + Cloud Vision
-- `checkOcrUsage` — OCR daily-usage helper
+- `startShift` / `getActiveShift` / `finishShift` / `reconcileStore` / `closeShift` — collection-shift lifecycle
 
 Do not refer to the old `submitSettlement` / `voidSettlement` naming unless you are updating to match the current file.
 

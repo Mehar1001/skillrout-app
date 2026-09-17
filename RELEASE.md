@@ -2,9 +2,9 @@
 
 ## Current snapshot
 
-- Branch: `production-hardening`
+- Branch: `main`
 - Version: 1.0.0
-- Target merge: `main`
+- Release source: tracked repository state
 
 ## Environments
 
@@ -12,7 +12,7 @@
 |-----------|---------------------|-----------------|-------|
 | default   | `skillrout`         | live            | Production data lives here |
 | production| `skillrout`         | live            | Same as default |
-| staging   | `skillrout-staging` | live / preview  | Hosting-only in this delivery; uses production backend unless a separate staging `.env` is created |
+| staging   | `skillrout-staging` | Unconfirmed | Alias exists; provisioning, deployment, and backend isolation are not provable from tracked files |
 
 ## Current deployment status
 
@@ -31,13 +31,13 @@
 
 ### Staging (`skillrout-staging`)
 
-- Firebase alias is configured in `.firebaserc`.
-- This release deploys **Hosting only** to staging using the production Firebase web config / backend.
-- To create a fully isolated staging environment, create a separate Firebase project, add it with `npx firebase use --add`, and place its web config in `.env.staging` (gitignored).
+- A Firebase alias is configured in `.firebaserc`.
+- The repository does not prove that the project is provisioned, deployed, or isolated.
+- Before using staging, confirm the target project and provide a separate `.env.staging` Firebase configuration (gitignored).
 
 ## Pre-deploy checklist
 
-1. `git status` is clean on `production-hardening`.
+1. `git status` is clean on `main`.
 2. All local verification commands pass (see below).
 3. `npx expo export --platform web` has been run immediately before `firebase deploy --only hosting`; `dist/` must reflect the current code.
 4. `.env` / `.env.staging` are populated and gitignored.
@@ -85,7 +85,7 @@ firebase deploy --project production
 
 ## Rollback
 
-1. Revert the offending code change and merge the revert into `production-hardening`.
+1. Revert the offending code change on `main` through the normal reviewed Git workflow.
 2. Re-run the full verification suite.
 3. Redeploy Functions: `firebase deploy --only functions --project production`.
 4. Redeploy Hosting to the previous release via `firebase hosting:clone <previous-channel>:live` or the Firebase console.

@@ -2,6 +2,8 @@
 
 A production bookkeeping and operations platform for businesses that run machines across multiple stores. Built with **Expo 53**, **React Native**, and **Firebase**.
 
+Repository-verified project documentation starts at [`docs/00-project-overview.md`](docs/00-project-overview.md). The implementation remains the final source of truth.
+
 ## What it does
 
 - Separate owner and employee sign-in, workspaces, and role-aware routing.
